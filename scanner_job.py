@@ -1,158 +1,101 @@
-import streamlit as st
-import streamlit.components.v1 as components
+import os
+import yfinance as yf
+import pandas as pd
+from datetime import datetime
 from supabase import create_client, Client
 import requests
-import pandas as pd
-import time
 
-# 1. Page Configuration
-st.set_page_config(page_title="AlphaSwing Pro | Momentum Scanner", layout="wide", page_icon="📈")
+# 1. Supabase Connection Set Karna
+url_sb = os.environ.get("SUPABASE_URL")
+key = os.environ.get("SUPABASE_KEY")
+supabase: Client = create_client(url_sb, key)
 
-# Custom Styling for Button
-st.markdown("""
-    <style>
-    .block-container { padding-top: 2rem; }
-    .stButton>button { background-color: #1E88E5; color: white; border-radius: 6px; font-weight: bold; padding: 10px; }
-    .stButton>button:hover { background-color: #1565C0; color: white; }
-    </style>
-""", unsafe_allow_html=True)
+today_date = datetime.now().strftime("%Y-%m-%d")
 
-# 2. Sidebar (Sirf Info ke liye, Button yahan se hata diya hai)
-st.sidebar.image("https://img.icons8.com/fluent/96/000000/chart-line.png", width=80)
-st.sidebar.title("AlphaSwing Pro")
-st.sidebar.markdown("*Advanced Momentum Scanner*")
-st.sidebar.markdown("---")
-st.sidebar.info("💡 **Tip:** Swing trading mein hamesha 2% ka Stoploss zaroor lagayein.")
-
-# 3. Main Dashboard Animation (Chartink Style)
-components.html(
-    """
-    <script src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@700&display=swap');
-        body { font-family: 'Inter', sans-serif; text-align: center; background-color: transparent; margin: 0; padding-top: 10px; color: #E2E8F0; }
-        .main-text { font-size: 40px; font-weight: 700; letter-spacing: -0.5px; }
-        .highlight { color: #1E88E5; }
-    </style>
-    <div class="main-text">
-        AlphaSwing Pro: Best tool for <br><span id="typed" class="highlight"></span>
-    </div>
-    <script>
-        var typed = new Typed('#typed', {
-            strings: ['Swing Trading.', 'Momentum Scans.', 'Technical Analysis.', 'Finding Breakouts.'],
-            typeSpeed: 60, backSpeed: 40, backDelay: 1500, loop: true, showCursor: true, cursorChar: '|'
-        });
-    </script>
-    """,
-    height=120,
-)
-st.markdown("<p style='text-align: center; color: gray; font-size: 18px;'>Automated EOD Scanner jo pure market se high-momentum stocks filter karta hai.</p>", unsafe_allow_html=True)
-st.markdown("---")
-
-# 4. Supabase Connection
-@st.cache_resource
-def init_connection():
-    url = st.secrets["SUPABASE_URL"]
-    key = st.secrets["SUPABASE_KEY"]
-    return create_client(url, key)
-
-try:
-    supabase = init_connection()
-    response = supabase.table('swing_stocks').select("*").order('scan_date', desc=True).execute()
-    raw_data = response.data
-except Exception as e:
-    st.error(f"Database Error: {e}")
-    st.stop()
-
-# 5. Tabs Setup
-tab1, tab2, tab3 = st.tabs(["📊 Combined Scanner", "⚙️ Strategy Rules", "💡 Trading Guide"])
-
-# --- TAB 1: MAIN SCANNER & BUTTON ---
-with tab1:
-    # A. Data Display
-    if raw_data:
-        df = pd.DataFrame(raw_data)
-        df = df[['scan_date', 'stock_symbol', 'close_price', 'turnover_cr', 'condition_matched']]
-        df.columns = ['Scan Date', 'Stock Symbol', 'Close Price', 'Turnover (Cr)', 'Strategy Matched']
+# 2. Broker (Angel One) se Live Master List nikalna
+def get_full_nse_list():
+    try:
+        print("Broker se master list download kar rahe hain...")
+        url = "https://margincalculator.angelbroking.com/OpenAPI_Config/999/0.3/v1/Config/master_selection.json"
+        response = requests.get(url, timeout=15)
+        data = response.json()
         
-        latest_date = df['Scan Date'].max()
-        total_stocks = len(df[df['Scan Date'] == latest_date])
+        df = pd.DataFrame(data)
+        df_nse = df[(df['exch_seg'] == 'NSE') & (df['symbol'].str.endswith('-EQ'))]
         
-        col1, col2, col3 = st.columns(3)
-        col1.metric("📅 Last Scan Date", str(latest_date))
-        col2.metric("🎯 Latest Breakout Count", f"{total_stocks} Stocks")
-        col3.metric("🏢 Market Covered", "NSE 2300+ Stocks")
+        nse_symbols = [s.replace('-EQ', '') for s in df_nse['symbol'].tolist()]
+        print(f"✅ Success: Market se {len(nse_symbols)} stocks mil gaye!")
+        return nse_symbols
+    except Exception as e:
+        print(f"❌ Master list fail hui: {e}. Backup use kar rahe hain.")
+        return ["RELIANCE", "TCS", "HDFCBANK", "INFY", "ZOMATO"]
+
+nse_stocks = get_full_nse_list()
+stocks = [s + ".NS" for s in nse_stocks]
+
+print(f"Scanning started for {len(stocks)} stocks...")
+saved_count = 0
+
+# 3. Har stock ko check karna
+for ticker in stocks:
+    try:
+        data = yf.download(ticker, period="2y", interval="1d", progress=False)
         
-        st.markdown("---")
-        
-        f_col1, f_col2, f_col3 = st.columns(3)
-        with f_col1:
-            selected_date = st.selectbox("📅 Select Scan Date", sorted(df['Scan Date'].unique(), reverse=True))
-        df_filtered = df[df['Scan Date'] == selected_date]
-        with f_col2:
-            selected_strategy = st.selectbox("🎯 Filter by Strategy", ["All Strategies"] + list(df['Strategy Matched'].unique()))
-        with f_col3:
-            search_symbol = st.text_input("🔤 Search Stock", "").upper()
-
-        if selected_strategy != "All Strategies":
-            df_filtered = df_filtered[df_filtered['Strategy Matched'] == selected_strategy]
-        if search_symbol:
-            df_filtered = df_filtered[df_filtered['Stock Symbol'].str.contains(search_symbol)]
-
-        st.dataframe(df_filtered, use_container_width=True, height=400)
-    else:
-        st.info("Database mein abhi koi data nahi hai. Niche diye gaye button se live scan shuru karein.")
-
-    st.markdown("---")
-    
-    # B. The Scan Button & Animation Section (Table ke theek niche)
-    st.subheader("⚡ Run Live Combined Scan")
-    st.write("Market hours mein poore NSE market (2300+ stocks) ko check karne ke liye click karein.")
-    
-    if st.button("🚀 Run Live Scan Now", use_container_width=True):
-        with st.status("GitHub Servers ko jagaya jaa raha hai...", expanded=True) as status:
-            st.write("📡 Signal bheja jaa raha hai...")
-            try:
-                token = st.secrets["GITHUB_TOKEN"]
-                repo = st.secrets["GITHUB_REPO"]
-                workflow_file = "daily_scan.yml" 
+        if len(data) > 252:
+            data['SMA_200'] = data['Close'].rolling(window=200).mean()
+            data['SMA_50'] = data['Close'].rolling(window=50).mean()
+            data['Vol_SMA_20'] = data['Volume'].rolling(window=20).mean()
+            data['Turnover'] = data['Close'] * data['Vol_SMA_20']
+            
+            data['Close_22_ago'] = data['Close'].shift(22)
+            data['Close_66_ago'] = data['Close'].shift(66)
+            data['Max_High_252'] = data['High'].shift(1).rolling(window=252).max()
+            
+            latest = data.iloc[-1]
+            
+            close = float(latest['Close'].iloc[0] if isinstance(latest['Close'], pd.Series) else latest['Close'])
+            close_22 = float(latest['Close_22_ago'].iloc[0] if isinstance(latest['Close_22_ago'], pd.Series) else latest['Close_22_ago'])
+            close_66 = float(latest['Close_66_ago'].iloc[0] if isinstance(latest['Close_66_ago'], pd.Series) else latest['Close_66_ago'])
+            sma_200 = float(latest['SMA_200'].iloc[0] if isinstance(latest['SMA_200'], pd.Series) else latest['SMA_200'])
+            sma_50 = float(latest['SMA_50'].iloc[0] if isinstance(latest['SMA_50'], pd.Series) else latest['SMA_50'])
+            turnover = float(latest['Turnover'].iloc[0] if isinstance(latest['Turnover'], pd.Series) else latest['Turnover'])
+            max_high_252 = float(latest['Max_High_252'].iloc[0] if isinstance(latest['Max_High_252'], pd.Series) else latest['Max_High_252'])
+            
+            tech_cond1 = (close / close_22 > 1.2) and (turnover > 100000000) and (close > sma_200)
+            tech_cond2 = (close / close_66 >= 1.3) and (close >= 1) and (turnover > 100000000) and (close > sma_200)
+            tech_cond3 = (close > max_high_252 * 0.75) and (close > sma_50) and (close > sma_200) and (turnover > 100000000)
+            
+            if tech_cond1 or tech_cond2 or tech_cond3:
+                try:
+                    raw_mcap = yf.Ticker(ticker).info.get('marketCap', 15000000000)
+                    mcap_cr = (raw_mcap / 10000000)
+                except:
+                    mcap_cr = 1500 
                 
-                url = f"https://api.github.com/repos/{repo}/actions/workflows/{workflow_file}/dispatches"
-                headers = {
-                    "Authorization": f"token {token}",
-                    "Accept": "application/vnd.github.v3+json"
-                }
-                data = {"ref": "main"}
+                cond1 = tech_cond1 and (mcap_cr > 1)
+                cond2 = tech_cond2 and (mcap_cr > 0)
+                cond3 = tech_cond3 and (mcap_cr >= 1000)
                 
-                response = requests.post(url, headers=headers, json=data)
-                time.sleep(2)
-                
-                if response.status_code == 204:
-                    status.update(label="✅ Scan Command Sent Successfully!", state="complete", expanded=False)
+                if cond1 or cond2 or cond3:
+                    match_type = []
+                    if cond1: match_type.append("1M Momentum")
+                    if cond2: match_type.append("3M Momentum")
+                    if cond3: match_type.append("52W High Pullback")
                     
-                    # Beautiful Radar/Loading Animation
-                    st.markdown(
-                        """
-                        <div style="text-align: center; background-color: #1E1E1E; padding: 25px; border-radius: 12px; margin-top: 15px; border: 1px solid #333;">
-                            <img src="https://i.gifer.com/ZKZg.gif" width="70px" style="margin-bottom: 15px;">
-                            <h3 style="color: #4CAF50; margin: 0;">🚀 Scanning 2300+ Stocks...</h3>
-                            <p style="color: #AAA; font-size: 15px; margin-top: 10px;">
-                                GitHub background mein kaam kar raha hai. Is process mein <b>30 se 40 minute</b> lagenge.<br>
-                                <i>Aap is window ko band kar sakte hain, data automatically update ho jayega!</i>
-                            </p>
-                        </div>
-                        """, 
-                        unsafe_allow_html=True
-                    )
-                else:
-                    status.update(label=f"❌ GitHub Error: {response.text}", state="error")
-            except Exception as e:
-                status.update(label=f"❌ Setup Error: {e}", state="error")
+                    condition_str = " + ".join(match_type)
+                    symbol_clean = ticker.replace(".NS", "")
+                    
+                    supabase.table('swing_stocks').insert({
+                        "scan_date": today_date,
+                        "stock_symbol": symbol_clean,
+                        "close_price": round(close, 2),
+                        "turnover_cr": round(turnover / 10000000, 2),
+                        "condition_matched": condition_str
+                    }).execute()
+                    
+                    print(f"🔥 Found Breakout: {symbol_clean} - {condition_str}")
+                    saved_count += 1
+    except:
+        pass
 
-# --- TAB 2 & 3: Strategy Rules and Guide ---
-with tab2:
-    st.header("⚙️ Scanner Rules")
-    st.write("1-Month, 3-Month aur 52-Week High pullback ke saare technical rules yahan apply hote hain.")
-with tab3:
-    st.header("💡 Trading Guide")
-    st.write("Hamesha 2-3% ka Stoploss use karein aur 1:2 Risk Reward ratio follow karein.")
+print(f"🎉 Scan complete! Total {saved_count} stocks saved.")
