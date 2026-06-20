@@ -8,12 +8,14 @@ import time
 # 1. Page Configuration
 st.set_page_config(page_title="AlphaSwing Pro | Momentum Scanner", layout="wide", page_icon="📈")
 
-# Custom Styling for Button
+# Custom Styling for Buttons
 st.markdown("""
     <style>
     .block-container { padding-top: 2rem; }
-    .stButton>button { background-color: #1E88E5; color: white; border-radius: 6px; font-weight: bold; padding: 10px; }
-    .stButton>button:hover { background-color: #1565C0; color: white; }
+    .btn-green button { background-color: #4CAF50; color: white; border-radius: 6px; font-weight: bold; padding: 10px; width: 100%; border: none;}
+    .btn-green button:hover { background-color: #45a049; }
+    .btn-red button { background-color: #D32F2F; color: white; border-radius: 6px; font-weight: bold; padding: 10px; width: 100%; border: none;}
+    .btn-red button:hover { background-color: #b71c1c; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -39,36 +41,46 @@ components.html(
     </div>
     <script>
         var typed = new Typed('#typed', {
-            strings: ['Swing Trading.', 'Momentum Scans.', 'Technical Analysis.', 'Finding Breakouts.'],
+            strings: ['Swing Trading.', 'Live Market Scans.', 'Technical Analysis.', 'Finding Breakouts.'],
             typeSpeed: 60, backSpeed: 40, backDelay: 1500, loop: true, showCursor: true, cursorChar: '|'
         });
     </script>
     """,
     height=120,
 )
-st.markdown("<p style='text-align: center; color: gray; font-size: 18px;'>Automated EOD Scanner jo pure market se high-momentum stocks filter karta hai.</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: gray; font-size: 18px;'>Automated EOD & Live Scanner for High-Momentum Stocks.</p>", unsafe_allow_html=True)
 st.markdown("---")
 
-# 4. Supabase Connection
+# 4. Supabase Connection (Client Cached, Data Fetched Fresh)
 @st.cache_resource
 def init_connection():
     url = st.secrets["SUPABASE_URL"]
     key = st.secrets["SUPABASE_KEY"]
     return create_client(url, key)
 
+supabase = init_connection()
+
+# Fetch Fresh Data
 try:
-    supabase = init_connection()
     response = supabase.table('swing_stocks').select("*").order('scan_date', desc=True).execute()
     raw_data = response.data
 except Exception as e:
     st.error(f"Database Error: {e}")
-    st.stop()
+    raw_data = None
 
 # 5. Tabs Setup
 tab1, tab2, tab3 = st.tabs(["📊 Combined Scanner", "⚙️ Strategy Rules", "💡 Trading Guide"])
 
-# --- TAB 1: MAIN SCANNER & BUTTON ---
+# --- TAB 1: MAIN SCANNER ---
 with tab1:
+    
+    # 🔄 LIVE TRACKING TOGGLE
+    live_tracking = st.toggle("🔄 Enable Live Tracking (Auto-refresh every 15s)")
+    if live_tracking:
+        st.info("📡 Live Tracking ON: Parde ke peeche naye stocks scan hote hi yahan apne aap aa jayenge...")
+        time.sleep(15)
+        st.rerun()
+        
     if raw_data:
         df = pd.DataFrame(raw_data)
         df = df[['scan_date', 'stock_symbol', 'close_price', 'turnover_cr', 'condition_matched']]
@@ -98,53 +110,65 @@ with tab1:
         if search_symbol:
             df_filtered = df_filtered[df_filtered['Stock Symbol'].str.contains(search_symbol)]
 
-        st.dataframe(df_filtered, use_container_width=True, height=400)
+        # Scrollable & Compact Table Logic (height=300, hide_index=True)
+        st.dataframe(df_filtered, use_container_width=True, height=300, hide_index=True)
     else:
         st.info("Database mein abhi koi data nahi hai. Niche diye gaye button se live scan shuru karein.")
 
     st.markdown("---")
     
-    st.subheader("⚡ Run Live Combined Scan")
-    st.write("Market hours mein poore NSE market (2300+ stocks) ko check karne ke liye click karein.")
+    # ⚡ ACTION BUTTONS (Start & Stop)
+    st.subheader("⚡ Live Scanner Controls")
     
-    if st.button("🚀 Run Live Scan Now", use_container_width=True):
-        with st.status("GitHub Servers ko jagaya jaa raha hai...", expanded=True) as status:
-            st.write("📡 Signal bheja jaa raha hai...")
-            try:
-                token = st.secrets["GITHUB_TOKEN"]
-                repo = st.secrets["GITHUB_REPO"]
-                workflow_file = "daily_scan.yml" 
-                
-                url = f"https://api.github.com/repos/{repo}/actions/workflows/{workflow_file}/dispatches"
-                headers = {
-                    "Authorization": f"token {token}",
-                    "Accept": "application/vnd.github.v3+json"
-                }
-                data = {"ref": "main"}
-                
-                response = requests.post(url, headers=headers, json=data)
-                time.sleep(2)
-                
-                if response.status_code == 204:
-                    status.update(label="✅ Scan Command Sent Successfully!", state="complete", expanded=False)
+    colA, colB = st.columns(2)
+    
+    # START BUTTON
+    with colA:
+        st.markdown("<div class='btn-green'>", unsafe_allow_html=True)
+        if st.button("🚀 Run Live Scan Now", use_container_width=True):
+            with st.spinner("Signal bheja jaa raha hai..."):
+                try:
+                    token = st.secrets["GITHUB_TOKEN"]
+                    repo = st.secrets["GITHUB_REPO"]
+                    url = f"https://api.github.com/repos/{repo}/actions/workflows/daily_scan.yml/dispatches"
+                    headers = {"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"}
                     
-                    st.markdown(
-                        """
-                        <div style="text-align: center; background-color: #1E1E1E; padding: 25px; border-radius: 12px; margin-top: 15px; border: 1px solid #333;">
-                            <img src="https://i.gifer.com/ZKZg.gif" width="70px" style="margin-bottom: 15px;">
-                            <h3 style="color: #4CAF50; margin: 0;">🚀 Scanning 2300+ Stocks...</h3>
-                            <p style="color: #AAA; font-size: 15px; margin-top: 10px;">
-                                GitHub background mein kaam kar raha hai. Is process mein <b>30 se 40 minute</b> lagenge.<br>
-                                <i>Aap is window ko band kar sakte hain, data automatically update ho jayega!</i>
-                            </p>
-                        </div>
-                        """, 
-                        unsafe_allow_html=True
-                    )
-                else:
-                    status.update(label=f"❌ GitHub Error: {response.text}", state="error")
-            except Exception as e:
-                status.update(label=f"❌ Setup Error: {e}", state="error")
+                    response = requests.post(url, headers=headers, json={"ref": "main"})
+                    time.sleep(2)
+                    
+                    if response.status_code == 204:
+                        st.success("✅ Scan Shuru Ho Gaya! Upar 'Live Tracking' toggle ko ON kar lein.")
+                    else:
+                        st.error("❌ GitHub Error: Token/Repo check karein.")
+                except Exception as e:
+                    st.error(f"❌ Error: {e}")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # STOP BUTTON
+    with colB:
+        st.markdown("<div class='btn-red'>", unsafe_allow_html=True)
+        if st.button("🛑 Stop Active Scan", use_container_width=True):
+            with st.spinner("Active scan ko roka jaa raha hai..."):
+                try:
+                    token = st.secrets["GITHUB_TOKEN"]
+                    repo = st.secrets["GITHUB_REPO"]
+                    
+                    url_get = f"https://api.github.com/repos/{repo}/actions/runs?status=in_progress"
+                    headers = {"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"}
+                    res = requests.get(url_get, headers=headers)
+                    runs = res.json().get("workflow_runs", [])
+                    
+                    if runs:
+                        for run in runs:
+                            run_id = run["id"]
+                            url_cancel = f"https://api.github.com/repos/{repo}/actions/runs/{run_id}/cancel"
+                            requests.post(url_cancel, headers=headers)
+                        st.success("🛑 Active scan successfully rok diya gaya hai!")
+                    else:
+                        st.info("Parde ke peeche abhi koi active scan nahi chal raha hai.")
+                except Exception as e:
+                    st.error(f"Error stopping scan: {e}")
+        st.markdown("</div>", unsafe_allow_html=True)
 
 # --- TAB 2 & 3: Strategy Rules and Guide ---
 with tab2:
