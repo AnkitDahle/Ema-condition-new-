@@ -4,56 +4,48 @@ import pandas as pd
 from datetime import datetime
 from supabase import create_client, Client
 import requests
-import io
-import time
 
-# 1. Supabase Connection
+# 1. Supabase Connection Set Karna
 url_sb = os.environ.get("SUPABASE_URL")
 key = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(url_sb, key)
 
 today_date = datetime.now().strftime("%Y-%m-%d")
 
-# 2. Super-Strong NSE Ticker Fetch (Anti-Block)
-try:
-    print("NSE se stocks ki list maang rahe hain...")
-    session = requests.Session()
-    # Insaan jaisa bhes (Browser Headers)
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
-    }
-    session.headers.update(headers)
-    
-    # Pehle main website par jao taaki NSE cookies de de
-    session.get("https://www.nseindia.com", timeout=10)
-    time.sleep(2)
-    
-    # Ab list wali link par jao
-    response = session.get("https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv", timeout=10)
-    
-    df_nse = pd.read_csv(io.StringIO(response.text))
-    nse_stocks = df_nse['SYMBOL'].tolist()
-    print(f"✅ Success: NSE se {len(nse_stocks)} stocks ki list mil gayi!")
+# 2. Broker (Angel One) se Live Master List nikalna
+def get_full_nse_list():
+    try:
+        print("Broker se master list download kar rahe hain...")
+        url = "https://margincalculator.angelbroking.com/OpenAPI_Config/999/0.3/v1/Config/master_selection.json"
+        response = requests.get(url, timeout=15)
+        data = response.json()
+        
+        # Sirf NSE Equity (-EQ) stocks ko nikalna
+        df = pd.DataFrame(data)
+        df_nse = df[(df['exch_seg'] == 'NSE') & (df['symbol'].str.endswith('-EQ'))]
+        
+        # Yahoo Finance ke liye naam theek karna (Jaise RELIANCE-EQ ko RELIANCE banana)
+        nse_symbols = [s.replace('-EQ', '') for s in df_nse['symbol'].tolist()]
+        print(f"✅ Success: Market se {len(nse_symbols)} stocks mil gaye!")
+        return nse_symbols
+    except Exception as e:
+        print(f"❌ Master list fail hui: {e}. Backup use kar rahe hain.")
+        return ["RELIANCE", "TCS", "HDFCBANK", "INFY", "ZOMATO"]
 
-except Exception as e:
-    print(f"❌ NSE list block ho gayi: {e}")
-    # Backup list if NSE strictly blocks
-    nse_stocks = ["RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK", "SBI", "ITC", "LT", "BAJFINANCE"]
-
-# Yahoo Finance ke liye .NS lagana
+nse_stocks = get_full_nse_list()
 stocks = [s + ".NS" for s in nse_stocks]
 
+print(f"Scanning started for {len(stocks)} stocks...")
 saved_count = 0
 
-# 3. Main Scanning Logic (Aapke Chartink Rules ke hisaab se)
+# 3. Har stock ko check karna (Aapka Chartink Logic)
 for ticker in stocks:
     try:
-        # Pura data ek baar me lene se speed badhti hai
+        # Pichle 2 saal ka data Yahoo Finance se mangwana
         data = yf.download(ticker, period="2y", interval="1d", progress=False)
         
         if len(data) > 252:
+            # Indicators aur conditions calculate karna
             data['SMA_200'] = data['Close'].rolling(window=200).mean()
             data['SMA_50'] = data['Close'].rolling(window=50).mean()
             data['Vol_SMA_20'] = data['Volume'].rolling(window=20).mean()
@@ -73,15 +65,15 @@ for ticker in stocks:
             turnover = float(latest['Turnover'].iloc[0] if isinstance(latest['Turnover'], pd.Series) else latest['Turnover'])
             max_high_252 = float(latest['Max_High_252'].iloc[0] if isinstance(latest['Max_High_252'], pd.Series) else latest['Max_High_252'])
             
-            # Aapke Conditions
+            # Chartink Filters Apply Karna
             tech_cond1 = (close / close_22 > 1.2) and (turnover > 100000000) and (close > sma_200)
             tech_cond2 = (close / close_66 >= 1.3) and (close >= 1) and (turnover > 100000000) and (close > sma_200)
             tech_cond3 = (close > max_high_252 * 0.75) and (close > sma_50) and (close > sma_200) and (turnover > 100000000)
             
             if tech_cond1 or tech_cond2 or tech_cond3:
                 try:
-                    raw_mcap = yf.Ticker(ticker).info.get('marketCap')
-                    mcap_cr = (raw_mcap / 10000000) if raw_mcap else 1500 
+                    raw_mcap = yf.Ticker(ticker).info.get('marketCap', 15000000000)
+                    mcap_cr = (raw_mcap / 10000000)
                 except:
                     mcap_cr = 1500 
                 
@@ -98,7 +90,7 @@ for ticker in stocks:
                     condition_str = " + ".join(match_type)
                     symbol_clean = ticker.replace(".NS", "")
                     
-                    # Supabase me entry
+                    # Result Supabase me save karna
                     supabase.table('swing_stocks').insert({
                         "scan_date": today_date,
                         "stock_symbol": symbol_clean,
@@ -107,10 +99,9 @@ for ticker in stocks:
                         "condition_matched": condition_str
                     }).execute()
                     
-                    print(f"🔥 Breakout Mila: {symbol_clean} ({condition_str})")
+                    print(f"🔥 Found Breakout: {symbol_clean} - {condition_str}")
                     saved_count += 1
-                    
-    except Exception as e:
+    except:
         pass
 
-print(f"🎉 Scan Pura Hua! Total {saved_count} stocks Supabase me save ho gaye.")
+print(f"🎉 Scan complete! Total {saved_count} stocks saved.")
