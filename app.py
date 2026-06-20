@@ -43,3 +43,29 @@ try:
         
 except Exception as e:
     st.error("Connection Error. Kripya Streamlit Secrets check karein.")
+
+# --- REMOTE CONTROL BUTTON ---
+import requests
+
+st.sidebar.markdown("---")
+st.sidebar.subheader("⚡ Live Market Scan")
+st.sidebar.write("Market hours mein naye stocks scan karein.")
+
+if st.sidebar.button("🚀 Run Live Scan Now"):
+    token = st.secrets["GITHUB_TOKEN"]
+    repo = st.secrets["GITHUB_REPO"]
+    workflow_file = "daily_scan.yml"  # Aapki github actions file ka exact naam
+    
+    url = f"https://api.github.com/repos/{repo}/actions/workflows/{workflow_file}/dispatches"
+    headers = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+    data = {"ref": "main"}
+    
+    response = requests.post(url, headers=headers, json=data)
+    
+    if response.status_code == 204:
+        st.sidebar.success("✅ Scan shuru ho gaya hai! Kripya 10-12 minute baad page refresh karein.")
+    else:
+        st.sidebar.error(f"❌ Error aaya: {response.text}")
