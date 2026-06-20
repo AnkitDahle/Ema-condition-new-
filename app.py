@@ -13,14 +13,15 @@ except Exception as e:
     st.stop()
 
 try:
-    response = supabase.table('swing_stocks').select("*").order('scan_date', descending=True).execute()
+    # Yahan descending ki jagah desc=True kar diya gaya hai
+    response = supabase.table('swing_stocks').select("*").order('scan_date', desc=True).execute()
     data = response.data
 except Exception as e:
     st.error(f"Database Error: {e}")
     st.stop()
 
 if not data:
-    st.info("Database mein abhi koi data nahi hai.")
+    st.info("Database mein abhi koi data nahi hai. Ek baar GitHub par Actions run hone dijiye.")
 else:
     import pandas as pd
     df = pd.DataFrame(data)
