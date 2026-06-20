@@ -20,9 +20,11 @@ def get_full_nse_list():
         response = requests.get(url, timeout=15)
         data = response.json()
         
+        # Sirf NSE Equity (-EQ) stocks ko nikalna
         df = pd.DataFrame(data)
         df_nse = df[(df['exch_seg'] == 'NSE') & (df['symbol'].str.endswith('-EQ'))]
         
+        # Yahoo Finance ke liye naam theek karna
         nse_symbols = [s.replace('-EQ', '') for s in df_nse['symbol'].tolist()]
         print(f"✅ Success: Market se {len(nse_symbols)} stocks mil gaye!")
         return nse_symbols
@@ -36,7 +38,7 @@ stocks = [s + ".NS" for s in nse_stocks]
 print(f"Scanning started for {len(stocks)} stocks...")
 saved_count = 0
 
-# 3. Har stock ko check karna
+# 3. Har stock ko check karna (Aapka Chartink Logic)
 for ticker in stocks:
     try:
         data = yf.download(ticker, period="2y", interval="1d", progress=False)
