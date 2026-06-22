@@ -27,6 +27,7 @@ def get_full_nse_list():
         clean_symbols = []
         for s in nse_symbols:
             s = str(s)
+            # Gold Bonds aur Govt Bonds ka kachra saaf karna
             if '-SG' in s or '-SF' in s or '-SD' in s or '-GS' in s: continue
             if ' ' in s: continue
             if s.endswith("BEES") or "ETF" in s or "LIQUID" in s: continue
@@ -41,21 +42,12 @@ def get_full_nse_list():
 nse_stocks = get_full_nse_list()
 stocks = [s + ".NS" for s in nse_stocks]
 
-print("Scanning started! (Looking for EXACTLY 5 Real Breakout Stocks)...")
+print(f"Scanning started! (Full Market Scan for {len(stocks)} Stocks)...")
 saved_count = 0
 checked_count = 0
 
 # 3. Har stock ko check karna (Chartink Logic)
 for ticker in stocks:
-    
-    # 🛑 SMART DUAL BRAKE SYSTEM
-    if saved_count >= 5:
-        print(f"\n🎯 Target Achieved: 5 Breakout stocks mil gaye! Scan yahin rok rahe hain.")
-        break
-    if checked_count >= 1000: # Limit badha di taaki 5 real stocks dhoondhne ka time mile
-        print(f"\n🛑 Safety Brake: 1000 stocks check kar liye. Ab aage nahi jayenge.")
-        break
-        
     checked_count += 1
 
     try:
@@ -90,7 +82,6 @@ for ticker in stocks:
             
             if tech_cond1 or tech_cond2 or tech_cond3:
                 try:
-                    # Ticker object already bana hua hai
                     raw_mcap = stock_obj.info.get('marketCap', 15000000000)
                     mcap_cr = (raw_mcap / 10000000)
                 except:
@@ -122,4 +113,4 @@ for ticker in stocks:
     except Exception as e:
         pass
 
-print(f"🎉 Scan complete! {checked_count} stocks check huye, aur {saved_count} stocks Supabase mein save huye.")
+print(f"🎉 Full Market Scan complete! {checked_count} stocks check huye, aur {saved_count} stocks Supabase mein save huye.")
