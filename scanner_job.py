@@ -12,12 +12,19 @@ supabase: Client = create_client(url_sb, key)
 
 today_date = datetime.now().strftime("%Y-%m-%d")
 
-# 2. Broker (Angel One) se Live Master List nikalna
+# 2. Broker (Angel One) se Live Master List nikalna (With Browser Identity)
 def get_full_nse_list():
     try:
         print("Broker se master list download kar rahe hain...")
         url = "https://margincalculator.angelbroking.com/OpenAPI_Config/999/0.3/v1/Config/master_selection.json"
-        response = requests.get(url, timeout=15)
+        
+        # Angel One ko lagega hum Google Chrome use kar rahe hain
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "application/json"
+        }
+        
+        response = requests.get(url, headers=headers, timeout=15)
         data = response.json()
         
         # Sirf NSE Equity (-EQ) stocks ko nikalna
@@ -38,7 +45,7 @@ stocks = [s + ".NS" for s in nse_stocks]
 print(f"Scanning started for {len(stocks)} stocks...")
 saved_count = 0
 
-# 3. Har stock ko check karna (Aapka Chartink Logic)
+# 3. Har stock ko check karna (Chartink Logic)
 for ticker in stocks:
     try:
         data = yf.download(ticker, period="2y", interval="1d", progress=False)
