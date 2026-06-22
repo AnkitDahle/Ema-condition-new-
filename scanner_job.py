@@ -5,7 +5,7 @@ from datetime import datetime
 from supabase import create_client, Client
 import logging
 
-# Yahoo Finance ke faltu error messages ko mute (chup) karna
+# Yahoo Finance ke faltu error messages ko mute karna
 logging.getLogger('yfinance').setLevel(logging.CRITICAL)
 
 # 1. Supabase Connection Set Karna
@@ -44,22 +44,25 @@ def get_full_nse_list():
 nse_stocks = get_full_nse_list()
 stocks = [s + ".NS" for s in nse_stocks]
 
-print("Scanning started! (TEST MODE: Sirf 50 stocks check honge)")
+print("Scanning started! (TEST MODE: Looking for EXACTLY 5 Breakout Stocks)...")
 saved_count = 0
 checked_count = 0
 
 # 3. Har stock ko check karna (Chartink Logic)
 for ticker in stocks:
     
-    # 🛑 THE REAL EMERGENCY BRAKE (Sacha Test Mode)
-    if checked_count >= 50:
-        print(f"\n🛑 Testing Limit Reached: 50 stocks check ho gaye. Scan yahin rok rahe hain!")
+    # 🛑 SMART DUAL BRAKE SYSTEM
+    if saved_count >= 5:
+        print(f"\n🎯 Target Achieved: 5 Breakout stocks mil gaye! Scan yahin rok rahe hain.")
+        break
+    
+    if checked_count >= 500:
+        print(f"\n🛑 Safety Brake: 500 stocks check kar liye. Ab aage nahi jayenge.")
         break
         
     checked_count += 1
 
     try:
-        # Faltu error na dikhe isliye progress=False aur show_errors=False
         data = yf.download(ticker, period="2y", interval="1d", progress=False, show_errors=False)
         
         if len(data) > 252:
@@ -119,4 +122,4 @@ for ticker in stocks:
     except:
         pass
 
-print(f"🎉 Scan complete! 50 check huye, jisme se {saved_count} stocks pass hokar save huye.")
+print(f"🎉 Scan complete! {checked_count} stocks check huye, aur {saved_count} stocks database mein save ho gaye.")
