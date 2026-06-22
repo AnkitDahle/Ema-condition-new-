@@ -15,11 +15,10 @@ supabase: Client = create_client(url_sb, key)
 
 today_date = datetime.now().strftime("%Y-%m-%d")
 
-# 2. Zerodha API se Master List nikalna + Advance VIP Bouncer
+# 2. Zerodha API se Master List nikalna
 def get_full_nse_list():
     try:
         print("Zerodha API se list download kar rahe hain...")
-        # low_memory=False se Dtype warning nahi aayegi
         df = pd.read_csv("https://api.kite.trade/instruments", low_memory=False) 
         df_nse = df[(df['exchange'] == 'NSE') & (df['instrument_type'] == 'EQ')]
         nse_symbols = df_nse['tradingsymbol'].tolist()
@@ -27,7 +26,6 @@ def get_full_nse_list():
         clean_symbols = []
         for s in nse_symbols:
             s = str(s)
-            # Gold Bonds aur Govt Bonds ka kachra saaf karna
             if '-SG' in s or '-SF' in s or '-SD' in s or '-GS' in s: continue
             if ' ' in s: continue
             if s.endswith("BEES") or "ETF" in s or "LIQUID" in s: continue
@@ -36,7 +34,6 @@ def get_full_nse_list():
         print(f"✅ Success: Kachra hatane ke baad {len(clean_symbols)} pure stocks mil gaye!")
         return clean_symbols
     except Exception as e:
-        print(f"❌ Zerodha list fail hui: {e}. Backup use kar rahe hain.")
         return ["RELIANCE", "TCS", "HDFCBANK", "INFY", "ZOMATO"]
 
 nse_stocks = get_full_nse_list()
@@ -46,43 +43,51 @@ print(f"Scanning started! (Full Market Scan for {len(stocks)} Stocks)...")
 saved_count = 0
 checked_count = 0
 
-# 3. Har stock ko check karna (Chartink Logic)
+# 3. Har stock ko check karna
 for ticker in stocks:
     checked_count += 1
+    
+    # Progress Track Karne Ke Liye (Har 100 stocks baad terminal me batayega)
+    if checked_count % 100 == 0:
+        print(f"⏳ Progress: {checked_count} stocks checked... Found {saved_count} Breakouts so far.")
 
     try:
-        # THE MAGIC FIX: yf.Ticker().history() use kiya bajaye download() ke
-        stock_obj = yf.Ticker(ticker)
-        data = stock_obj.history(period="2y", interval="1d")
+        # Faltu red warnings hatane ke liye show_errors=False
+        data = yf.download(ticker, period="2y", interval="1d", progress=False, show_errors=False)
         
         if len(data) > 252:
-            data['SMA_200'] = data['Close'].rolling(window=200).mean()
-            data['SMA_50'] = data['Close'].rolling(window=50).mean()
-            data['Vol_SMA_20'] = data['Volume'].rolling(window=20).mean()
-            data['Turnover'] = data['Close'] * data['Vol_SMA_20']
+            # THE SQUEEZE FIX: Yahoo ke naye format ko flat (1D) karne ka masterstroke
+            close_data = data['Close'].squeeze()
+            vol_data = data['Volume'].squeeze()
+            high_data = data['High'].squeeze()
+
+            # Ab calculations ekdum fast aur bina kisi DataFrame error ke hongi
+            sma_200 = close_data.rolling(window=200).mean()
+            sma_50 = close_data.rolling(window=50).mean()
+            vol_sma_20 = vol_data.rolling(window=20).mean()
+            turnover_data = close_data * vol_sma_20
             
-            data['Close_22_ago'] = data['Close'].shift(22)
-            data['Close_66_ago'] = data['Close'].shift(66)
-            data['Max_High_252'] = data['High'].shift(1).rolling(window=252).max()
+            close_22_ago = close_data.shift(22)
+            close_66_ago = close_data.shift(66)
+            max_high_252 = high_data.shift(1).rolling(window=252).max()
             
-            latest = data.iloc[-1]
+            # Aakhri din ka data float (number) mein convert karna
+            close = float(close_data.iloc[-1])
+            close_22 = float(close_22_ago.iloc[-1])
+            close_66 = float(close_66_ago.iloc[-1])
+            sma_200_val = float(sma_200.iloc[-1])
+            sma_50_val = float(sma_50.iloc[-1])
+            turnover = float(turnover_data.iloc[-1])
+            max_high = float(max_high_252.iloc[-1])
             
-            # Format clean hone se ab calculations bhi choti aur error-free ho gayi
-            close = float(latest['Close'])
-            close_22 = float(latest['Close_22_ago'])
-            close_66 = float(latest['Close_66_ago'])
-            sma_200 = float(latest['SMA_200'])
-            sma_50 = float(latest['SMA_50'])
-            turnover = float(latest['Turnover'])
-            max_high_252 = float(latest['Max_High_252'])
-            
-            tech_cond1 = (close / close_22 > 1.2) and (turnover > 100000000) and (close > sma_200)
-            tech_cond2 = (close / close_66 >= 1.3) and (close >= 1) and (turnover > 100000000) and (close > sma_200)
-            tech_cond3 = (close > max_high_252 * 0.75) and (close > sma_50) and (close > sma_200) and (turnover > 100000000)
+            # --- AAPKE CHARTINK WALE STRICT RULES ---
+            tech_cond1 = (close / close_22 > 1.2) and (turnover > 100000000) and (close > sma_200_val)
+            tech_cond2 = (close / close_66 >= 1.3) and (close >= 1) and (turnover > 100000000) and (close > sma_200_val)
+            tech_cond3 = (close > max_high * 0.75) and (close > sma_50_val) and (close > sma_200_val) and (turnover > 100000000)
             
             if tech_cond1 or tech_cond2 or tech_cond3:
                 try:
-                    raw_mcap = stock_obj.info.get('marketCap', 15000000000)
+                    raw_mcap = yf.Ticker(ticker).info.get('marketCap', 15000000000)
                     mcap_cr = (raw_mcap / 10000000)
                 except:
                     mcap_cr = 1500 
@@ -108,9 +113,8 @@ for ticker in stocks:
                         "condition_matched": condition_str
                     }).execute()
                     
-                    print(f"🔥 Found Breakout: {symbol_clean} - {condition_str}")
                     saved_count += 1
     except Exception as e:
         pass
 
-print(f"🎉 Full Market Scan complete! {checked_count} stocks check huye, aur {saved_count} stocks Supabase mein save huye.")
+print(f"🎉 Full Market Scan complete! {checked_count} stocks check huye, aur Chartink ki tarah {saved_count} stocks Supabase mein save huye.")
