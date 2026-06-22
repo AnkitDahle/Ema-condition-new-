@@ -5,59 +5,54 @@ from datetime import datetime
 from supabase import create_client, Client
 import logging
 
-# Yahoo Finance ke faltu error messages ko mute karna
+# Faltu warnings ko mute karna
 logging.getLogger('yfinance').setLevel(logging.CRITICAL)
+pd.options.mode.chained_assignment = None
 
-# 1. Supabase Connection Set Karna
+# 1. Supabase Connection
 url_sb = os.environ.get("SUPABASE_URL")
 key = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(url_sb, key)
 
 today_date = datetime.now().strftime("%Y-%m-%d")
 
-# 2. Zerodha API se Master List nikalna + Advance VIP Bouncer
+# 2. Zerodha API List + VIP Bouncer
 def get_full_nse_list():
     try:
         print("Zerodha API se list download kar rahe hain...")
-        url = "https://api.kite.trade/instruments"
-        
-        df = pd.read_csv(url)
+        # low_memory=False lagaya taaki DtypeWarning na aaye
+        df = pd.read_csv("https://api.kite.trade/instruments", low_memory=False) 
         df_nse = df[(df['exchange'] == 'NSE') & (df['instrument_type'] == 'EQ')]
         nse_symbols = df_nse['tradingsymbol'].tolist()
         
         clean_symbols = []
         for s in nse_symbols:
             s = str(s)
-            # Gold Bonds aur Govt Bonds ka kachra saaf karna
             if '-SG' in s or '-SF' in s or '-SD' in s or '-GS' in s: continue
             if ' ' in s: continue
             if s.endswith("BEES") or "ETF" in s or "LIQUID" in s: continue
-            
             clean_symbols.append(s)
             
-        print(f"✅ Success: Bonds aur kachra hatane ke baad {len(clean_symbols)} pure stocks mil gaye!")
+        print(f"✅ Success: {len(clean_symbols)} pure stocks mil gaye!")
         return clean_symbols
     except Exception as e:
-        print(f"❌ Zerodha list fail hui: {e}. Backup use kar rahe hain.")
         return ["RELIANCE", "TCS", "HDFCBANK", "INFY", "ZOMATO"]
 
-nse_stocks = get_full_nse_list()
-stocks = [s + ".NS" for s in nse_stocks]
+stocks = [s + ".NS" for s in get_full_nse_list()]
 
-print("Scanning started! (TEST MODE: Looking for EXACTLY 5 Breakout Stocks)...")
+print("Scanning started! (ACID TEST MODE: Easy Conditions for Testing)...")
 saved_count = 0
 checked_count = 0
 
-# 3. Har stock ko check karna (Chartink Logic)
+# 3. Har stock ko check karna (Acid Test Logic)
 for ticker in stocks:
     
-    # 🛑 SMART DUAL BRAKE SYSTEM
+    # 🛑 Dual Brake System
     if saved_count >= 5:
-        print(f"\n🎯 Target Achieved: 5 Breakout stocks mil gaye! Scan yahin rok rahe hain.")
+        print(f"\n🎯 Target Achieved: 5 stocks mil gaye! Code 100% OK hai.")
         break
-    
     if checked_count >= 500:
-        print(f"\n🛑 Safety Brake: 500 stocks check kar liye. Ab aage nahi jayenge.")
+        print(f"\n🛑 Safety Brake: 500 check huye. Agar yahan 0 hai, toh code check karna padega.")
         break
         
     checked_count += 1
@@ -67,59 +62,32 @@ for ticker in stocks:
         
         if len(data) > 252:
             data['SMA_200'] = data['Close'].rolling(window=200).mean()
-            data['SMA_50'] = data['Close'].rolling(window=50).mean()
             data['Vol_SMA_20'] = data['Volume'].rolling(window=20).mean()
             data['Turnover'] = data['Close'] * data['Vol_SMA_20']
             
-            data['Close_22_ago'] = data['Close'].shift(22)
-            data['Close_66_ago'] = data['Close'].shift(66)
-            data['Max_High_252'] = data['High'].shift(1).rolling(window=252).max()
-            
             latest = data.iloc[-1]
-            
             close = float(latest['Close'].iloc[0] if isinstance(latest['Close'], pd.Series) else latest['Close'])
-            close_22 = float(latest['Close_22_ago'].iloc[0] if isinstance(latest['Close_22_ago'], pd.Series) else latest['Close_22_ago'])
-            close_66 = float(latest['Close_66_ago'].iloc[0] if isinstance(latest['Close_66_ago'], pd.Series) else latest['Close_66_ago'])
             sma_200 = float(latest['SMA_200'].iloc[0] if isinstance(latest['SMA_200'], pd.Series) else latest['SMA_200'])
-            sma_50 = float(latest['SMA_50'].iloc[0] if isinstance(latest['SMA_50'], pd.Series) else latest['SMA_50'])
             turnover = float(latest['Turnover'].iloc[0] if isinstance(latest['Turnover'], pd.Series) else latest['Turnover'])
-            max_high_252 = float(latest['Max_High_252'].iloc[0] if isinstance(latest['Max_High_252'], pd.Series) else latest['Max_High_252'])
             
-            tech_cond1 = (close / close_22 > 1.2) and (turnover > 100000000) and (close > sma_200)
-            tech_cond2 = (close / close_66 >= 1.3) and (close >= 1) and (turnover > 100000000) and (close > sma_200)
-            tech_cond3 = (close > max_high_252 * 0.75) and (close > sma_50) and (close > sma_200) and (turnover > 100000000)
+            # --- SUPER EASY CONDITIONS FOR TESTING ---
+            # Condition: Stock price 50 rupaye se upar ho, 200 EMA ke upar ho, aur Turnover > 1 Crore (10000000) ho
+            test_cond = (close > 50) and (close > sma_200) and (turnover > 10000000)
             
-            if tech_cond1 or tech_cond2 or tech_cond3:
-                try:
-                    raw_mcap = yf.Ticker(ticker).info.get('marketCap', 15000000000)
-                    mcap_cr = (raw_mcap / 10000000)
-                except:
-                    mcap_cr = 1500 
+            if test_cond:
+                symbol_clean = ticker.replace(".NS", "")
                 
-                cond1 = tech_cond1 and (mcap_cr > 1)
-                cond2 = tech_cond2 and (mcap_cr > 0)
-                cond3 = tech_cond3 and (mcap_cr >= 1000)
+                supabase.table('swing_stocks').insert({
+                    "scan_date": today_date,
+                    "stock_symbol": symbol_clean,
+                    "close_price": round(close, 2),
+                    "turnover_cr": round(turnover / 10000000, 2), # In Crores
+                    "condition_matched": "Test Pass (Above 200 EMA)"
+                }).execute()
                 
-                if cond1 or cond2 or cond3:
-                    match_type = []
-                    if cond1: match_type.append("1M Momentum")
-                    if cond2: match_type.append("3M Momentum")
-                    if cond3: match_type.append("52W High Pullback")
-                    
-                    condition_str = " + ".join(match_type)
-                    symbol_clean = ticker.replace(".NS", "")
-                    
-                    supabase.table('swing_stocks').insert({
-                        "scan_date": today_date,
-                        "stock_symbol": symbol_clean,
-                        "close_price": round(close, 2),
-                        "turnover_cr": round(turnover / 10000000, 2),
-                        "condition_matched": condition_str
-                    }).execute()
-                    
-                    print(f"🔥 Found Breakout: {symbol_clean} - {condition_str}")
-                    saved_count += 1
+                print(f"🔥 Code is Working: {symbol_clean} Pass ho gaya!")
+                saved_count += 1
     except:
         pass
 
-print(f"🎉 Scan complete! {checked_count} stocks check huye, aur {saved_count} stocks database mein save ho gaye.")
+print(f"🎉 Acid Test complete! {checked_count} stocks check huye, aur {saved_count} stocks save huye.")
