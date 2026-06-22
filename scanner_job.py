@@ -3,6 +3,10 @@ import yfinance as yf
 import pandas as pd
 from datetime import datetime
 from supabase import create_client, Client
+import logging
+
+# Yahoo Finance ke faltu error messages ko mute (chup) karna
+logging.getLogger('yfinance').setLevel(logging.CRITICAL)
 
 # 1. Supabase Connection Set Karna
 url_sb = os.environ.get("SUPABASE_URL")
@@ -11,7 +15,7 @@ supabase: Client = create_client(url_sb, key)
 
 today_date = datetime.now().strftime("%Y-%m-%d")
 
-# 2. Zerodha API se Master List nikalna + VIP Bouncer
+# 2. Zerodha API se Master List nikalna + Advance VIP Bouncer
 def get_full_nse_list():
     try:
         print("Zerodha API se list download kar rahe hain...")
@@ -24,12 +28,14 @@ def get_full_nse_list():
         clean_symbols = []
         for s in nse_symbols:
             s = str(s)
+            # Gold Bonds aur Govt Bonds ka kachra saaf karna
+            if '-SG' in s or '-SF' in s or '-SD' in s or '-GS' in s: continue
             if ' ' in s: continue
             if s.endswith("BEES") or "ETF" in s or "LIQUID" in s: continue
-            if not s.replace('-', '').replace('_', '').isalnum(): continue
+            
             clean_symbols.append(s)
             
-        print(f"✅ Success: Kachra saaf karne ke baad {len(clean_symbols)} pure stocks mil gaye!")
+        print(f"✅ Success: Bonds aur kachra hatane ke baad {len(clean_symbols)} pure stocks mil gaye!")
         return clean_symbols
     except Exception as e:
         print(f"❌ Zerodha list fail hui: {e}. Backup use kar rahe hain.")
@@ -38,19 +44,23 @@ def get_full_nse_list():
 nse_stocks = get_full_nse_list()
 stocks = [s + ".NS" for s in nse_stocks]
 
-print(f"Scanning started for {len(stocks)} pure stocks (Testing Mode: Stop at 10)...")
+print("Scanning started! (TEST MODE: Sirf 50 stocks check honge)")
 saved_count = 0
+checked_count = 0
 
 # 3. Har stock ko check karna (Chartink Logic)
 for ticker in stocks:
     
-    # 🛑 THE EMERGENCY BRAKE (10 stocks par rokne ke liye)
-    if saved_count >= 10:
-        print("\n🛑 Testing Limit Reached: 10 stocks mil gaye, scan yahin rok rahe hain!")
+    # 🛑 THE REAL EMERGENCY BRAKE (Sacha Test Mode)
+    if checked_count >= 50:
+        print(f"\n🛑 Testing Limit Reached: 50 stocks check ho gaye. Scan yahin rok rahe hain!")
         break
+        
+    checked_count += 1
 
     try:
-        data = yf.download(ticker, period="2y", interval="1d", progress=False)
+        # Faltu error na dikhe isliye progress=False aur show_errors=False
+        data = yf.download(ticker, period="2y", interval="1d", progress=False, show_errors=False)
         
         if len(data) > 252:
             data['SMA_200'] = data['Close'].rolling(window=200).mean()
@@ -109,4 +119,4 @@ for ticker in stocks:
     except:
         pass
 
-print(f"🎉 Scan complete! Total {saved_count} stocks saved.")
+print(f"🎉 Scan complete! 50 check huye, jisme se {saved_count} stocks pass hokar save huye.")
