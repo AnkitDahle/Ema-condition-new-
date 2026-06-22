@@ -49,15 +49,14 @@ bulk_data = yf.download(stocks, period="2y", interval="1d", threads=True, progre
 
 print("✅ Bulk Download Complete! Ab calculation shuru karte hain...")
 
-# Extracting specific dataframes for fast calculation
 close_df = bulk_data['Close']
 high_df = bulk_data['High']
 vol_df = bulk_data['Volume']
 
-matched_stocks_data = [] # Data ek sath save karne ke liye list
+matched_stocks_data = [] 
 saved_count = 0
 
-# 3. Memory mein Fast Calculation (Bina internet ke)
+# 3. Memory mein Fast Calculation (With IPOs included)
 for ticker in stocks:
     try:
         if ticker not in close_df.columns:
@@ -67,23 +66,28 @@ for ticker in stocks:
         high_data = high_df[ticker].dropna()
         vol_data = vol_df[ticker].dropna()
 
-        if len(close_data) > 252:
-            sma_200 = close_data.rolling(window=200).mean()
-            sma_50 = close_data.rolling(window=50).mean()
-            vol_sma_20 = vol_data.rolling(window=20).mean()
+        # SIRF 22 DIN PURANA HONA CHAHIYE (For 1M Momentum)
+        if len(close_data) > 22:
+            
+            # min_periods=1 lagane se IPOs ka data jitna available hoga utne pe hi calculate karega
+            sma_200 = close_data.rolling(window=200, min_periods=1).mean()
+            sma_50 = close_data.rolling(window=50, min_periods=1).mean()
+            vol_sma_20 = vol_data.rolling(window=20, min_periods=1).mean()
             turnover_data = close_data * vol_sma_20
             
             close_22_ago = close_data.shift(22)
             close_66_ago = close_data.shift(66)
-            max_high_252 = high_data.shift(1).rolling(window=252).max()
+            max_high_252 = high_data.shift(1).rolling(window=252, min_periods=1).max()
             
             close = float(close_data.iloc[-1])
-            close_22 = float(close_22_ago.iloc[-1])
-            close_66 = float(close_66_ago.iloc[-1])
             sma_200_val = float(sma_200.iloc[-1])
             sma_50_val = float(sma_50.iloc[-1])
             turnover = float(turnover_data.iloc[-1])
             max_high = float(max_high_252.iloc[-1])
+            
+            # Agar stock 66 din ya 22 din purana nahi hai, toh float(inf) dalenge taaki wo condition safely fail ho jaye
+            close_22 = float(close_22_ago.iloc[-1]) if pd.notna(close_22_ago.iloc[-1]) else 999999.0
+            close_66 = float(close_66_ago.iloc[-1]) if pd.notna(close_66_ago.iloc[-1]) else 999999.0
             
             # --- AAPKE CHARTINK WALE STRICT RULES ---
             tech_cond1 = (close / close_22 > 1.2) and (turnover > 100000000) and (close > sma_200_val)
@@ -91,7 +95,6 @@ for ticker in stocks:
             tech_cond3 = (close > max_high * 0.75) and (close > sma_50_val) and (close > sma_200_val) and (turnover > 100000000)
             
             if tech_cond1 or tech_cond2 or tech_cond3:
-                # Market Cap Check
                 try:
                     raw_mcap = yf.Ticker(ticker).info.get('marketCap', 15000000000)
                     mcap_cr = (raw_mcap / 10000000)
@@ -118,7 +121,7 @@ for ticker in stocks:
                         "turnover_cr": round(turnover / 10000000, 2),
                         "condition_matched": condition_str
                     })
-                    print(f"🔥 Found Breakout: {symbol_clean} - {condition_str}")
+                    print(f"🔥 Found Breakout (IPO Included): {symbol_clean} - {condition_str}")
                     saved_count += 1
     except Exception as e:
         pass
@@ -128,4 +131,4 @@ if matched_stocks_data:
     print(f"\n💾 Saving {len(matched_stocks_data)} stocks to Database in one go...")
     supabase.table('swing_stocks').insert(matched_stocks_data).execute()
 
-print(f"🎉 BOOM! Scan complete! Chartink ki tarah {saved_count} stocks ek jhatke mein save ho gaye.")
+print(f"🎉 BOOM! Scan complete! Chartink ki tarah IPOs ke sath {saved_count} stocks save ho gaye.")
