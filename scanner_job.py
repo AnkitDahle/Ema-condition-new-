@@ -3,7 +3,6 @@ import yfinance as yf
 import pandas as pd
 from datetime import datetime
 from supabase import create_client, Client
-import requests
 
 # 1. Supabase Connection Set Karna
 url_sb = os.environ.get("SUPABASE_URL")
@@ -12,31 +11,26 @@ supabase: Client = create_client(url_sb, key)
 
 today_date = datetime.now().strftime("%Y-%m-%d")
 
-# 2. Broker (Angel One) se Live Master List nikalna (With Browser Identity)
+# 2. Zerodha Open API se Master List nikalna (100% Anti-Block)
 def get_full_nse_list():
     try:
-        print("Broker se master list download kar rahe hain...")
-        url = "https://margincalculator.angelbroking.com/OpenAPI_Config/999/0.3/v1/Config/master_selection.json"
+        print("Zerodha API se list download kar rahe hain...")
+        url = "https://api.kite.trade/instruments"
         
-        # Angel One ko lagega hum Google Chrome use kar rahe hain
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "application/json"
-        }
+        # Pandas seedha CSV read kar lega bina kisi nakhre ke
+        df = pd.read_csv(url)
         
-        response = requests.get(url, headers=headers, timeout=15)
-        data = response.json()
+        # Sirf NSE aur Equity (EQ) stocks filter karna
+        df_nse = df[(df['exchange'] == 'NSE') & (df['instrument_type'] == 'EQ')]
+        nse_symbols = df_nse['tradingsymbol'].tolist()
         
-        # Sirf NSE Equity (-EQ) stocks ko nikalna
-        df = pd.DataFrame(data)
-        df_nse = df[(df['exch_seg'] == 'NSE') & (df['symbol'].str.endswith('-EQ'))]
+        # Nifty indices ya kachra hatane ke liye check
+        nse_symbols = [str(s) for s in nse_symbols if isinstance(s, str)]
         
-        # Yahoo Finance ke liye naam theek karna
-        nse_symbols = [s.replace('-EQ', '') for s in df_nse['symbol'].tolist()]
         print(f"✅ Success: Market se {len(nse_symbols)} stocks mil gaye!")
         return nse_symbols
     except Exception as e:
-        print(f"❌ Master list fail hui: {e}. Backup use kar rahe hain.")
+        print(f"❌ Zerodha list fail hui: {e}. Backup use kar rahe hain.")
         return ["RELIANCE", "TCS", "HDFCBANK", "INFY", "ZOMATO"]
 
 nse_stocks = get_full_nse_list()
