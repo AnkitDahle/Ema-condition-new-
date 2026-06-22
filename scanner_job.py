@@ -45,8 +45,8 @@ print(f"🚀 MASTERPLAN ACTIVE: Ek sath {len(stocks)} stocks ka data download ho
 print("⏳ Isme 1-2 minute lag sakte hain, kripya wait karein...")
 
 # --- THE MAGIC: BULK DOWNLOAD ---
-# Ek hi baar mein poore market ka data download!
-bulk_data = yf.download(stocks, period="2y", interval="1d", threads=True, show_errors=False)
+# Yahan se 'show_errors=False' hata diya gaya hai taaki crash na ho, aur progress=False laga diya hai
+bulk_data = yf.download(stocks, period="2y", interval="1d", threads=True, progress=False)
 
 print("✅ Bulk Download Complete! Ab calculation shuru karte hain...")
 
@@ -93,42 +93,4 @@ for ticker in stocks:
             tech_cond3 = (close > max_high * 0.75) and (close > sma_50_val) and (close > sma_200_val) and (turnover > 100000000)
             
             if tech_cond1 or tech_cond2 or tech_cond3:
-                # Market Cap Check
-                try:
-                    raw_mcap = yf.Ticker(ticker).info.get('marketCap', 15000000000)
-                    mcap_cr = (raw_mcap / 10000000)
-                except:
-                    mcap_cr = 1500 
-                
-                cond1 = tech_cond1 and (mcap_cr > 1)
-                cond2 = tech_cond2 and (mcap_cr > 0)
-                cond3 = tech_cond3 and (mcap_cr >= 1000)
-                
-                if cond1 or cond2 or cond3:
-                    match_type = []
-                    if cond1: match_type.append("1M Momentum")
-                    if cond2: match_type.append("3M Momentum")
-                    if cond3: match_type.append("52W High Pullback")
-                    
-                    condition_str = " + ".join(match_type)
-                    symbol_clean = ticker.replace(".NS", "")
-                    
-                    # Database mein dalne ke bajaye list mein add kar rahe hain (Speed ke liye)
-                    matched_stocks_data.append({
-                        "scan_date": today_date,
-                        "stock_symbol": symbol_clean,
-                        "close_price": round(close, 2),
-                        "turnover_cr": round(turnover / 10000000, 2),
-                        "condition_matched": condition_str
-                    })
-                    print(f"🔥 Found Breakout: {symbol_clean} - {condition_str}")
-                    saved_count += 1
-    except Exception as e:
-        pass
-
-# --- THE MAGIC: BULK INSERT TO DATABASE ---
-if matched_stocks_data:
-    print(f"\n💾 Saving {len(matched_stocks_data)} stocks to Database in one go...")
-    supabase.table('swing_stocks').insert(matched_stocks_data).execute()
-
-print(f"🎉 BOOM! Scan complete! Chartink ki tarah {saved_count} stocks ek jhatke mein save ho gaye.")
+                # Market Cap
