@@ -11,24 +11,26 @@ supabase: Client = create_client(url_sb, key)
 
 today_date = datetime.now().strftime("%Y-%m-%d")
 
-# 2. Zerodha Open API se Master List nikalna (100% Anti-Block)
+# 2. Zerodha API se Master List nikalna + VIP Bouncer
 def get_full_nse_list():
     try:
         print("Zerodha API se list download kar rahe hain...")
         url = "https://api.kite.trade/instruments"
         
-        # Pandas seedha CSV read kar lega bina kisi nakhre ke
         df = pd.read_csv(url)
-        
-        # Sirf NSE aur Equity (EQ) stocks filter karna
         df_nse = df[(df['exchange'] == 'NSE') & (df['instrument_type'] == 'EQ')]
         nse_symbols = df_nse['tradingsymbol'].tolist()
         
-        # Nifty indices ya kachra hatane ke liye check
-        nse_symbols = [str(s) for s in nse_symbols if isinstance(s, str)]
-        
-        print(f"✅ Success: Market se {len(nse_symbols)} stocks mil gaye!")
-        return nse_symbols
+        clean_symbols = []
+        for s in nse_symbols:
+            s = str(s)
+            if ' ' in s: continue
+            if s.endswith("BEES") or "ETF" in s or "LIQUID" in s: continue
+            if not s.replace('-', '').replace('_', '').isalnum(): continue
+            clean_symbols.append(s)
+            
+        print(f"✅ Success: Kachra saaf karne ke baad {len(clean_symbols)} pure stocks mil gaye!")
+        return clean_symbols
     except Exception as e:
         print(f"❌ Zerodha list fail hui: {e}. Backup use kar rahe hain.")
         return ["RELIANCE", "TCS", "HDFCBANK", "INFY", "ZOMATO"]
@@ -36,11 +38,17 @@ def get_full_nse_list():
 nse_stocks = get_full_nse_list()
 stocks = [s + ".NS" for s in nse_stocks]
 
-print(f"Scanning started for {len(stocks)} stocks...")
+print(f"Scanning started for {len(stocks)} pure stocks (Testing Mode: Stop at 10)...")
 saved_count = 0
 
 # 3. Har stock ko check karna (Chartink Logic)
 for ticker in stocks:
+    
+    # 🛑 THE EMERGENCY BRAKE (10 stocks par rokne ke liye)
+    if saved_count >= 10:
+        print("\n🛑 Testing Limit Reached: 10 stocks mil gaye, scan yahin rok rahe hain!")
+        break
+
     try:
         data = yf.download(ticker, period="2y", interval="1d", progress=False)
         
