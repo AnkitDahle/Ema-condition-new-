@@ -4,8 +4,10 @@ import pandas as pd
 from datetime import datetime
 from supabase import create_client, Client
 import logging
+import warnings
 
-# Yahoo Finance ke faltu error messages ko mute karna
+# Faltu warnings ko mute karna
+warnings.filterwarnings('ignore')
 logging.getLogger('yfinance').setLevel(logging.CRITICAL)
 
 # 1. Supabase Connection Set Karna
@@ -31,7 +33,7 @@ def get_full_nse_list():
             if s.endswith("BEES") or "ETF" in s or "LIQUID" in s: continue
             clean_symbols.append(s)
             
-        print(f"✅ Success: Kachra hatane ke baad {len(clean_symbols)} pure stocks mil gaye!")
+        print(f"✅ Kachra hatane ke baad {len(clean_symbols)} pure stocks mil gaye!")
         return clean_symbols
     except Exception as e:
         return ["RELIANCE", "TCS", "HDFCBANK", "INFY", "ZOMATO"]
@@ -39,29 +41,35 @@ def get_full_nse_list():
 nse_stocks = get_full_nse_list()
 stocks = [s + ".NS" for s in nse_stocks]
 
-print(f"Scanning started! (Full Market Scan for {len(stocks)} Stocks)...")
+print(f"🚀 MASTERPLAN ACTIVE: Ek sath {len(stocks)} stocks ka data download ho raha hai...")
+print("⏳ Isme 1-2 minute lag sakte hain, kripya wait karein...")
+
+# --- THE MAGIC: BULK DOWNLOAD ---
+# Ek hi baar mein poore market ka data download!
+bulk_data = yf.download(stocks, period="2y", interval="1d", threads=True, show_errors=False)
+
+print("✅ Bulk Download Complete! Ab calculation shuru karte hain...")
+
+# Extracting specific dataframes for fast calculation
+close_df = bulk_data['Close']
+high_df = bulk_data['High']
+vol_df = bulk_data['Volume']
+
+matched_stocks_data = [] # Data ek sath save karne ke liye list
 saved_count = 0
-checked_count = 0
 
-# 3. Har stock ko check karna
+# 3. Memory mein Fast Calculation (Bina internet ke)
 for ticker in stocks:
-    checked_count += 1
-    
-    # Progress Track Karne Ke Liye (Har 100 stocks baad terminal me batayega)
-    if checked_count % 100 == 0:
-        print(f"⏳ Progress: {checked_count} stocks checked... Found {saved_count} Breakouts so far.")
-
     try:
-        # Faltu red warnings hatane ke liye show_errors=False
-        data = yf.download(ticker, period="2y", interval="1d", progress=False, show_errors=False)
-        
-        if len(data) > 252:
-            # THE SQUEEZE FIX: Yahoo ke naye format ko flat (1D) karne ka masterstroke
-            close_data = data['Close'].squeeze()
-            vol_data = data['Volume'].squeeze()
-            high_data = data['High'].squeeze()
+        # Agar stock ka data download nahi hua, toh skip karo
+        if ticker not in close_df.columns:
+            continue
 
-            # Ab calculations ekdum fast aur bina kisi DataFrame error ke hongi
+        close_data = close_df[ticker].dropna()
+        high_data = high_df[ticker].dropna()
+        vol_data = vol_df[ticker].dropna()
+
+        if len(close_data) > 252:
             sma_200 = close_data.rolling(window=200).mean()
             sma_50 = close_data.rolling(window=50).mean()
             vol_sma_20 = vol_data.rolling(window=20).mean()
@@ -71,7 +79,6 @@ for ticker in stocks:
             close_66_ago = close_data.shift(66)
             max_high_252 = high_data.shift(1).rolling(window=252).max()
             
-            # Aakhri din ka data float (number) mein convert karna
             close = float(close_data.iloc[-1])
             close_22 = float(close_22_ago.iloc[-1])
             close_66 = float(close_66_ago.iloc[-1])
@@ -86,6 +93,7 @@ for ticker in stocks:
             tech_cond3 = (close > max_high * 0.75) and (close > sma_50_val) and (close > sma_200_val) and (turnover > 100000000)
             
             if tech_cond1 or tech_cond2 or tech_cond3:
+                # Market Cap Check
                 try:
                     raw_mcap = yf.Ticker(ticker).info.get('marketCap', 15000000000)
                     mcap_cr = (raw_mcap / 10000000)
@@ -105,16 +113,22 @@ for ticker in stocks:
                     condition_str = " + ".join(match_type)
                     symbol_clean = ticker.replace(".NS", "")
                     
-                    supabase.table('swing_stocks').insert({
+                    # Database mein dalne ke bajaye list mein add kar rahe hain (Speed ke liye)
+                    matched_stocks_data.append({
                         "scan_date": today_date,
                         "stock_symbol": symbol_clean,
                         "close_price": round(close, 2),
                         "turnover_cr": round(turnover / 10000000, 2),
                         "condition_matched": condition_str
-                    }).execute()
-                    
+                    })
+                    print(f"🔥 Found Breakout: {symbol_clean} - {condition_str}")
                     saved_count += 1
     except Exception as e:
         pass
 
-print(f"🎉 Full Market Scan complete! {checked_count} stocks check huye, aur Chartink ki tarah {saved_count} stocks Supabase mein save huye.")
+# --- THE MAGIC: BULK INSERT TO DATABASE ---
+if matched_stocks_data:
+    print(f"\n💾 Saving {len(matched_stocks_data)} stocks to Database in one go...")
+    supabase.table('swing_stocks').insert(matched_stocks_data).execute()
+
+print(f"🎉 BOOM! Scan complete! Chartink ki tarah {saved_count} stocks ek jhatke mein save ho gaye.")
