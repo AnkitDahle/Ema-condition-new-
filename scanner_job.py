@@ -17,13 +17,13 @@ supabase: Client = create_client(url_sb, key)
 
 today_date = datetime.now().strftime("%Y-%m-%d")
 
-# 2. Zerodha API se Master List nikalna (With SMART FILTER)
+# 2. Zerodha API se Master List nikalna
 def get_full_nse_list():
     try:
         print("Zerodha API se list download kar rahe hain...")
         df = pd.read_csv("https://api.kite.trade/instruments", low_memory=False) 
         
-        # THE MAGIC FILTER: lot_size == 1 (Isse saare SME aur kachra stocks bahar)
+        # MAGIC FILTER: lot_size == 1 
         df_nse = df[
             (df['exchange'] == 'NSE') & 
             (df['instrument_type'] == 'EQ') & 
@@ -55,7 +55,7 @@ matched_stocks_data = []
 saved_count = 0
 chunk_size = 500  
 
-# 3. Batch Calculation (Har 500 stocks ka alag round)
+# 3. Batch Calculation
 for i in range(0, len(stocks), chunk_size):
     batch = stocks[i : i + chunk_size]
     print(f"📦 Downloading Batch {i//chunk_size + 1} ({len(batch)} stocks)...")
@@ -80,7 +80,6 @@ for i in range(0, len(stocks), chunk_size):
 
             if len(close_data) > 22:
                 
-                # --- DAILY CALCULATIONS ---
                 sma_200 = close_data.rolling(window=200, min_periods=1).mean()
                 sma_50 = close_data.rolling(window=50, min_periods=1).mean()
                 vol_sma_20 = vol_data.rolling(window=20, min_periods=1).mean()
@@ -99,12 +98,10 @@ for i in range(0, len(stocks), chunk_size):
                 close_22 = float(close_22_ago.iloc[-1]) if pd.notna(close_22_ago.iloc[-1]) else 999999.0
                 close_66 = float(close_66_ago.iloc[-1]) if pd.notna(close_66_ago.iloc[-1]) else 999999.0
                 
-                # --- DAILY STRICT RULES ---
                 tech_cond1 = (close / close_22 > 1.2) and (turnover > 100000000) and (close > sma_200_val)
                 tech_cond2 = (close / close_66 >= 1.3) and (close >= 1) and (turnover > 100000000) and (close > sma_200_val)
                 tech_cond3 = (close > max_high * 0.75) and (close > sma_50_val) and (close > sma_200_val) and (turnover > 100000000)
                 
-                # --- WEEKLY EMA LOGIC ---
                 weekly_cond_pass = False
                 weekly_close = close_data.resample('W-FRI').last()
                 
@@ -119,7 +116,6 @@ for i in range(0, len(stocks), chunk_size):
                     if w1 and w2 and w3:
                         weekly_cond_pass = True
 
-                # --- FINAL CHECK & SECTOR EXTRACTION ---
                 if (tech_cond1 or tech_cond2 or tech_cond3) and weekly_cond_pass:
                     try:
                         stock_info = yf.Ticker(ticker).info
@@ -138,20 +134,14 @@ for i in range(0, len(stocks), chunk_size):
                     cond3 = tech_cond3 and (mcap_cr >= 1000)
                     
                     if cond1 or cond2 or cond3:
-                        match_type = []
-                        if cond1: match_type.append("1M Momentum")
-                        if cond2: match_type.append("3M Momentum")
-                        if cond3: match_type.append("52W High Pullback")
-                        
-                        condition_str = " + ".join(match_type)
                         symbol_clean = ticker.replace(".NS", "")
                         
+                        # Yahan se strategy match column hata diya gaya hai
                         matched_stocks_data.append({
                             "scan_date": today_date,
                             "stock_symbol": symbol_clean,
                             "close_price": round(close, 2),
                             "turnover_cr": round(turnover / 10000000, 2),
-                            "condition_matched": condition_str,
                             "sector": sector_name,
                             "industry_proxy": proxy_name
                         })
@@ -160,7 +150,7 @@ for i in range(0, len(stocks), chunk_size):
     except Exception as e:
         print(f"⚠️ Batch me aage badh rahe hain...")
 
-# --- BULK INSERT TO DATABASE WITH SAFETY NET ---
+# --- BULK INSERT TO DATABASE ---
 if matched_stocks_data:
     print(f"\n💾 Saving {len(matched_stocks_data)} stocks to Database in one go...")
     try:
@@ -169,4 +159,3 @@ if matched_stocks_data:
     except Exception as e:
         print(f"\n❌ DATABASE ERROR: Data save nahi ho paya!")
         print(f"Asli Wajah: {e}")
-        print("💡 Hint: Kya aapne Supabase mein 'sector' aur 'industry_proxy' columns (type: text) add kiye hain?")
