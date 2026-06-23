@@ -1,29 +1,36 @@
-name: Daily Swing Scanner
+name: Daily Stock Scanner
 
 on:
   schedule:
-   - cron: '30 10 * * 1-5'
-  workflow_dispatch:
+    # UTC 10:30 AM = IST 4:00 PM (Monday se Friday)
+    - cron: '30 10 * * 1-5'
+  
+  # Yeh line aapko website aur GitHub se manually scan chalane ki power deti hai
+  workflow_dispatch: 
 
 jobs:
   run-scanner:
     runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python with Caching
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+          cache: 'pip'  # <--- MAGIC WORD: Ab har baar install mein time waste nahi hoga!
 
-      - name: Install Tools
+      - name: Install Tools & Libraries
         run: |
-          pip install yfinance pandas supabase requests
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: Run Scanner Script
+      - name: Run Master Scanner Script
         env:
+          # Aapke Supabase (Database) ke secure passwords
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-        run: python scanner_job.py
+        run: |
+          python scanner_job.py
