@@ -5,7 +5,6 @@ on:
     # UTC 10:30 AM = IST 4:00 PM (Monday se Friday)
     - cron: '30 10 * * 1-5'
   
-  # Yeh line aapko website aur GitHub se manually scan chalane ki power deti hai
   workflow_dispatch: 
 
 jobs:
@@ -16,11 +15,10 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Python with Caching
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-          cache: 'pip'  # <--- MAGIC WORD: Ab har baar install mein time waste nahi hoga!
 
       - name: Install Tools & Libraries
         run: |
@@ -29,7 +27,6 @@ jobs:
 
       - name: Run Master Scanner Script
         env:
-          # Aapke Supabase (Database) ke secure passwords
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
