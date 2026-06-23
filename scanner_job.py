@@ -23,6 +23,7 @@ def get_full_nse_list():
         print("Zerodha API se list download kar rahe hain...")
         df = pd.read_csv("https://api.kite.trade/instruments", low_memory=False) 
         
+        # THE MAGIC FILTER: lot_size == 1 (Isse saare SME aur kachra stocks bahar)
         df_nse = df[
             (df['exchange'] == 'NSE') & 
             (df['instrument_type'] == 'EQ') & 
@@ -54,7 +55,7 @@ matched_stocks_data = []
 saved_count = 0
 chunk_size = 500  
 
-# 3. Batch Calculation
+# 3. Batch Calculation (Har 500 stocks ka alag round)
 for i in range(0, len(stocks), chunk_size):
     batch = stocks[i : i + chunk_size]
     print(f"📦 Downloading Batch {i//chunk_size + 1} ({len(batch)} stocks)...")
@@ -103,18 +104,14 @@ for i in range(0, len(stocks), chunk_size):
                 tech_cond2 = (close / close_66 >= 1.3) and (close >= 1) and (turnover > 100000000) and (close > sma_200_val)
                 tech_cond3 = (close > max_high * 0.75) and (close > sma_50_val) and (close > sma_200_val) and (turnover > 100000000)
                 
-                # --- NEW: WEEKLY EMA LOGIC (In-Memory Fast Resampling) ---
+                # --- WEEKLY EMA LOGIC ---
                 weekly_cond_pass = False
-                # Daily data ko Weekly mein convert karna
                 weekly_close = close_data.resample('W-FRI').last()
                 
-                # Kam se kam 4 hafte ka data chahiye (Current week + 3 pichle hafte)
                 if len(weekly_close) >= 4:
-                    # Weekly EMAs calculate karna
                     weekly_ema10 = weekly_close.ewm(span=10, adjust=False).mean()
                     weekly_ema30 = weekly_close.ewm(span=30, adjust=False).mean()
                     
-                    # Pichle 3 hafton ka check (-2, -3, -4). (-1 current week hai jisko chhod diya)
                     w1 = (weekly_close.iloc[-2] > weekly_ema10.iloc[-2]) and (weekly_close.iloc[-2] > weekly_ema30.iloc[-2])
                     w2 = (weekly_close.iloc[-3] > weekly_ema10.iloc[-3]) and (weekly_close.iloc[-3] > weekly_ema30.iloc[-3])
                     w3 = (weekly_close.iloc[-4] > weekly_ema10.iloc[-4]) and (weekly_close.iloc[-4] > weekly_ema30.iloc[-4])
@@ -122,13 +119,20 @@ for i in range(0, len(stocks), chunk_size):
                     if w1 and w2 and w3:
                         weekly_cond_pass = True
 
-                # --- FINAL CHECK (Daily Rules + Weekly Rule) ---
+                # --- FINAL CHECK & SECTOR EXTRACTION ---
                 if (tech_cond1 or tech_cond2 or tech_cond3) and weekly_cond_pass:
                     try:
-                        raw_mcap = yf.Ticker(ticker).info.get('marketCap', 15000000000)
+                        # Sirf pass huye stocks ka hi Data nikalenge taaki speed fast rahe
+                        stock_info = yf.Ticker(ticker).info
+                        raw_mcap = stock_info.get('marketCap', 15000000000)
                         mcap_cr = (raw_mcap / 10000000)
+                        
+                        sector_name = stock_info.get('sector', 'Unknown')
+                        proxy_name = stock_info.get('industry', 'Unknown')
                     except:
                         mcap_cr = 1500 
+                        sector_name = 'Unknown'
+                        proxy_name = 'Unknown'
                     
                     cond1 = tech_cond1 and (mcap_cr > 1)
                     cond2 = tech_cond2 and (mcap_cr > 0)
@@ -148,9 +152,11 @@ for i in range(0, len(stocks), chunk_size):
                             "stock_symbol": symbol_clean,
                             "close_price": round(close, 2),
                             "turnover_cr": round(turnover / 10000000, 2),
-                            "condition_matched": condition_str
+                            "condition_matched": condition_str,
+                            "sector": sector_name,
+                            "industry_proxy": proxy_name
                         })
-                        print(f"🔥 Found Breakout: {symbol_clean} - {condition_str}")
+                        print(f"🔥 Found Breakout: {symbol_clean} | Sector: {sector_name} | Proxy: {proxy_name}")
                         saved_count += 1
     except Exception as e:
         print(f"⚠️ Batch me aage badh rahe hain...")
