@@ -122,7 +122,6 @@ for i in range(0, len(stocks), chunk_size):
                 # --- FINAL CHECK & SECTOR EXTRACTION ---
                 if (tech_cond1 or tech_cond2 or tech_cond3) and weekly_cond_pass:
                     try:
-                        # Sirf pass huye stocks ka hi Data nikalenge taaki speed fast rahe
                         stock_info = yf.Ticker(ticker).info
                         raw_mcap = stock_info.get('marketCap', 15000000000)
                         mcap_cr = (raw_mcap / 10000000)
@@ -161,9 +160,13 @@ for i in range(0, len(stocks), chunk_size):
     except Exception as e:
         print(f"⚠️ Batch me aage badh rahe hain...")
 
-# --- BULK INSERT TO DATABASE ---
+# --- BULK INSERT TO DATABASE WITH SAFETY NET ---
 if matched_stocks_data:
     print(f"\n💾 Saving {len(matched_stocks_data)} stocks to Database in one go...")
-    supabase.table('swing_stocks').insert(matched_stocks_data).execute()
-
-print(f"🎉 BOOM! Scan complete! Total {saved_count} stocks ek jhatke mein save ho gaye.")
+    try:
+        supabase.table('swing_stocks').insert(matched_stocks_data).execute()
+        print(f"🎉 BOOM! Scan complete! Total {saved_count} stocks ek jhatke mein save ho gaye.")
+    except Exception as e:
+        print(f"\n❌ DATABASE ERROR: Data save nahi ho paya!")
+        print(f"Asli Wajah: {e}")
+        print("💡 Hint: Kya aapne Supabase mein 'sector' aur 'industry_proxy' columns (type: text) add kiye hain?")
