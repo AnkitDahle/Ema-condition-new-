@@ -1,0 +1,29 @@
+name: Daily IPO Tracker
+
+on:
+  schedule:
+    # Roz raat 9:00 baje IST chalega
+    - cron: '30 15 * * *'
+  workflow_dispatch: # Manual run ke liye
+
+jobs:
+  update-ipos:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          
+      - name: Install Dependencies
+        run: pip install pandas supabase requests
+          
+      - name: Run IPO Updater
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python ipo_updater.py
+
