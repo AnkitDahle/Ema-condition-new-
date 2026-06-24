@@ -20,23 +20,28 @@ url_sb = os.environ.get("SUPABASE_URL")
 key = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(url_sb, key)
 
-# Master List nikalna
+# Master List nikalna (Strict Filter ke sath)
 def get_full_nse_list():
     print("Zerodha se latest list nikal rahe hain...")
-    df = pd.read_csv("https://api.kite.trade/instruments", low_memory=False) 
-    df_nse = df[(df['exchange'] == 'NSE') & (df['instrument_type'] == 'EQ') & (df['lot_size'] == 1)]
-    
-    clean_symbols = []
-    for s in df_nse['tradingsymbol'].tolist():
-        s = str(s)
-        if '-SG' in s or '-SF' in s or '-SD' in s or '-GS' in s: continue
-        if ' ' in s: continue
-        if s.endswith("BEES") or "ETF" in s or "LIQUID" in s: continue
-        clean_symbols.append(s)
-    return clean_symbols
+    try:
+        df = pd.read_csv("https://api.kite.trade/instruments", low_memory=False) 
+        df_nse = df[(df['exchange'] == 'NSE') & (df['instrument_type'] == 'EQ') & (df['lot_size'] == 1)]
+        
+        clean_symbols = []
+        for s in df_nse['tradingsymbol'].tolist():
+            s = str(s)
+            # 🚀 NAYA FILTER: Agar naam me Hyphen (-) hai, toh wo bond ya kachra hai, usey ignore karo.
+            if '-' in s: continue
+            if ' ' in s: continue
+            if s.endswith("BEES") or "ETF" in s or "LIQUID" in s: continue
+            clean_symbols.append(s)
+        return clean_symbols
+    except Exception as e:
+        print(f"⚠️ API Error: {e}")
+        return []
 
 nse_stocks = get_full_nse_list()
-print(f"Total {len(nse_stocks)} stocks mile. Slow fetching shuru kar rahe hain...\n")
+print(f"Total {len(nse_stocks)} premium stocks mile. Slow fetching shuru kar rahe hain...\n")
 
 batch_data = []
 
@@ -65,16 +70,23 @@ for index, symbol in enumerate(nse_stocks):
     except Exception as e:
         print(f"[{index+1}/{len(nse_stocks)}] ⚠️ Failed: {symbol}")
 
-    # Har 100 stocks ke baad Database me bhejna taaki computer ki memory na bhare
+    # Har 100 stocks ke baad Database me bhejna 
     if len(batch_data) >= 100:
-        # upsert=True ka matlab hai: naya hai toh daal do, purana hai toh update kar do
-        supabase.table('stock_metadata').upsert(batch_data).execute()
-        print("💾 100 stocks ka batch database me update ho gaya!\n")
-        batch_data = [] # List khali kardi agle 100 ke liye
+        # 🚀 NAYA SAFETY NET: Database save fail hone par script crash nahi hogi
+        try:
+            supabase.table('stock_metadata').upsert(batch_data).execute()
+            print("💾 100 stocks ka batch database me update ho gaya!\n")
+        except Exception as db_error:
+            print(f"❌ Supabase Save Error: {db_error}")
+        finally:
+            batch_data = [] # List ko hamesha khali karo taaki aage badh sakein
 
 # Bacha hua aakhri data save karna
 if batch_data:
-    supabase.table('stock_metadata').upsert(batch_data).execute()
+    try:
+        supabase.table('stock_metadata').upsert(batch_data).execute()
+        print("💾 Aakhri batch database me update ho gaya!\n")
+    except Exception as db_error:
+        print(f"❌ Supabase Save Error on final batch: {db_error}")
     
-print("🎉 BOOM! Poore market ka Sector aur Proxy data successfully update ho gaya!")
-
+print("🎉 BOOM! Poore market ka Sector aur Proxy data update cycle complete!")
