@@ -5,12 +5,13 @@ from datetime import datetime
 from supabase import create_client, Client
 import logging
 import warnings
+import time  # NEW: Time pause ke liye
 
 # Faltu warnings ko mute karna
 warnings.filterwarnings('ignore')
 logging.getLogger('yfinance').setLevel(logging.CRITICAL)
 
-# 1. Supabase Connection Set Karna
+# 1. Supabase Connection
 url_sb = os.environ.get("SUPABASE_URL")
 key = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(url_sb, key)
@@ -23,7 +24,6 @@ def get_full_nse_list():
         print("Zerodha API se list download kar rahe hain...")
         df = pd.read_csv("https://api.kite.trade/instruments", low_memory=False) 
         
-        # MAGIC FILTER: lot_size == 1 
         df_nse = df[
             (df['exchange'] == 'NSE') & 
             (df['instrument_type'] == 'EQ') & 
@@ -116,14 +116,27 @@ for i in range(0, len(stocks), chunk_size):
                     if w1 and w2 and w3:
                         weekly_cond_pass = True
 
+                # --- 🚀 NEW SMART RETRY LOGIC FOR YAHOO INFO ---
                 if (tech_cond1 or tech_cond2 or tech_cond3) and weekly_cond_pass:
                     try:
+                        time.sleep(0.5)  # Halka sa pause taaki block na ho
                         stock_info = yf.Ticker(ticker).info
+                        
+                        # Agar data khali aaye, toh 2 second ruk kar dobara fetch karo
+                        if not stock_info or 'sector' not in stock_info:
+                            time.sleep(2)
+                            stock_info = yf.Ticker(ticker).info
+
                         raw_mcap = stock_info.get('marketCap', 15000000000)
                         mcap_cr = (raw_mcap / 10000000)
                         
                         sector_name = stock_info.get('sector', 'Unknown')
                         proxy_name = stock_info.get('industry', 'Unknown')
+                        
+                        # Filter out empty strings explicitly
+                        if not sector_name or sector_name.strip() == "": sector_name = 'Unknown'
+                        if not proxy_name or proxy_name.strip() == "": proxy_name = 'Unknown'
+                        
                     except:
                         mcap_cr = 1500 
                         sector_name = 'Unknown'
@@ -136,7 +149,6 @@ for i in range(0, len(stocks), chunk_size):
                     if cond1 or cond2 or cond3:
                         symbol_clean = ticker.replace(".NS", "")
                         
-                        # Yahan se strategy match column hata diya gaya hai
                         matched_stocks_data.append({
                             "scan_date": today_date,
                             "stock_symbol": symbol_clean,
@@ -145,7 +157,7 @@ for i in range(0, len(stocks), chunk_size):
                             "sector": sector_name,
                             "industry_proxy": proxy_name
                         })
-                        print(f"🔥 Found Breakout: {symbol_clean} | Sector: {sector_name} | Proxy: {proxy_name}")
+                        print(f"🔥 Breakout: {symbol_clean} | {sector_name} | {proxy_name}")
                         saved_count += 1
     except Exception as e:
         print(f"⚠️ Batch me aage badh rahe hain...")
