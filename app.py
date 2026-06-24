@@ -68,7 +68,7 @@ except Exception as e:
     st.error(f"Database Error: {e}")
     raw_data = None
 
-# 5. Tabs Setup (NAYA 4th TAB ADD KIYA HAI)
+# 5. Tabs Setup
 tab1, tab2, tab3, tab4 = st.tabs(["📊 Combined Scanner", "⚙️ Strategy Rules", "💡 Trading Guide", "🏢 IPO Tracker"])
 
 # --- TAB 1: MAIN SCANNER ---
@@ -84,7 +84,7 @@ with tab1:
     if raw_data:
         df = pd.DataFrame(raw_data)
         
-        # Naye Sector aur Industry wale columns set kiye gaye hain
+        # Columns filter karna
         cols_to_keep = ['scan_date', 'stock_symbol', 'close_price', 'turnover_cr', 'sector', 'industry_proxy']
         existing_cols = [c for c in cols_to_keep if c in df.columns]
         df = df[existing_cols]
@@ -116,7 +116,6 @@ with tab1:
         df_filtered = df[df['Scan Date'] == selected_date]
         
         with f_col2:
-            # Sector ke hisaab se filter lagaya gaya hai
             if 'Sector' in df.columns:
                 sector_list = ["All Sectors"] + list(df['Sector'].dropna().unique())
                 selected_sector = st.selectbox("🎯 Filter by Sector", sector_list)
@@ -134,7 +133,7 @@ with tab1:
         # Scrollable & Compact Table Logic
         st.dataframe(df_filtered, use_container_width=True, height=400, hide_index=True)
         
-        # --- 🚀 NEW: TRADINGVIEW WATCHLIST EXPORT ---
+        # --- 🚀 NEW: TRADINGVIEW WATCHLIST EXPORT (WITH SECTIONS) ---
         if not df_filtered.empty:
             tv_text = ""
             # Data ko Sector aur Proxy ke hisaab se sort karna
@@ -230,7 +229,7 @@ with tab3:
     st.header("💡 Trading Guide")
     st.write("Hamesha 2-3% ka Stoploss use karein aur 1:2 Risk Reward ratio follow karein.")
 
-# --- TAB 4: IPO TRACKER (NAYA SECTION) ---
+# --- TAB 4: IPO TRACKER ---
 with tab4:
     st.header("🏢 IPO & New Listings Tracker (2020 - Present)")
     st.markdown("Yeh section NSE official data se recent listed stocks ko listing date ke hisab se dikhata hai.")
@@ -256,7 +255,29 @@ with tab4:
             
             st.metric(label=f"Total Listings in {selected_year}", value=len(display_ipo))
             
+            # Table Display
             st.dataframe(display_ipo, use_container_width=True, hide_index=True, height=400)
+            
+            # --- 🚀 NEW: TRADINGVIEW EXPORT FOR IPO (WITHOUT SECTIONS) ---
+            if not display_ipo.empty:
+                tv_ipo_text = ""
+                # Har stock ke aage NSE: lagana bina kisi section divider ke
+                for symbol in display_ipo['Symbol']:
+                    tv_ipo_text += f"NSE:{symbol}\n"
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                col_i1, col_i2, col_i3 = st.columns([1, 2, 1])
+                with col_i2:
+                    st.download_button(
+                        label=f"📥 Download {selected_year} IPO Watchlist (.txt)",
+                        data=tv_ipo_text,
+                        file_name=f"IPO_Watchlist_{selected_year}.txt",
+                        mime="text/plain",
+                        use_container_width=True,
+                        help="TradingView me 'Import List' par click karke is file ko upload karein."
+                    )
+                    
         else:
             st.info("⚠️ IPO data abhi database me nahi hai. Kripya GitHub Actions me jakar 'Daily IPO Tracker' ko ek baar manual run karein.")
     except Exception as e:
