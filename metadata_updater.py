@@ -9,7 +9,7 @@ import logging
 # Faltu warnings mute karna
 logging.getLogger('yfinance').setLevel(logging.CRITICAL)
 
-# Fake Browser Session taaki bilkul block na ho
+# Fake Browser Session taaki Yahoo block na kare
 session = requests.Session()
 session.headers.update({
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -20,7 +20,20 @@ url_sb = os.environ.get("SUPABASE_URL")
 key = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(url_sb, key)
 
-# Master List nikalna (Strict Filter ke sath)
+# 🚫 HARDCODED BLACKLIST (Yahan aap aur bhi kachra stocks comma lagakar add kar sakte hain)
+KACHRA_STOCKS = [
+    "SNXT50BE", "ITADD", "MOLOWV", "ARTEMISM", "SILVERADD", "NEXT50", "PVTBANKA", 
+    "MOMENTUM", "GOLDADD", "SILVERAG", "NIFTYADD", "MONQ50", "MIDQ50ADD", "SILVERBET", 
+    "MAKEINDIA", "PSUBANK", "SILVER", "MIDCAP", "MOMOMEI", "LOWVOL1", "LICNFNHG", 
+    "MOQUALIT", "QGOLDHA", "QNIFTY", "SENSEXAD", "LOWVOL", "AXSENSEX", "GOLD1", 
+    "HDFCMID", "HDFCNEXT", "GOLDBETA", "GSEC10YE", "BANKADD", "EQUAL50A", "NPBET", 
+    "HDFCPVTE", "TECH", "MOHEALTI", "HDFCBSE5", "BANKNIFTY", "MASPTOP5", "HDFCSENS", 
+    "HDFCLOW", "HDFCMON", "HDFCNIF1", "HEALTHY", "HDFCNIFT", "ICICIB22", "SILVER1", 
+    "CONS", "ESG", "NIFTYBETA", "HDFCSML", "SENSEXBE", "BFSI", "MAHKTECI", "MOGSEC", 
+    "NIFTYQLIT", "MOVALUE", "ALPHA", "ABSLNN50", "NV20", "GUJRAFFIA", "JSWDULUX"
+]
+
+# Master List nikalna (Strict & Hardcoded Filter ke sath)
 def get_full_nse_list():
     print("Zerodha se latest list nikal rahe hain...")
     try:
@@ -30,9 +43,15 @@ def get_full_nse_list():
         clean_symbols = []
         for s in df_nse['tradingsymbol'].tolist():
             s = str(s)
-            # 🚀 KADAK FILTER: NAV, MF, BEES aur kachra block!
+            
+            # 1. KADAK FILTER: NAV, MF, BEES aur kachra block!
             if '-' in s or ' ' in s or s.endswith("BEES") or s.endswith("NAV") or "ETF" in s or "LIQUID" in s or "MF" in s: 
                 continue
+                
+            # 2. HARDCODED FILTER: Jo list aapne di hai use ignore karo
+            if s in KACHRA_STOCKS:
+                continue
+                
             clean_symbols.append(s)
         return clean_symbols
     except Exception as e:
@@ -44,11 +63,10 @@ print(f"Total {len(nse_stocks)} premium stocks mile. Slow fetching shuru kar rah
 
 batch_data = []
 
-# Ek-ek karke aaram se data nikalna (Slow & Steady Mode)
+# Ek-ek karke aaram se data nikalna (Slow & Steady Mode - 1.5s delay)
 for index, symbol in enumerate(nse_stocks):
     ticker = symbol + ".NS"
     try:
-        # Har stock ke pehle 1.5 second ka aaram (No Block Guarantee)
         time.sleep(1.5)
         
         info = yf.Ticker(ticker, session=session).info
@@ -71,7 +89,6 @@ for index, symbol in enumerate(nse_stocks):
 
     # Har 100 stocks ke baad Database me bhejna 
     if len(batch_data) >= 100:
-        # 🛡️ SAFETY NET: Database save fail hone par script crash nahi hogi
         try:
             supabase.table('stock_metadata').upsert(batch_data).execute()
             print("💾 100 stocks ka batch database me update ho gaya!\n")
