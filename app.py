@@ -51,7 +51,7 @@ components.html(
 st.markdown("<p style='text-align: center; color: gray; font-size: 18px;'>Automated EOD & Live Scanner for High-Momentum Stocks.</p>", unsafe_allow_html=True)
 st.markdown("---")
 
-# 4. Supabase Connection (Client Cached, Data Fetched Fresh)
+# 4. Supabase Connection
 @st.cache_resource
 def init_connection():
     url = st.secrets["SUPABASE_URL"]
@@ -83,8 +83,23 @@ with tab1:
         
     if raw_data:
         df = pd.DataFrame(raw_data)
-        df = df[['scan_date', 'stock_symbol', 'close_price', 'turnover_cr', 'condition_matched']]
-        df.columns = ['Scan Date', 'Stock Symbol', 'Close Price', 'Turnover (Cr)', 'Strategy Matched']
+        
+        # Naye Sector aur Industry wale columns set kiye gaye hain
+        # Agar error se bachna hai, toh check kar lete hain ki columns database mein hain ya nahi
+        cols_to_keep = ['scan_date', 'stock_symbol', 'close_price', 'turnover_cr', 'sector', 'industry_proxy']
+        existing_cols = [c for c in cols_to_keep if c in df.columns]
+        df = df[existing_cols]
+        
+        # Rename columns for clean display
+        rename_dict = {
+            'scan_date': 'Scan Date',
+            'stock_symbol': 'Stock Symbol',
+            'close_price': 'Close Price (₹)',
+            'turnover_cr': 'Turnover (Cr)',
+            'sector': 'Sector',
+            'industry_proxy': 'Proxy / Industry'
+        }
+        df.rename(columns=rename_dict, inplace=True)
         
         latest_date = df['Scan Date'].max()
         total_stocks = len(df[df['Scan Date'] == latest_date])
@@ -100,18 +115,25 @@ with tab1:
         with f_col1:
             selected_date = st.selectbox("📅 Select Scan Date", sorted(df['Scan Date'].unique(), reverse=True))
         df_filtered = df[df['Scan Date'] == selected_date]
+        
         with f_col2:
-            selected_strategy = st.selectbox("🎯 Filter by Strategy", ["All Strategies"] + list(df['Strategy Matched'].unique()))
+            # Sector ke hisaab se filter lagaya gaya hai
+            if 'Sector' in df.columns:
+                sector_list = ["All Sectors"] + list(df['Sector'].dropna().unique())
+                selected_sector = st.selectbox("🎯 Filter by Sector", sector_list)
+            else:
+                selected_sector = "All Sectors"
+                
         with f_col3:
             search_symbol = st.text_input("🔤 Search Stock", "").upper()
 
-        if selected_strategy != "All Strategies":
-            df_filtered = df_filtered[df_filtered['Strategy Matched'] == selected_strategy]
+        if selected_sector != "All Sectors":
+            df_filtered = df_filtered[df_filtered['Sector'] == selected_sector]
         if search_symbol:
             df_filtered = df_filtered[df_filtered['Stock Symbol'].str.contains(search_symbol)]
 
-        # Scrollable & Compact Table Logic (height=300, hide_index=True)
-        st.dataframe(df_filtered, use_container_width=True, height=300, hide_index=True)
+        # Scrollable & Compact Table Logic (Yahan automatic sorting on hai)
+        st.dataframe(df_filtered, use_container_width=True, height=400, hide_index=True)
     else:
         st.info("Database mein abhi koi data nahi hai. Niche diye gaye button se live scan shuru karein.")
 
@@ -174,6 +196,7 @@ with tab1:
 with tab2:
     st.header("⚙️ Scanner Rules")
     st.write("1-Month, 3-Month aur 52-Week High pullback ke saare technical rules yahan apply hote hain.")
+    st.write("Weekly 10 aur 30 EMA ka strong filter lagaya gaya hai.")
 with tab3:
     st.header("💡 Trading Guide")
     st.write("Hamesha 2-3% ka Stoploss use karein aur 1:2 Risk Reward ratio follow karein.")
