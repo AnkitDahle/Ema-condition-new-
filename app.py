@@ -68,8 +68,8 @@ except Exception as e:
     st.error(f"Database Error: {e}")
     raw_data = None
 
-# 5. Tabs Setup
-tab1, tab2, tab3 = st.tabs(["📊 Combined Scanner", "⚙️ Strategy Rules", "💡 Trading Guide"])
+# 5. Tabs Setup (NAYA 4th TAB ADD KIYA HAI)
+tab1, tab2, tab3, tab4 = st.tabs(["📊 Combined Scanner", "⚙️ Strategy Rules", "💡 Trading Guide", "🏢 IPO Tracker"])
 
 # --- TAB 1: MAIN SCANNER ---
 with tab1:
@@ -229,3 +229,35 @@ with tab2:
 with tab3:
     st.header("💡 Trading Guide")
     st.write("Hamesha 2-3% ka Stoploss use karein aur 1:2 Risk Reward ratio follow karein.")
+
+# --- TAB 4: IPO TRACKER (NAYA SECTION) ---
+with tab4:
+    st.header("🏢 IPO & New Listings Tracker (2020 - Present)")
+    st.markdown("Yeh section NSE official data se recent listed stocks ko listing date ke hisab se dikhata hai.")
+    
+    try:
+        # Supabase se IPO data lana
+        ipo_res = supabase.table('ipo_master').select("*").execute()
+        
+        if ipo_res.data:
+            df_ipo = pd.DataFrame(ipo_res.data)
+            
+            # Year select karne ka Dropdown
+            years = sorted(df_ipo['listing_year'].unique(), reverse=True)
+            selected_year = st.selectbox("📅 Select IPO Listing Year:", years)
+            
+            filtered_ipo = df_ipo[df_ipo['listing_year'] == selected_year]
+            
+            display_ipo = filtered_ipo[['stock_symbol', 'company_name', 'listing_date']]
+            display_ipo.columns = ['Symbol', 'Company Name', 'Listing Date']
+            
+            # Listing wise sorting (Latest top par)
+            display_ipo = display_ipo.sort_values(by='Listing Date', ascending=False)
+            
+            st.metric(label=f"Total Listings in {selected_year}", value=len(display_ipo))
+            
+            st.dataframe(display_ipo, use_container_width=True, hide_index=True, height=400)
+        else:
+            st.info("⚠️ IPO data abhi database me nahi hai. Kripya GitHub Actions me jakar 'Daily IPO Tracker' ko ek baar manual run karein.")
+    except Exception as e:
+        st.error(f"Database Error: {e}")
