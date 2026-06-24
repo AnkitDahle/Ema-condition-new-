@@ -85,7 +85,6 @@ with tab1:
         df = pd.DataFrame(raw_data)
         
         # Naye Sector aur Industry wale columns set kiye gaye hain
-        # Agar error se bachna hai, toh check kar lete hain ki columns database mein hain ya nahi
         cols_to_keep = ['scan_date', 'stock_symbol', 'close_price', 'turnover_cr', 'sector', 'industry_proxy']
         existing_cols = [c for c in cols_to_keep if c in df.columns]
         df = df[existing_cols]
@@ -132,8 +131,38 @@ with tab1:
         if search_symbol:
             df_filtered = df_filtered[df_filtered['Stock Symbol'].str.contains(search_symbol)]
 
-        # Scrollable & Compact Table Logic (Yahan automatic sorting on hai)
+        # Scrollable & Compact Table Logic
         st.dataframe(df_filtered, use_container_width=True, height=400, hide_index=True)
+        
+        # --- 🚀 NEW: TRADINGVIEW WATCHLIST EXPORT ---
+        if not df_filtered.empty:
+            tv_text = ""
+            # Data ko Sector aur Proxy ke hisaab se sort karna
+            sorted_df = df_filtered.sort_values(by=['Sector', 'Proxy / Industry'])
+            
+            # Group banana
+            grouped = sorted_df.groupby(['Sector', 'Proxy / Industry'])
+            
+            for (sector, proxy), group in grouped:
+                # TradingView me Section banane ka rule: '### Section Name'
+                tv_text += f"### {sector} / {proxy}\n"
+                
+                for symbol in group['Stock Symbol']:
+                    # TradingView me Indian stocks ke aage NSE: lagana zaroori hai
+                    tv_text += f"NSE:{symbol}\n"
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            col_d1, col_d2, col_d3 = st.columns([1, 2, 1])
+            with col_d2:
+                st.download_button(
+                    label="📥 Download TradingView Watchlist (.txt)",
+                    data=tv_text,
+                    file_name=f"AlphaSwing_{selected_date}.txt",
+                    mime="text/plain",
+                    use_container_width=True,
+                    help="TradingView me 'Import List' par click karke is file ko upload karein."
+                )
     else:
         st.info("Database mein abhi koi data nahi hai. Niche diye gaye button se live scan shuru karein.")
 
