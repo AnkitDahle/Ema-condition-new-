@@ -1,0 +1,29 @@
+name: Weekend Sector Updater
+
+on:
+  schedule:
+    # Yeh cron job har Saturday (6) ko 16:30 UTC (Raat 10:00 baje IST) chalegi
+    - cron: '30 16 * * 6'
+  workflow_dispatch: # Manual run button ke liye
+
+jobs:
+  update-metadata:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          
+      - name: Install Dependencies
+        run: |
+          pip install yfinance pandas supabase requests
+          
+      - name: Run Metadata Updater
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python metadata_updater.py
