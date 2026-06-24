@@ -8,6 +8,8 @@ import time
 # 1. Page Configuration
 st.set_page_config(page_title="AlphaSwing Pro | Momentum Scanner", layout="wide", page_icon="📈")
 
+st.title("🔴 TEST: NAYA CODE RUN HO RAHA HAI")
+
 # Custom Styling for Buttons
 st.markdown("""
     <style>
