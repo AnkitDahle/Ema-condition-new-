@@ -4,11 +4,14 @@ from supabase import create_client, Client
 import requests
 import pandas as pd
 import time
+import datetime
+import cloudinary
+import cloudinary.uploader
 
 # 1. Page Configuration
 st.set_page_config(page_title="AlphaSwing Pro | Momentum Scanner", layout="wide", page_icon="📈")
 
-# Custom Styling for Buttons
+# Custom Styling for Buttons & Journal Cards
 st.markdown("""
     <style>
     .block-container { padding-top: 2rem; }
@@ -16,6 +19,7 @@ st.markdown("""
     .btn-green button:hover { background-color: #45a049; }
     .btn-red button { background-color: #D32F2F; color: white; border-radius: 6px; font-weight: bold; padding: 8px; width: 100%; border: none;}
     .btn-red button:hover { background-color: #b71c1c; }
+    .journal-card { border: 1px solid #333; padding: 15px; border-radius: 8px; background-color: #1e1e1e; margin-bottom: 15px;}
     </style>
 """, unsafe_allow_html=True)
 
@@ -41,26 +45,32 @@ components.html(
     </div>
     <script>
         var typed = new Typed('#typed', {
-            strings: ['Swing Trading.', 'Live Market Scans.', 'Technical Analysis.', 'Finding Breakouts.'],
+            strings: ['Swing Trading.', 'Live Market Scans.', 'Technical Analysis.', 'Pro Trading Journal.'],
             typeSpeed: 60, backSpeed: 40, backDelay: 1500, loop: true, showCursor: true, cursorChar: '|'
         });
     </script>
     """,
     height=120,
 )
-st.markdown("<p style='text-align: center; color: gray; font-size: 18px;'>Automated EOD & Live Scanner for High-Momentum Stocks.</p>", unsafe_allow_html=True)
 st.markdown("---")
 
-# 4. Supabase Connection
+# 4. Databases & APIs Setup
 @st.cache_resource
-def init_connection():
+def init_supabase():
     url = st.secrets["SUPABASE_URL"]
     key = st.secrets["SUPABASE_KEY"]
     return create_client(url, key)
 
-supabase = init_connection()
+supabase = init_supabase()
 
-# Fetch Fresh Data
+# Cloudinary Setup
+cloudinary.config(
+    cloud_name=st.secrets["CLOUDINARY_CLOUD_NAME"],
+    api_key=st.secrets["CLOUDINARY_API_KEY"],
+    api_secret=st.secrets["CLOUDINARY_API_SECRET"]
+)
+
+# Fetch Scan Data
 try:
     response = supabase.table('swing_stocks').select("*").order('scan_date', desc=True).execute()
     raw_data = response.data
@@ -68,17 +78,14 @@ except Exception as e:
     st.error(f"Database Error: {e}")
     raw_data = None
 
-# 5. Tabs Setup
-tab1, tab2, tab3, tab4 = st.tabs(["📊 Combined Scanner", "⚙️ Strategy Rules", "💡 Trading Guide", "🏢 IPO Tracker"])
+# 5. Tabs Setup (NAYA TAB ADD KIYA HAI)
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Combined Scanner", "⚙️ Strategy Rules", "💡 Trading Guide", "🏢 IPO Tracker", "📓 Trading Journal"])
 
 # --- TAB 1: MAIN SCANNER ---
 with tab1:
-    
-    # ⚡ NEW UPAR SHIFTED & COMPACT CONTROLS BAR
     st.markdown("##### ⚡ Live Scanner Dashboard Controls")
     colA, colB, colC = st.columns([1.2, 1.2, 2.5])
     
-    # START BUTTON (Sleek)
     with colA:
         st.markdown("<div class='btn-green'>", unsafe_allow_html=True)
         if st.button("🚀 Run Scan Now", use_container_width=True):
@@ -88,17 +95,13 @@ with tab1:
                     repo = st.secrets["GITHUB_REPO"]
                     url = f"https://api.github.com/repos/{repo}/actions/workflows/daily_scan.yml/dispatches"
                     headers = {"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"}
-                    response = requests.post(url, headers=headers, json={"ref": "main"})
+                    requests.post(url, headers=headers, json={"ref": "main"})
                     time.sleep(2)
-                    if response.status_code == 204:
-                        st.success("✅ Scan Shuru!")
-                    else:
-                        st.error("❌ GitHub Error.")
+                    st.success("✅ Scan Shuru!")
                 except Exception as e:
                     st.error(f"❌ Error: {e}")
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # STOP BUTTON (Sleek)
     with colB:
         st.markdown("<div class='btn-red'>", unsafe_allow_html=True)
         if st.button("🛑 Stop Scan", use_container_width=True):
@@ -114,17 +117,13 @@ with tab1:
                         for run in runs:
                             requests.post(f"https://api.github.com/repos/{repo}/actions/runs/{run['id']}/cancel", headers=headers)
                         st.success("🛑 Scan Roka Gaya!")
-                    else:
-                        st.info("Koi active scan nahi hai.")
                 except Exception as e:
                     st.error(f"Error: {e}")
         st.markdown("</div>", unsafe_allow_html=True)
         
-    # 🔄 LIVE TRACKING TOGGLE (Aligned right next to buttons)
     with colC:
         live_tracking = st.toggle("🔄 Enable Live Auto-Refresh (15s)")
         if live_tracking:
-            st.caption("📡 Live Tracking Active: Naye stocks apne aap add ho rahe hain...")
             time.sleep(15)
             st.rerun()
 
@@ -136,71 +135,47 @@ with tab1:
         existing_cols = [c for c in cols_to_keep if c in df.columns]
         df = df[existing_cols]
         
-        rename_dict = {
-            'scan_date': 'Scan Date',
-            'stock_symbol': 'Stock Symbol',
-            'close_price': 'Close Price (₹)',
-            'turnover_cr': 'Turnover (Cr)',
-            'sector': 'Sector',
-            'industry_proxy': 'Proxy / Industry'
-        }
+        rename_dict = {'scan_date': 'Scan Date', 'stock_symbol': 'Stock Symbol', 'close_price': 'Close Price (₹)', 'turnover_cr': 'Turnover (Cr)', 'sector': 'Sector', 'industry_proxy': 'Proxy / Industry'}
         df.rename(columns=rename_dict, inplace=True)
         
         latest_date = df['Scan Date'].max()
         total_stocks = len(df[df['Scan Date'] == latest_date])
         
-        # Total Stocks & Dates Metrics Bar
         col1, col2, col3 = st.columns(3)
         col1.metric("📅 Last Scan Date", str(latest_date))
         col2.metric("🎯 Latest Breakout Count", f"{total_stocks} Stocks")
         col3.metric("🏢 Market Covered", "NSE 2300+ Stocks")
         
         st.markdown("---")
-        
-        # Search Box & Filters
         f_col1, f_col2, f_col3 = st.columns(3)
-        with f_col1:
-            selected_date = st.selectbox("📅 Select Scan Date", sorted(df['Scan Date'].unique(), reverse=True))
+        with f_col1: selected_date = st.selectbox("📅 Select Scan Date", sorted(df['Scan Date'].unique(), reverse=True))
         df_filtered = df[df['Scan Date'] == selected_date]
         
         with f_col2:
             if 'Sector' in df.columns:
                 sector_list = ["All Sectors"] + list(df['Sector'].dropna().unique())
                 selected_sector = st.selectbox("🎯 Filter by Sector", sector_list)
-            else:
-                selected_sector = "All Sectors"
+            else: selected_sector = "All Sectors"
                 
-        with f_col3:
-            search_symbol = st.text_input("🔤 Search Stock", "").upper()
+        with f_col3: search_symbol = st.text_input("🔤 Search Stock", "").upper()
 
-        if selected_sector != "All Sectors":
-            df_filtered = df_filtered[df_filtered['Sector'] == selected_sector]
-        if search_symbol:
-            df_filtered = df_filtered[df_filtered['Stock Symbol'].str.contains(search_symbol)]
+        if selected_sector != "All Sectors": df_filtered = df_filtered[df_filtered['Sector'] == selected_sector]
+        if search_symbol: df_filtered = df_filtered[df_filtered['Stock Symbol'].str.contains(search_symbol)]
 
-        # Table Logic
         st.dataframe(df_filtered, use_container_width=True, height=400, hide_index=True)
         
-        # TradingView Watchlist Export Button
         if not df_filtered.empty:
             tv_text = ""
             sorted_df = df_filtered.sort_values(by=['Sector', 'Proxy / Industry'])
             grouped = sorted_df.groupby(['Sector', 'Proxy / Industry'])
             for (sector, proxy), group in grouped:
                 tv_text += f"### {sector} / {proxy}\n"
-                for symbol in group['Stock Symbol']:
-                    tv_text += f"NSE:{symbol}\n"
+                for symbol in group['Stock Symbol']: tv_text += f"NSE:{symbol}\n"
             
             st.markdown("<br>", unsafe_allow_html=True)
             col_d1, col_d2, col_d3 = st.columns([1, 2, 1])
             with col_d2:
-                st.download_button(
-                    label="📥 Download TradingView Watchlist (.txt)",
-                    data=tv_text,
-                    file_name=f"AlphaSwing_{selected_date}.txt",
-                    mime="text/plain",
-                    use_container_width=True
-                )
+                st.download_button("📥 Download TradingView Watchlist (.txt)", data=tv_text, file_name=f"AlphaSwing_{selected_date}.txt", mime="text/plain", use_container_width=True)
     else:
         st.info("Database mein abhi koi data nahi hai.")
 
@@ -208,25 +183,18 @@ with tab1:
 with tab2:
     st.header("⚙️ Scanner Rules")
     st.write("1-Month, 3-Month aur 52-Week High pullback ke saare technical rules apply hote hain.")
-    st.write("Weekly 10 aur 30 EMA ka strong filter lagaya gaya hai.")
 with tab3:
     st.header("💡 Trading Guide")
     st.write("Hamesha 2-3% ka Stoploss use karein aur 1:2 Risk Reward ratio follow karein.")
 
-# --- TAB 4: IPO TRACKER (COMPACT DROP-DOWN STYLE) ---
+# --- TAB 4: IPO TRACKER ---
 with tab4:
     st.header("🏢 IPO & New Listings Tracker (2020 - Present)")
-    st.markdown("NSE official listing data analytics.")
-    
     try:
         ipo_res = supabase.table('ipo_master').select("*").execute()
-        
         if ipo_res.data:
             df_ipo = pd.DataFrame(ipo_res.data)
-            
-            # 🚀 FIXED LAYOUT: Grid use karke dropdown ko chota kiya aur metric side me lagaya
             col_y1, col_y2, col_y3 = st.columns([1.5, 1.5, 3])
-            
             with col_y1:
                 years = sorted(df_ipo['listing_year'].unique(), reverse=True)
                 selected_year = st.selectbox("📅 Select IPO Year:", years)
@@ -236,30 +204,152 @@ with tab4:
             display_ipo.columns = ['Symbol', 'Company Name', 'Listing Date']
             display_ipo = display_ipo.sort_values(by='Listing Date', ascending=False)
             
-            with col_y2:
-                # Year dropdown ke side me clean layout
-                st.metric(label=f"Total IPOs ({selected_year})", value=len(display_ipo))
-            
-            # Table Display
+            with col_y2: st.metric(label=f"Total IPOs ({selected_year})", value=len(display_ipo))
             st.dataframe(display_ipo, use_container_width=True, hide_index=True, height=400)
             
-            # TradingView Export for IPO (Bina section ke clean)
             if not display_ipo.empty:
                 tv_ipo_text = ""
-                for symbol in display_ipo['Symbol']:
-                    tv_ipo_text += f"NSE:{symbol}\n"
-                
-                st.markdown("<br>", unsafe_allow_html=True)
+                for symbol in display_ipo['Symbol']: tv_ipo_text += f"NSE:{symbol}\n"
                 col_i1, col_i2, col_i3 = st.columns([1, 2, 1])
-                with col_i2:
-                    st.download_button(
-                        label=f"📥 Download {selected_year} IPO Watchlist (.txt)",
-                        data=tv_ipo_text,
-                        file_name=f"IPO_Watchlist_{selected_year}.txt",
-                        mime="text/plain",
-                        use_container_width=True
-                    )
-        else:
-            st.info("⚠️ IPO data abhi database me nahi hai.")
+                with col_i2: st.download_button(f"📥 Download {selected_year} IPO Watchlist (.txt)", data=tv_ipo_text, file_name=f"IPO_Watchlist_{selected_year}.txt", mime="text/plain", use_container_width=True)
     except Exception as e:
         st.error(f"Database Error: {e}")
+
+# --- TAB 5: TRADING JOURNAL (PRO RISK MANAGEMENT) ---
+with tab5:
+    st.header("📓 Pro Trading Journal (20-50-30 Rule)")
+    
+    j_tab1, j_tab2, j_tab3 = st.tabs(["➕ New Trade Entry", "🔄 Update Exits & TSL", "📚 Journal Gallery"])
+    
+    # --- SUB-TAB 1: NEW TRADE ---
+    with j_tab1:
+        with st.form("new_trade_form", clear_on_submit=True):
+            st.subheader("Enter New Trade Details")
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                symbol = st.text_input("Stock Symbol (e.g., RELIANCE)").upper()
+                quantity = st.number_input("Total Quantity", min_value=1, step=1)
+            with c2:
+                buying_date = st.date_input("Buying Date", datetime.date.today())
+                buying_price = st.number_input("Buying Price (₹)", min_value=0.0, step=0.1, format="%.2f")
+            with c3:
+                initial_sl = st.number_input("Initial Stoploss (₹)", min_value=0.0, step=0.1, format="%.2f")
+            
+            trade_logic = st.text_area("Trade Logic (Setup, EMA, Breakout, etc.)")
+            image_file = st.file_uploader("Upload Chart Screenshot (Optional)", type=['png', 'jpg', 'jpeg'])
+            
+            submit_trade = st.form_submit_button("💾 Save Trade", use_container_width=True)
+            
+            if submit_trade and symbol and quantity > 0 and buying_price > 0:
+                with st.spinner("Saving trade..."):
+                    img_url = None
+                    if image_file is not None:
+                        # Upload to Cloudinary
+                        res = cloudinary.uploader.upload(image_file, folder="trading_journal")
+                        img_url = res.get("secure_url")
+                    
+                    data = {
+                        "symbol": symbol, "total_quantity": quantity, "buying_date": str(buying_date),
+                        "buying_price": float(buying_price), "initial_sl": float(initial_sl),
+                        "trade_logic": trade_logic, "image_url": img_url
+                    }
+                    try:
+                        supabase.table('trading_journal').insert(data).execute()
+                        st.success(f"✅ Trade {symbol} saved successfully!")
+                    except Exception as e:
+                        st.error(f"Error saving data: {e}")
+
+    # --- SUB-TAB 2: UPDATE TRADE (Exits & TSL) ---
+    with j_tab2:
+        try:
+            # Sirf wo trades lao jinki poori 30% quantity abhi exit nahi hui hai (Active Trades)
+            active_res = supabase.table('trading_journal').select("*").is_("sold_30_date", "null").execute()
+            active_trades = active_res.data
+            
+            if active_trades:
+                trade_options = {f"{t['symbol']} (Bought: {t['buying_date']} @ ₹{t['buying_price']})": t for t in active_trades}
+                selected_trade_label = st.selectbox("🎯 Select Active Trade to Update", list(trade_options.keys()))
+                t = trade_options[selected_trade_label]
+                
+                st.markdown(f"**Current Total Quantity:** {t['total_quantity']} | **Buy Price:** ₹{t['buying_price']}")
+                
+                with st.form("update_trade_form"):
+                    st.markdown("### 1️⃣ 20% Quantity Booking")
+                    c1, c2, c3 = st.columns(3)
+                    with c1: s20_date = st.date_input("20% Sold Date", value=None)
+                    with c2: s20_price = st.number_input("20% Sold Price", value=float(t['sold_20_price'] or 0.0))
+                    with c3:
+                        st.caption("💡 Leave 0 to auto-shift SL to Breakeven")
+                        sl_20 = st.number_input("New SL After 20%", value=float(t['sl_after_20'] or 0.0))
+                        
+                    st.markdown("### 2️⃣ 50% Quantity Booking")
+                    c4, c5, c6 = st.columns(3)
+                    with c4: s50_date = st.date_input("50% Sold Date", value=None)
+                    with c5: s50_price = st.number_input("50% Sold Price", value=float(t['sold_50_price'] or 0.0))
+                    with c6: sl_50 = st.number_input("New TSL After 50%", value=float(t['sl_after_50'] or 0.0))
+                    
+                    st.markdown("### 3️⃣ Final 30% Quantity Booking")
+                    c7, c8 = st.columns(2)
+                    with c7: s30_date = st.date_input("30% Sold Date", value=None)
+                    with c8: s30_price = st.number_input("30% Sold Price", value=float(t['sold_30_price'] or 0.0))
+
+                    update_btn = st.form_submit_button("🔄 Update Exits & SL")
+                    
+                    if update_btn:
+                        # AUTO-FILL LOGIC: Agar 20% book hua aur Naya SL blank (0) chhoda, toh Buy Price daal do
+                        final_sl_20 = sl_20
+                        if s20_price > 0 and sl_20 == 0:
+                            final_sl_20 = float(t['buying_price'])
+                            st.toast("Auto-shifted SL to Breakeven!")
+
+                        update_data = {
+                            "sold_20_date": str(s20_date) if s20_price > 0 else None, "sold_20_price": s20_price if s20_price > 0 else None, "sl_after_20": final_sl_20 if final_sl_20 > 0 else None,
+                            "sold_50_date": str(s50_date) if s50_price > 0 else None, "sold_50_price": s50_price if s50_price > 0 else None, "sl_after_50": sl_50 if sl_50 > 0 else None,
+                            "sold_30_date": str(s30_date) if s30_price > 0 else None, "sold_30_price": s30_price if s30_price > 0 else None,
+                        }
+                        supabase.table('trading_journal').update(update_data).eq('id', t['id']).execute()
+                        st.success("Trade updated successfully!")
+                        time.sleep(1)
+                        st.rerun()
+            else:
+                st.info("No active trades found. Pehle 'New Trade Entry' mein jakar trade add karein.")
+        except Exception as e:
+            st.error(f"Error fetching active trades: {e}")
+
+    # --- SUB-TAB 3: JOURNAL GALLERY ---
+    with j_tab3:
+        try:
+            all_trades_res = supabase.table('trading_journal').select("*").order('buying_date', desc=True).execute()
+            all_trades = all_trades_res.data
+            
+            if all_trades:
+                for tr in all_trades:
+                    st.markdown("<div class='journal-card'>", unsafe_allow_html=True)
+                    g1, g2 = st.columns([1, 2])
+                    
+                    with g1:
+                        if tr.get('image_url'):
+                            st.image(tr['image_url'], use_container_width=True)
+                        else:
+                            st.info("No chart uploaded.")
+                    with g2:
+                        st.subheader(f"🚀 {tr['symbol']}")
+                        st.write(f"**Date:** {tr['buying_date']} | **Buy Price:** ₹{tr['buying_price']} | **Qty:** {tr['total_quantity']}")
+                        st.write(f"**Logic:** {tr['trade_logic']}")
+                        
+                        # Live Return Calculation for 20% chunk
+                        if tr.get('sold_20_price'):
+                            ret_20 = ((tr['sold_20_price'] - tr['buying_price']) / tr['buying_price']) * 100
+                            st.success(f"**20% Booked @ ₹{tr['sold_20_price']} (Return: {ret_20:.2f}%)**")
+                        if tr.get('sold_50_price'):
+                            ret_50 = ((tr['sold_50_price'] - tr['buying_price']) / tr['buying_price']) * 100
+                            st.success(f"**50% Booked @ ₹{tr['sold_50_price']} (Return: {ret_50:.2f}%)**")
+                        if tr.get('sold_30_price'):
+                            ret_30 = ((tr['sold_30_price'] - tr['buying_price']) / tr['buying_price']) * 100
+                            st.success(f"**30% Final Booked @ ₹{tr['sold_30_price']} (Return: {ret_30:.2f}%)**")
+                            
+                    st.markdown("</div>", unsafe_allow_html=True)
+            else:
+                st.info("Journal khali hai. Start trading!")
+        except Exception as e:
+            st.error(f"Error loading gallery: {e}")
