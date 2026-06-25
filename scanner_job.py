@@ -18,11 +18,10 @@ supabase: Client = create_client(url_sb, key)
 
 today_date = datetime.now().strftime("%Y-%m-%d")
 
-# --- 🚀 NEW: Supabase Error Logging System ---
+# --- 🚀 Supabase Error Logging System ---
 error_logs_data = []
 
 def log_error(symbol, category, detailed_reason):
-    """Errors ko database ke liye list me jama karne ka function"""
     error_logs_data.append({
         "scan_date": today_date,
         "symbol": symbol,
@@ -31,7 +30,7 @@ def log_error(symbol, category, detailed_reason):
     })
     print(f"🚨 ERROR: {symbol} - {category}")
 
-# 🚫 HARDCODED BLACKLIST (Kachra stocks ko silently hatane ke liye, inka log nahi banega)
+# 🚫 HARDCODED BLACKLIST
 KACHRA_STOCKS = [
     "SNXT50BE", "ITADD", "MOLOWV", "ARTEMISM", "SILVERADD", "NEXT50", "PVTBANKA", 
     "MOMENTUM", "GOLDADD", "SILVERAG", "NIFTYADD", "MONQ50", "MIDQ50ADD", "SILVERBET", 
@@ -62,7 +61,6 @@ def get_full_nse_list():
         for s in nse_symbols:
             s = str(s)
             
-            # CATEGORY 3 IGNORED: Kachra stocks silently bypass ho jayenge
             if '-SG' in s or '-SF' in s or '-SD' in s or '-GS' in s: continue
             if ' ' in s: continue
             if s.endswith("BEES") or "ETF" in s or "LIQUID" in s: continue
@@ -73,8 +71,7 @@ def get_full_nse_list():
         print(f"✅ Master Filter Applied: Strictly {len(clean_symbols)} premium stocks mil gaye!")
         return clean_symbols
     except Exception as e:
-        # CATEGORY 1: API Failure
-        log_error("API_SYSTEM", "ZERODHA_API_FAIL", f"Zerodha se master list download nahi ho payi. Asli error: {e}")
+        log_error("API_SYSTEM", "ZERODHA_API_FAIL", f"Zerodha list download nahi ho payi. Error: {e}")
         return ["RELIANCE", "TCS", "HDFCBANK", "INFY", "ZOMATO"]
 
 nse_stocks = get_full_nse_list()
@@ -97,29 +94,30 @@ for i in range(0, len(stocks), chunk_size):
         if isinstance(batch_data.columns, pd.MultiIndex):
             close_df = batch_data['Close']
             high_df = batch_data['High']
+            vol_df = batch_data['Volume']  # Volume data fetch kar liya
         else:
-            # CATEGORY 1: Format Mismatch
-            log_error(f"BATCH_NO_{i//chunk_size + 1}", "FORMAT_MISMATCH", "Yahoo ne data fetch kiya par MultiIndex format me nahi tha. Poora batch skip hua.")
+            log_error(f"BATCH_NO_{i//chunk_size + 1}", "FORMAT_MISMATCH", "Yahoo data MultiIndex format me nahi tha. Batch skip hua.")
             continue
 
         for ticker in batch:
             try:
-                # CATEGORY 2: Data Missing
                 if ticker not in close_df.columns:
-                    log_error(ticker, "DATA_MISSING", "Yahoo Finance par is symbol ka koi daily chart data nahi mila (delist ya symbol change).")
+                    log_error(ticker, "DATA_MISSING", "Yahoo par is symbol ka daily chart data nahi mila.")
                     continue
 
                 close_data = close_df[ticker].dropna()
                 high_data = high_df[ticker].dropna()
+                vol_data = vol_df[ticker].dropna()  # Volume data nikal liya
 
-                # CATEGORY 2: Insufficient History
                 if len(close_data) < 22:
-                    log_error(ticker, "INSUFFICIENT_HISTORY", f"Sirf {len(close_data)} din ka data hai. Breakout check ke liye min 22 days zaroori hain (Naya IPO ho sakta hai).")
+                    log_error(ticker, "INSUFFICIENT_HISTORY", f"Sirf {len(close_data)} din ka data hai. Min 22 days zaroori hain.")
                     continue
                 
-                # Calculation Block
+                # Math & Moving Averages
                 sma_200 = close_data.rolling(window=200, min_periods=1).mean()
                 sma_50 = close_data.rolling(window=50, min_periods=1).mean()
+                vol_sma_20 = vol_data.rolling(window=20, min_periods=1).mean()  # 20 SMA of Volume
+                turnover_data = close_data * vol_sma_20  # Price * 20 SMA Volume
                 
                 close_22_ago = close_data.shift(22)
                 close_66_ago = close_data.shift(66)
@@ -129,13 +127,15 @@ for i in range(0, len(stocks), chunk_size):
                 sma_200_val = float(sma_200.iloc[-1])
                 sma_50_val = float(sma_50.iloc[-1])
                 max_high = float(max_high_252.iloc[-1])
+                turnover = float(turnover_data.iloc[-1])  # Latest Turnover
                 
                 close_22 = float(close_22_ago.iloc[-1]) if pd.notna(close_22_ago.iloc[-1]) else 999999.0
                 close_66 = float(close_66_ago.iloc[-1]) if pd.notna(close_66_ago.iloc[-1]) else 999999.0
                 
-                tech_cond1 = (close / close_22 > 1.2) and (close > sma_200_val)
-                tech_cond2 = (close / close_66 >= 1.3) and (close >= 1) and (close > sma_200_val)
-                tech_cond3 = (close > max_high * 0.75) and (close > sma_50_val) and (close > sma_200_val)
+                # 🚀 TURNOVER CONDITION ADDED (> 10 Crore)
+                tech_cond1 = (close / close_22 > 1.2) and (close > sma_200_val) and (turnover > 100000000)
+                tech_cond2 = (close / close_66 >= 1.3) and (close >= 1) and (close > sma_200_val) and (turnover > 100000000)
+                tech_cond3 = (close > max_high * 0.75) and (close > sma_50_val) and (close > sma_200_val) and (turnover > 100000000)
                 
                 weekly_cond_pass = False
                 weekly_close = close_data.resample('W-FRI').last()
@@ -169,8 +169,7 @@ for i in range(0, len(stocks), chunk_size):
                     except Exception as info_e:
                         sector_name = 'Unknown'
                         proxy_name = 'Unknown'
-                        # CATEGORY 2: Sector Info Fail
-                        log_error(ticker, "INFO_FETCH_FAIL", f"Stock select ho gaya, par Yahoo API ne uski Sector/Industry info block kar di. Error: {info_e}")
+                        log_error(ticker, "INFO_FETCH_FAIL", f"Sector/Industry info fail hui. Error: {info_e}")
                     
                     symbol_clean = ticker.replace(".NS", "")
                     
@@ -178,20 +177,18 @@ for i in range(0, len(stocks), chunk_size):
                         "scan_date": today_date,
                         "stock_symbol": symbol_clean,
                         "close_price": round(close, 2),
-                        "turnover_cr": 0.0,
+                        "turnover_cr": round(turnover / 10000000, 2),  # Wapas original format me update kiya
                         "sector": sector_name,
                         "industry_proxy": proxy_name
                     })
-                    print(f"🔥 Breakout: {symbol_clean} | {sector_name} | {proxy_name}")
+                    print(f"🔥 Breakout: {symbol_clean} | {sector_name} | {proxy_name} | TO: {round(turnover / 10000000, 2)}Cr")
                     saved_count += 1
 
             except Exception as inner_e:
-                # CATEGORY 4: Calculation Error
-                log_error(ticker, "CALCULATION_ERROR", f"Stock ka data fetch hua par math calculate karte waqt code crash ho gaya. Error: {inner_e}")
+                log_error(ticker, "CALCULATION_ERROR", f"Code crash error: {inner_e}")
                 
     except Exception as batch_e:
-        # CATEGORY 1: Batch Timeout
-        log_error(f"BATCH_NO_{i//chunk_size + 1}", "YAHOO_BATCH_TIMEOUT", f"Ek sath data fetch karte time Yahoo server connection drop ho gaya. Error: {batch_e}")
+        log_error(f"BATCH_NO_{i//chunk_size + 1}", "YAHOO_BATCH_TIMEOUT", f"Batch connection drop error: {batch_e}")
 
 # --- BULK INSERT: MATCHED STOCKS ---
 if matched_stocks_data:
@@ -201,8 +198,7 @@ if matched_stocks_data:
         print(f"🎉 Scan complete! {saved_count} stocks saved.")
     except Exception as e:
         print(f"❌ DATABASE ERROR: Stocks save nahi ho paye!")
-        # CATEGORY 5: Database Issue (Stocks)
-        log_error("DB_SYSTEM", "SUPABASE_INSERT_FAIL", f"Breakout stocks mile par Supabase ki 'swing_stocks' table me save nahi huye. Error: {e}")
+        log_error("DB_SYSTEM", "SUPABASE_INSERT_FAIL", f"Breakout stocks save error: {e}")
 
 # --- BULK INSERT: ERROR LOGS ---
 if error_logs_data:
@@ -211,4 +207,4 @@ if error_logs_data:
         supabase.table('error_logs').insert(error_logs_data).execute()
         print("✅ Error logs successfully saved!")
     except Exception as e:
-        print(f"❌ Error logs ko Supabase me save karte time failure: {e}")
+        print(f"❌ Error logs save failure: {e}")
