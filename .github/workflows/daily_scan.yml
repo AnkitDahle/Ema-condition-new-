@@ -2,8 +2,8 @@ name: Daily Stock Scanner
 
 on:
   schedule:
-    # UTC 10:30 AM = IST 4:00 PM (Monday se Friday)
-    - cron: '30 10 * * 1-5'
+    # UTC 10:05 AM = IST 3:35 PM (Monday se Friday) - Thoda jaldi taaki 4 baje tak data ready mile!
+    - cron: '05 10 * * 1-5'
   
   workflow_dispatch: 
 
@@ -29,5 +29,7 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           python scanner_job.py
