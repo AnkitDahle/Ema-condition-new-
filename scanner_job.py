@@ -55,7 +55,7 @@ def log_error(symbol, category, detailed_reason):
     })
     print(f"🚨 ERROR: {symbol} - {category}")
 
-# 🚫 HARDCODED BLACKLIST
+# 🚫 HARDCODED BLACKLIST (Added MSCI360 here)
 KACHRA_STOCKS = [
     "SNXT50BE", "ITADD", "MOLOWV", "ARTEMISM", "SILVERADD", "NEXT50", "PVTBANKA", 
     "MOMENTUM", "GOLDADD", "SILVERAG", "NIFTYADD", "MONQ50", "MIDQ50ADD", "SILVERBET", 
@@ -65,15 +65,17 @@ KACHRA_STOCKS = [
     "HDFCPVTE", "TECH", "MOHEALTI", "HDFCBSE5", "BANKNIFTY", "MASPTOP5", "HDFCSENS", 
     "HDFCLOW", "HDFCMON", "HDFCNIF1", "HEALTHY", "HDFCNIFT", "ICICIB22", "SILVER1", 
     "CONS", "ESG", "NIFTYBETA", "HDFCSML", "SENSEXBE", "BFSI", "MAHKTECI", "MOGSEC", 
-    "NIFTYQLIT", "MOVALUE", "ALPHA", "ABSLNN50", "NV20", "GUJRAFFIA", "JSWDULUX"
+    "NIFTYQLIT", "MOVALUE", "ALPHA", "ABSLNN50", "NV20", "GUJRAFFIA", "JSWDULUX",
+    "MSCI360"
 ]
 
-# 🚫 NSE SERIES BLACKLIST (Bonds, NCDs, Illiquid, etc.)
+# 🚫 NSE SERIES BLACKLIST (Bonds, NCDs, Illiquid, etc.) - Updated with E1, Y3, Y4, Y5
 BAD_SERIES = [
     "AK", "AL", "AM", "AN", "AU", "AV", "AW", "AX", "AY", "AZ", "BA", "BC", "BR", "BS", "BU", "BV", "BW", "BX", "BZ", "D1", "GB", "IV", 
+    "E1", "E2", "E3", 
     "N0", "N1", "N2", "N3", "N4", "N5", "N6", "N7", "N8", "N9", "NA", "NB", "NC", "ND", "NE", "NF", "NG", "NH", "NI", "NJ", "NK", "NL", "NM", "NN", "NO", "NP", "NQ", "NR", "NS", "NT", "NU", "NV", "NW", "NX", "NY", "NZ", 
     "P1", "RL", "RR", 
-    "Y0", "Y1", "Y2", "Y6", "Y7", "Y8", "Y9", "YA", "YB", "YC", "YD", "YG", "YH", "YI", "YJ", "YK", "YL", "YM", "YP", "YQ", "YR", "YS", "YT", "YU", "YV", "YW", "YX", "YY", "YZ", 
+    "Y0", "Y1", "Y2", "Y3", "Y4", "Y5", "Y6", "Y7", "Y8", "Y9", "YA", "YB", "YC", "YD", "YG", "YH", "YI", "YJ", "YK", "YL", "YM", "YP", "YQ", "YR", "YS", "YT", "YU", "YV", "YW", "YX", "YY", "YZ", 
     "Z0", "Z1", "Z2", "Z3", "Z4", "Z5", "Z6", "Z7", "Z8", "Z9", "ZC", "ZF", "ZG", "ZH", "ZI", "ZJ", "ZK", "ZL", "ZM", "ZN", "ZO", "ZP", "ZQ", "ZR", "ZS", "ZT", "ZY", "ZZ", 
     "BE"
 ]
