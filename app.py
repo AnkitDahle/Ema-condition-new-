@@ -78,8 +78,8 @@ except Exception as e:
     st.error(f"Database Error: {e}")
     raw_data = None
 
-# 5. Tabs Setup (NAYA TAB ADD KIYA HAI)
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Combined Scanner", "⚙️ Strategy Rules", "💡 Trading Guide", "🏢 IPO Tracker", "📓 Trading Journal"])
+# 5. Tabs Setup (TAB 6 ADD KIYA HAI)
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📊 Combined Scanner", "⚙️ Strategy Rules", "💡 Trading Guide", "🏢 IPO Tracker", "📓 Trading Journal", "⚠️ Error Logs"])
 
 # --- TAB 1: MAIN SCANNER ---
 with tab1:
@@ -296,7 +296,6 @@ with tab5:
                     update_btn = st.form_submit_button("🔄 Update Exits & SL")
                     
                     if update_btn:
-                        # AUTO-FILL LOGIC: Agar 20% book hua aur Naya SL blank (0) chhoda, toh Buy Price daal do
                         final_sl_20 = sl_20
                         if s20_price > 0 and sl_20 == 0:
                             final_sl_20 = float(t['buying_price'])
@@ -337,7 +336,6 @@ with tab5:
                         st.write(f"**Date:** {tr['buying_date']} | **Buy Price:** ₹{tr['buying_price']} | **Qty:** {tr['total_quantity']}")
                         st.write(f"**Logic:** {tr['trade_logic']}")
                         
-                        # Live Return Calculation for 20% chunk
                         if tr.get('sold_20_price'):
                             ret_20 = ((tr['sold_20_price'] - tr['buying_price']) / tr['buying_price']) * 100
                             st.success(f"**20% Booked @ ₹{tr['sold_20_price']} (Return: {ret_20:.2f}%)**")
@@ -353,3 +351,84 @@ with tab5:
                 st.info("Journal khali hai. Start trading!")
         except Exception as e:
             st.error(f"Error loading gallery: {e}")
+
+# --- TAB 6: ERROR LOGS (Text Format) ---
+with tab6:
+    st.header("⚠️ System Error Logs")
+    st.markdown("Yahan wo stocks dikhenge jinka data fetch ya calculate karne mein backend par error aayi thi.")
+    
+    # Clear Logs Button
+    col_clear, col_space = st.columns([1, 5])
+    with col_clear:
+        if st.button("🗑️ Clear All Logs", use_container_width=True):
+            try:
+                supabase.table('error_logs').delete().neq('id', 0).execute()
+                st.success("Saare logs clear ho gaye!")
+                time.sleep(1)
+                st.rerun()
+            except Exception as e:
+                st.error("Log delete karne mein error aayi.")
+
+    # Fetch and Display Logs as Text
+    try:
+        log_res = supabase.table('error_logs').select("*").order('created_at', desc=True).limit(100).execute()
+        
+        if log_res.data:
+            st.markdown("---")
+            for log in log_res.data:
+                sym = log.get('symbol', 'UNKNOWN')
+                date_str = log.get('scan_date', 'Unknown Date')
+                err_type = log.get('error_type', 'Error')
+                reason = log.get('reason', 'No reason provided.')
+                
+                # Ekdum Text/Log File jaisa layout
+                st.markdown(f"🚨 **SYMBOL: {sym}** `[{date_str}]`")
+                st.markdown(f"**Error Type:** {err_type}")
+                st.markdown(f"> *{reason}*")
+                st.markdown("---")
+        else:
+            st.success("✅ Sab badhiya hai! Database me koi error logs nahi hain.")
+            
+    except Exception as e:
+        st.error(f"Error fetching logs: {e}")
+
+# --- 📝 GLOBAL TRADER'S SCRATCHPAD (At the very bottom of the page) ---
+st.markdown("<br><br>", unsafe_allow_html=True)
+st.markdown("---")
+st.subheader("📝 Trader's Personal Scratchpad / Sticky Notes")
+st.markdown("*Yahan aap jo bhi likhenge, wo hamesha safe rahega jab tak aap khud manually erase karke save nahi karte.*")
+
+# 1. Supabase se saved notes khinch kar laana
+try:
+    note_res = supabase.table('global_notes').select('note_text').eq('id', 1).execute()
+    if note_res.data:
+        saved_text = note_res.data[0]['note_text']
+    else:
+        saved_text = ""
+except Exception as note_err:
+    saved_text = ""
+    st.error(f"Notes load karne mein dikkat aayi: {note_err}")
+
+# 2. UI Form jisme bada sa text field hai
+with st.form("global_scratchpad_form"):
+    user_notes = st.text_area(
+        label="Apne Daily Market Observations, Rules ya Watchlist yahan likhein:",
+        value=saved_text,
+        height=300,  # Isse dabba bada dikhega
+        placeholder="Type your notes here..."
+    )
+    
+    col_save_btn, col_empty = st.columns([1.5, 4])
+    with col_save_btn:
+        save_note_btn = st.form_submit_button("💾 Save My Notes", use_container_width=True)
+
+    # 3. Save button dabane par database me upsert karna
+    if save_note_btn:
+        try:
+            with st.spinner("Notes ko cloud par safe kar rahe hain..."):
+                supabase.table('global_notes').upsert({"id": 1, "note_text": user_notes}).execute()
+                st.toast("✅ Notes safely locked in Supabase!", icon="💾")
+                time.sleep(0.5)
+                st.rerun()
+        except Exception as save_err:
+            st.error(f"Notes save nahi ho paye: {save_err}")
