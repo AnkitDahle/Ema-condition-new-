@@ -6,6 +6,7 @@ from supabase import create_client, Client
 import logging
 import warnings
 import time
+import requests  # Telegram API ke liye naya import
 
 # Faltu warnings ko mute karna
 warnings.filterwarnings('ignore')
@@ -17,6 +18,30 @@ key = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(url_sb, key)
 
 today_date = datetime.now().strftime("%Y-%m-%d")
+
+# --- 🚀 TELEGRAM SYSTEM SETUP ---
+def send_to_telegram(file_path):
+    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+    
+    if not bot_token or not chat_id:
+        print("⚠️ Telegram credentials (Secrets) nahi mile. File send nahi hui.")
+        return
+
+    url = f"https://api.telegram.org/bot{bot_token}/sendDocument"
+    
+    print("📤 Telegram par file bhej rahe hain...")
+    try:
+        with open(file_path, "rb") as file:
+            payload = {"chat_id": chat_id, "caption": f"📊 Bhai, {today_date} ki Scanner List ready hai! Check karo."}
+            response = requests.post(url, data=payload, files={"document": file})
+            
+        if response.status_code == 200:
+            print("✅ File successfully aapke Telegram par bhej di gayi hai!")
+        else:
+            print(f"❌ Telegram Error: {response.text}")
+    except Exception as e:
+        print(f"❌ File bhejne me error aayi: {e}")
 
 # --- 🚀 Supabase Error Logging System ---
 error_logs_data = []
@@ -199,6 +224,19 @@ if matched_stocks_data:
     except Exception as e:
         print(f"❌ DATABASE ERROR: Stocks save nahi ho paye!")
         log_error("DB_SYSTEM", "SUPABASE_INSERT_FAIL", f"Breakout stocks save error: {e}")
+
+    # --- 🚀 NEW: TELEGRAM NOTIFICATION & EXCEL EXPORT ---
+    try:
+        csv_filename = f"Breakout_Stocks_{today_date}.csv"
+        df_export = pd.DataFrame(matched_stocks_data)
+        
+        # DataFrame ko CSV mein save karna (Bina index number ke)
+        df_export.to_csv(csv_filename, index=False)
+        
+        # Telegram par send karna
+        send_to_telegram(csv_filename)
+    except Exception as e:
+        print(f"❌ Telegram CSV creation/send fail: {e}")
 
 # --- BULK INSERT: ERROR LOGS ---
 if error_logs_data:
