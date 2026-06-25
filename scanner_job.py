@@ -6,7 +6,7 @@ from supabase import create_client, Client
 import logging
 import warnings
 import time
-import requests  # Telegram API ke liye naya import
+import requests
 
 # Faltu warnings ko mute karna
 warnings.filterwarnings('ignore')
@@ -68,6 +68,18 @@ KACHRA_STOCKS = [
     "NIFTYQLIT", "MOVALUE", "ALPHA", "ABSLNN50", "NV20", "GUJRAFFIA", "JSWDULUX"
 ]
 
+# 🚫 NSE SERIES BLACKLIST (Bonds, NCDs, Illiquid, etc.)
+BAD_SERIES = [
+    "AK", "AL", "AM", "AN", "AU", "AV", "AW", "AX", "AY", "AZ", "BA", "BC", "BR", "BS", "BU", "BV", "BW", "BX", "BZ", "D1", "GB", "IV", 
+    "N0", "N1", "N2", "N3", "N4", "N5", "N6", "N7", "N8", "N9", "NA", "NB", "NC", "ND", "NE", "NF", "NG", "NH", "NI", "NJ", "NK", "NL", "NM", "NN", "NO", "NP", "NQ", "NR", "NS", "NT", "NU", "NV", "NW", "NX", "NY", "NZ", 
+    "P1", "RL", "RR", 
+    "Y0", "Y1", "Y2", "Y6", "Y7", "Y8", "Y9", "YA", "YB", "YC", "YD", "YG", "YH", "YI", "YJ", "YK", "YL", "YM", "YP", "YQ", "YR", "YS", "YT", "YU", "YV", "YW", "YX", "YY", "YZ", 
+    "Z0", "Z1", "Z2", "Z3", "Z4", "Z5", "Z6", "Z7", "Z8", "Z9", "ZC", "ZF", "ZG", "ZH", "ZI", "ZJ", "ZK", "ZL", "ZM", "ZN", "ZO", "ZP", "ZQ", "ZR", "ZS", "ZT", "ZY", "ZZ", 
+    "BE"
+]
+# Safety ke liye sabke aage hyphen laga diya taaki asli stocks delete na ho
+BAD_SUFFIXES = tuple(f"-{s}" for s in BAD_SERIES)
+
 # 2. Zerodha API se Master List nikalna
 def get_full_nse_list():
     try:
@@ -86,6 +98,9 @@ def get_full_nse_list():
         for s in nse_symbols:
             s = str(s)
             
+            # Puraane aur Naye Filters
+            if s.endswith(BAD_SUFFIXES): continue
+            if s.endswith("NAV") or s.endswith("INAV"): continue
             if '-SG' in s or '-SF' in s or '-SD' in s or '-GS' in s: continue
             if ' ' in s: continue
             if s.endswith("BEES") or "ETF" in s or "LIQUID" in s: continue
@@ -93,7 +108,7 @@ def get_full_nse_list():
             
             clean_symbols.append(s)
             
-        print(f"✅ Master Filter Applied: Strictly {len(clean_symbols)} premium stocks mil gaye!")
+        print(f"✅ Master Filter Applied: Strictly {len(clean_symbols)} pure equity stocks mil gaye!")
         return clean_symbols
     except Exception as e:
         log_error("API_SYSTEM", "ZERODHA_API_FAIL", f"Zerodha list download nahi ho payi. Error: {e}")
@@ -106,12 +121,14 @@ print(f"🚀 MASTERPLAN BATCH MODE: {len(stocks)} stocks process ho rahe hain...
 
 matched_stocks_data = [] 
 saved_count = 0
-chunk_size = 500  
+chunk_size = 50  
 
 # 3. Batch Calculation
 for i in range(0, len(stocks), chunk_size):
     batch = stocks[i : i + chunk_size]
     print(f"📦 Downloading Batch {i//chunk_size + 1} ({len(batch)} stocks)...")
+    
+    time.sleep(2)  
     
     try:
         batch_data = yf.download(batch, period="2y", interval="1d", threads=True, progress=False)
@@ -119,7 +136,7 @@ for i in range(0, len(stocks), chunk_size):
         if isinstance(batch_data.columns, pd.MultiIndex):
             close_df = batch_data['Close']
             high_df = batch_data['High']
-            vol_df = batch_data['Volume']  # Volume data fetch kar liya
+            vol_df = batch_data['Volume']  
         else:
             log_error(f"BATCH_NO_{i//chunk_size + 1}", "FORMAT_MISMATCH", "Yahoo data MultiIndex format me nahi tha. Batch skip hua.")
             continue
@@ -132,35 +149,33 @@ for i in range(0, len(stocks), chunk_size):
 
                 close_data = close_df[ticker].dropna()
                 high_data = high_df[ticker].dropna()
-                vol_data = vol_df[ticker].dropna()  # Volume data nikal liya
+                vol_data = vol_df[ticker].dropna()  
 
                 if len(close_data) < 22:
                     log_error(ticker, "INSUFFICIENT_HISTORY", f"Sirf {len(close_data)} din ka data hai. Min 22 days zaroori hain.")
                     continue
                 
                 # Math & Moving Averages
-                sma_200 = close_data.rolling(window=200, min_periods=1).mean()
                 sma_50 = close_data.rolling(window=50, min_periods=1).mean()
-                vol_sma_20 = vol_data.rolling(window=20, min_periods=1).mean()  # 20 SMA of Volume
-                turnover_data = close_data * vol_sma_20  # Price * 20 SMA Volume
+                vol_sma_20 = vol_data.rolling(window=20, min_periods=1).mean()  
+                turnover_data = close_data * vol_sma_20  
                 
                 close_22_ago = close_data.shift(22)
                 close_66_ago = close_data.shift(66)
                 max_high_252 = high_data.shift(1).rolling(window=252, min_periods=1).max()
                 
                 close = float(close_data.iloc[-1])
-                sma_200_val = float(sma_200.iloc[-1])
                 sma_50_val = float(sma_50.iloc[-1])
                 max_high = float(max_high_252.iloc[-1])
-                turnover = float(turnover_data.iloc[-1])  # Latest Turnover
+                turnover = float(turnover_data.iloc[-1])  
                 
                 close_22 = float(close_22_ago.iloc[-1]) if pd.notna(close_22_ago.iloc[-1]) else 999999.0
                 close_66 = float(close_66_ago.iloc[-1]) if pd.notna(close_66_ago.iloc[-1]) else 999999.0
                 
                 # 🚀 TURNOVER CONDITION ADDED (> 10 Crore)
-                tech_cond1 = (close / close_22 > 1.2) and (close > sma_200_val) and (turnover > 100000000)
-                tech_cond2 = (close / close_66 >= 1.3) and (close >= 1) and (close > sma_200_val) and (turnover > 100000000)
-                tech_cond3 = (close > max_high * 0.75) and (close > sma_50_val) and (close > sma_200_val) and (turnover > 100000000)
+                tech_cond1 = (close / close_22 > 1.2) and (turnover > 100000000)
+                tech_cond2 = (close / close_66 >= 1.3) and (close >= 1) and (turnover > 100000000)
+                tech_cond3 = (close > max_high * 0.75) and (close > sma_50_val) and (turnover > 100000000)
                 
                 weekly_cond_pass = False
                 weekly_close = close_data.resample('W-FRI').last()
@@ -202,7 +217,7 @@ for i in range(0, len(stocks), chunk_size):
                         "scan_date": today_date,
                         "stock_symbol": symbol_clean,
                         "close_price": round(close, 2),
-                        "turnover_cr": round(turnover / 10000000, 2),  # Wapas original format me update kiya
+                        "turnover_cr": round(turnover / 10000000, 2),  
                         "sector": sector_name,
                         "industry_proxy": proxy_name
                     })
@@ -230,7 +245,7 @@ if matched_stocks_data:
         csv_filename = f"Breakout_Stocks_{today_date}.csv"
         df_export = pd.DataFrame(matched_stocks_data)
         
-        # DataFrame ko CSV mein save karna (Bina index number ke)
+        # DataFrame ko CSV mein save karna
         df_export.to_csv(csv_filename, index=False)
         
         # Telegram par send karna
