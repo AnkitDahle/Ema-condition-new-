@@ -78,7 +78,7 @@ except Exception as e:
     st.error(f"Database Error: {e}")
     raw_data = None
 
-# 5. Tabs Setup (TAB 6 ADD KIYA HAI)
+# 5. Tabs Setup
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📊 Combined Scanner", "⚙️ Strategy Rules", "💡 Trading Guide", "🏢 IPO Tracker", "📓 Trading Journal", "⚠️ Error Logs"])
 
 # --- TAB 1: MAIN SCANNER ---
@@ -138,6 +138,9 @@ with tab1:
         rename_dict = {'scan_date': 'Scan Date', 'stock_symbol': 'Stock Symbol', 'close_price': 'Close Price (₹)', 'turnover_cr': 'Turnover (Cr)', 'sector': 'Sector', 'industry_proxy': 'Proxy / Industry'}
         df.rename(columns=rename_dict, inplace=True)
         
+        # 🚀 YAHAN PAR DUPLICATES HATAYE GAYE HAIN
+        df = df.drop_duplicates(subset=['Scan Date', 'Stock Symbol'], keep='first')
+        
         latest_date = df['Scan Date'].max()
         total_stocks = len(df[df['Scan Date'] == latest_date])
         
@@ -182,7 +185,10 @@ with tab1:
 # --- TAB 2 & 3: Strategy Rules and Guide ---
 with tab2:
     st.header("⚙️ Scanner Rules")
-    st.write("1-Month, 3-Month aur 52-Week High pullback ke saare technical rules apply hote hain.")
+    st.write("📈 **Pure Momentum & Breakout Setup:**")
+    st.write("• 1-Month, 3-Month aur 52-Week High Breakouts par strong focus.")
+    st.write("• High Relative Strength aur heavy volume bursts (Turnover > 10Cr) wale stocks.")
+    st.write("• Strong uptrend (Price apne key EMAs ke upar sustain kar raha ho).")
 with tab3:
     st.header("💡 Trading Guide")
     st.write("Hamesha 2-3% ka Stoploss use karein aur 1:2 Risk Reward ratio follow karein.")
@@ -244,7 +250,6 @@ with tab5:
                 with st.spinner("Saving trade..."):
                     img_url = None
                     if image_file is not None:
-                        # Upload to Cloudinary
                         res = cloudinary.uploader.upload(image_file, folder="trading_journal")
                         img_url = res.get("secure_url")
                     
@@ -262,7 +267,6 @@ with tab5:
     # --- SUB-TAB 2: UPDATE TRADE (Exits & TSL) ---
     with j_tab2:
         try:
-            # Sirf wo trades lao jinki poori 30% quantity abhi exit nahi hui hai (Active Trades)
             active_res = supabase.table('trading_journal').select("*").is_("sold_30_date", "null").execute()
             active_trades = active_res.data
             
@@ -357,7 +361,6 @@ with tab6:
     st.header("⚠️ System Error Logs")
     st.markdown("Yahan wo stocks dikhenge jinka data fetch ya calculate karne mein backend par error aayi thi.")
     
-    # Clear Logs Button
     col_clear, col_space = st.columns([1, 5])
     with col_clear:
         if st.button("🗑️ Clear All Logs", use_container_width=True):
@@ -369,7 +372,6 @@ with tab6:
             except Exception as e:
                 st.error("Log delete karne mein error aayi.")
 
-    # Fetch and Display Logs as Text
     try:
         log_res = supabase.table('error_logs').select("*").order('created_at', desc=True).limit(100).execute()
         
@@ -381,7 +383,6 @@ with tab6:
                 err_type = log.get('error_type', 'Error')
                 reason = log.get('reason', 'No reason provided.')
                 
-                # Ekdum Text/Log File jaisa layout
                 st.markdown(f"🚨 **SYMBOL: {sym}** `[{date_str}]`")
                 st.markdown(f"**Error Type:** {err_type}")
                 st.markdown(f"> *{reason}*")
@@ -398,7 +399,6 @@ st.markdown("---")
 st.subheader("📝 Trader's Personal Scratchpad / Sticky Notes")
 st.markdown("*Yahan aap jo bhi likhenge, wo hamesha safe rahega jab tak aap khud manually erase karke save nahi karte.*")
 
-# 1. Supabase se saved notes khinch kar laana
 try:
     note_res = supabase.table('global_notes').select('note_text').eq('id', 1).execute()
     if note_res.data:
@@ -409,12 +409,11 @@ except Exception as note_err:
     saved_text = ""
     st.error(f"Notes load karne mein dikkat aayi: {note_err}")
 
-# 2. UI Form jisme bada sa text field hai
 with st.form("global_scratchpad_form"):
     user_notes = st.text_area(
         label="Apne Daily Market Observations, Rules ya Watchlist yahan likhein:",
         value=saved_text,
-        height=300,  # Isse dabba bada dikhega
+        height=300,
         placeholder="Type your notes here..."
     )
     
@@ -422,7 +421,6 @@ with st.form("global_scratchpad_form"):
     with col_save_btn:
         save_note_btn = st.form_submit_button("💾 Save My Notes", use_container_width=True)
 
-    # 3. Save button dabane par database me upsert karna
     if save_note_btn:
         try:
             with st.spinner("Notes ko cloud par safe kar rahe hain..."):
