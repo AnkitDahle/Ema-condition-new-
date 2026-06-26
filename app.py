@@ -132,9 +132,9 @@ custom_css = f"""
     }}
     .stTextArea textarea {{ background-color: rgba(0,0,0,0.2) !important; color: white !important; border: 1px solid rgba(255,255,255,0.1) !important; border-radius: 8px !important; }}
     
-    /* Page Headings */
+    /* Page Headings (Kam Bold kiya 800 se 600) */
     .page-heading {{
-        font-size: 28px; font-weight: 800; color: #ffffff;
+        font-size: 28px; font-weight: 600; color: #ffffff;
         margin-top: -10px; margin-bottom: 20px;
         border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 10px;
     }}
@@ -143,7 +143,6 @@ custom_css = f"""
 st.markdown(custom_css, unsafe_allow_html=True)
 
 # 2. 🌟 TOP NAVIGATION BAR
-# 🚀 FIX: Columns ki width thodi badha di taaki font aaram se fit ho jaye
 col_logo, nav1, nav2, nav3, nav4, nav5, space, col_login = st.columns([2.5, 1.2, 1.2, 1.2, 1.2, 1.2, 0.5, 1.5])
 
 with col_logo:
