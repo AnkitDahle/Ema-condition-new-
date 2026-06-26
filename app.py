@@ -45,15 +45,15 @@ custom_css = """
     /* Hide standard header */
     header {visibility: hidden;}
 
-    /* 🌟 NEW: Navbar Button Styling (To match the Image) */
+    /* 🌟 NEW: Navbar Button Styling (Extra Bold Tabs) */
     /* Nav Links (Transparent with Hover effect) */
     button[kind="secondary"] {
         background: transparent !important;
         border: none !important;
         color: #8a93a6 !important;
         box-shadow: none !important;
-        font-weight: 600 !important;
-        font-size: 15px !important;
+        font-weight: 800 !important; /* <-- TABS AB BOLD HAIN */
+        font-size: 16px !important;  /* <-- THODA SIZE BADA KIYA HAI */
         transition: 0.2s;
     }
     button[kind="secondary"]:hover {
@@ -65,7 +65,7 @@ custom_css = """
         background-color: #00e5ff !important;
         color: #000000 !important;
         border-radius: 6px !important;
-        font-weight: 800 !important;
+        font-weight: 900 !important;
         border: none !important;
         padding: 6px 24px !important;
         box-shadow: none !important;
@@ -119,8 +119,7 @@ custom_css = """
 """
 st.markdown(custom_css, unsafe_allow_html=True)
 
-# 2. 🌟 NEW: TOP NAVIGATION BAR (Exact Structure from Image)
-# Columns: Logo(3) | Home(1) | Scanner(1) | Catalyst(1) | IPOs(1) | Journal(1) | Space(0.5) | Login(1.5)
+# 2. 🌟 TOP NAVIGATION BAR (Exact Structure with Logo Hyperlink)
 col_logo, nav1, nav2, nav3, nav4, nav5, space, col_login = st.columns([3, 1, 1, 1, 1, 1, 0.5, 1.5])
 
 with col_logo:
@@ -131,7 +130,7 @@ with col_logo:
                 <path d="M12 2L22 20H2L12 2Z" fill="white"/>
             </svg>
         </div>
-        <div style="font-size: 22px; font-weight: 800; color: white; letter-spacing: 0.5px;">AlphaSwing</div>
+        <a href="/" target="_self" style="font-size: 22px; font-weight: 800; color: white; letter-spacing: 0.5px; text-decoration: none;">AlphaSwing</a>
     </div>
     """, unsafe_allow_html=True)
 
@@ -217,7 +216,6 @@ if st.session_state.current_page == "Home":
     )
 
 elif st.session_state.current_page == "Scanner":
-    # Run Scan Button - Made Smaller
     col_run, col_empty = st.columns([1.2, 6])
     with col_run:
         st.markdown("<div class='btn-run-scan'>", unsafe_allow_html=True)
@@ -242,14 +240,12 @@ elif st.session_state.current_page == "Scanner":
         latest_date = df['Scan Date'].max()
         total_stocks = len(df[df['Scan Date'] == latest_date])
         
-        # Metrics - Smaller Font
         m1, m2, m3 = st.columns([1, 1, 3])
         with m1: st.metric("📅 Last Scan Date", str(latest_date))
         with m2: st.metric("🎯 Breakout Count", f"{total_stocks}")
         
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # Filters and Download aligned up
         f_col1, f_col2, f_col3, f_col4 = st.columns([1.5, 1.5, 1.5, 1.2])
         with f_col1: selected_date = st.selectbox("📅 Scan Date", sorted(df['Scan Date'].unique(), reverse=True))
         df_filtered = df[df['Scan Date'] == selected_date]
