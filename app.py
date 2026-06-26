@@ -51,11 +51,13 @@ custom_css = f"""
        🌟 EXACT NAVBAR FIX (ATLAS / SCREENS / CHARTS STYLE) 
        --------------------------------------------------- */
     
-    /* 1. Make all navbar buttons transparent */
+    /* 1. Make all navbar buttons transparent and PREVENT WRAPPING */
     div[data-testid="stHorizontalBlock"]:first-of-type div.stButton > button {{
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
+        white-space: nowrap !important; /* 🚀 Text niche wrap nahi hoga */
+        min-width: fit-content !important; 
     }}
 
     /* 2. Style the hidden <p> tag inside INACTIVE buttons */
@@ -65,6 +67,7 @@ custom_css = f"""
         font-size: 19px !important;     /* Size matching image */
         letter-spacing: 0.5px;
         transition: color 0.2s ease;
+        white-space: nowrap !important; /* 🚀 Force single line */
     }}
     
     /* Hover effect for inactive buttons */
@@ -83,11 +86,13 @@ custom_css = f"""
         background-color: #00e5ff !important;
         border-radius: 6px !important;
         padding: 6px 24px !important;
+        white-space: nowrap !important;
     }}
     div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stColumn"]:last-child div.stButton > button p {{
         color: #000000 !important;      /* Black text on Cyan */
         font-weight: 900 !important;
         font-size: 15px !important;
+        white-space: nowrap !important;
     }}
     div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stColumn"]:last-child div.stButton > button:hover {{
         background-color: #00bfff !important;
@@ -138,7 +143,8 @@ custom_css = f"""
 st.markdown(custom_css, unsafe_allow_html=True)
 
 # 2. 🌟 TOP NAVIGATION BAR
-col_logo, nav1, nav2, nav3, nav4, nav5, space, col_login = st.columns([3, 1, 1, 1, 1, 1, 0.5, 1.5])
+# 🚀 FIX: Columns ki width thodi badha di taaki font aaram se fit ho jaye
+col_logo, nav1, nav2, nav3, nav4, nav5, space, col_login = st.columns([2.5, 1.2, 1.2, 1.2, 1.2, 1.2, 0.5, 1.5])
 
 with col_logo:
     st.markdown("""
@@ -427,7 +433,11 @@ elif st.session_state.current_page == "Journal":
                     if tr.get('sold_50_price'): st.success(f"**50% Booked @ ₹{tr['sold_50_price']}**")
                     if tr.get('sold_30_price'): st.success(f"**30% Final Booked @ ₹{tr['sold_30_price']}**")
                 st.markdown("</div>", unsafe_allow_html=True)
-        else: st.info("Journal is empty.")
+        else:
+            st.info("Journal is empty.")
+            
+    with st.expander("⚠️ System Error Logs"):
+        if st.button("Clear Logs"): st.success("Cleared!")
 
 # ==========================================
 # 📝 GLOBAL NOTES (Always visible at bottom)
