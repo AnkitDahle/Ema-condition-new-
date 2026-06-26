@@ -90,7 +90,7 @@ custom_css = """
         border-radius: 8px;
         font-weight: bold;
         border: none;
-        padding: 4px 12px; /* Smaller button */
+        padding: 4px 12px; 
         transition: all 0.3s ease;
         box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         font-size: 14px !important;
@@ -120,7 +120,7 @@ custom_css = """
         backdrop-filter: blur(5px);
     }
     div[data-testid="stMetricValue"] {
-        font-size: 1.4rem !important; /* Smaller metric number */
+        font-size: 1.4rem !important; 
         color: #e2e8f0;
     }
     div[data-testid="stMetricLabel"] {
@@ -143,6 +143,16 @@ custom_css = """
     div[data-baseweb="tab"][aria-selected="true"] {
         background: rgba(255, 255, 255, 0.1);
         color: #ffffff;
+    }
+    
+    /* RESTORED: Journal Card Styling */
+    .journal-card { 
+        background: rgba(0,0,0,0.2); 
+        border: 1px solid rgba(255,255,255,0.05); 
+        padding: 20px; 
+        border-radius: 12px; 
+        margin-bottom: 20px; 
+        backdrop-filter: blur(5px);
     }
 
     /* Hide standard header */
@@ -344,7 +354,6 @@ with tab4:
         filtered_ipo = fil
         if selected_ipo_stock != "All IPOs": filtered_ipo = filtered_ipo[filtered_ipo['stock_symbol'] == selected_ipo_stock]
         
-        # 🐛 THE FIX IS HERE: Pehle sort karo, phir column name change karo
         display_ipo = filtered_ipo[['stock_symbol', 'company_name', 'listing_date']].sort_values(by='listing_date', ascending=False)
         display_ipo.columns = ['Symbol', 'Company Name', 'Listing Date']
         
@@ -357,19 +366,140 @@ with tab4:
             
         st.dataframe(display_ipo, use_container_width=True, hide_index=True, height=350)
 
-# --- TAB 5: TRADING JOURNAL ---
+# --- TAB 5: TRADING JOURNAL (RESTORED PRO VERSION) ---
 with tab5:
-    j_tab1, j_tab3 = st.tabs(["➕ Add Trade", "📚 Gallery"])
+    st.header("📓 Pro Trading Journal (20-50-30 Rule)")
+    
+    j_tab1, j_tab2, j_tab3 = st.tabs(["➕ New Trade Entry", "🔄 Update Exits & TSL", "📚 Journal Gallery"])
+    
+    # --- SUB-TAB 1: NEW TRADE ---
     with j_tab1:
-        with st.form("new_trade_form"):
-            c1, c2 = st.columns(2)
+        with st.form("new_trade_form", clear_on_submit=True):
+            st.subheader("Enter New Trade Details")
+            c1, c2, c3 = st.columns(3)
             with c1:
-                symbol = st.text_input("Stock").upper()
-                buying_price = st.number_input("Buy Price", min_value=0.0)
+                symbol = st.text_input("Stock Symbol (e.g., RELIANCE)").upper()
+                quantity = st.number_input("Total Quantity", min_value=1, step=1)
             with c2:
-                quantity = st.number_input("Qty", min_value=1)
-                initial_sl = st.number_input("Stoploss", min_value=0.0)
-            if st.form_submit_button("Save Trade") and symbol: st.success("Trade saved.")
+                buying_date = st.date_input("Buying Date", datetime.date.today())
+                buying_price = st.number_input("Buying Price (₹)", min_value=0.0, step=0.1, format="%.2f")
+            with c3:
+                initial_sl = st.number_input("Initial Stoploss (₹)", min_value=0.0, step=0.1, format="%.2f")
+            
+            trade_logic = st.text_area("Trade Logic (Setup, EMA, Breakout, etc.)")
+            image_file = st.file_uploader("Upload Chart Screenshot (Optional)", type=['png', 'jpg', 'jpeg'])
+            
+            submit_trade = st.form_submit_button("💾 Save Trade", use_container_width=True)
+            
+            if submit_trade and symbol and quantity > 0 and buying_price > 0:
+                with st.spinner("Saving trade..."):
+                    img_url = None
+                    if image_file is not None:
+                        res = cloudinary.uploader.upload(image_file, folder="trading_journal")
+                        img_url = res.get("secure_url")
+                    
+                    data = {
+                        "symbol": symbol, "total_quantity": quantity, "buying_date": str(buying_date),
+                        "buying_price": float(buying_price), "initial_sl": float(initial_sl),
+                        "trade_logic": trade_logic, "image_url": img_url
+                    }
+                    try:
+                        supabase.table('trading_journal').insert(data).execute()
+                        st.success(f"✅ Trade {symbol} saved successfully!")
+                    except Exception as e:
+                        st.error(f"Error saving data: {e}")
+
+    # --- SUB-TAB 2: UPDATE TRADE (Exits & TSL) ---
+    with j_tab2:
+        try:
+            active_res = supabase.table('trading_journal').select("*").is_("sold_30_date", "null").execute()
+            active_trades = active_res.data
+            
+            if active_trades:
+                trade_options = {f"{t['symbol']} (Bought: {t['buying_date']} @ ₹{t['buying_price']})": t for t in active_trades}
+                selected_trade_label = st.selectbox("🎯 Select Active Trade to Update", list(trade_options.keys()))
+                t = trade_options[selected_trade_label]
+                
+                st.markdown(f"**Current Total Quantity:** {t['total_quantity']} | **Buy Price:** ₹{t['buying_price']}")
+                
+                with st.form("update_trade_form"):
+                    st.markdown("### 1️⃣ 20% Quantity Booking")
+                    c1, c2, c3 = st.columns(3)
+                    with c1: s20_date = st.date_input("20% Sold Date", value=None)
+                    with c2: s20_price = st.number_input("20% Sold Price", value=float(t['sold_20_price'] or 0.0))
+                    with c3:
+                        st.caption("💡 Leave 0 to auto-shift SL to Breakeven")
+                        sl_20 = st.number_input("New SL After 20%", value=float(t['sl_after_20'] or 0.0))
+                        
+                    st.markdown("### 2️⃣ 50% Quantity Booking")
+                    c4, c5, c6 = st.columns(3)
+                    with c4: s50_date = st.date_input("50% Sold Date", value=None)
+                    with c5: s50_price = st.number_input("50% Sold Price", value=float(t['sold_50_price'] or 0.0))
+                    with c6: sl_50 = st.number_input("New TSL After 50%", value=float(t['sl_after_50'] or 0.0))
+                    
+                    st.markdown("### 3️⃣ Final 30% Quantity Booking")
+                    c7, c8 = st.columns(2)
+                    with c7: s30_date = st.date_input("30% Sold Date", value=None)
+                    with c8: s30_price = st.number_input("30% Sold Price", value=float(t['sold_30_price'] or 0.0))
+
+                    update_btn = st.form_submit_button("🔄 Update Exits & SL")
+                    
+                    if update_btn:
+                        final_sl_20 = sl_20
+                        if s20_price > 0 and sl_20 == 0:
+                            final_sl_20 = float(t['buying_price'])
+                            st.toast("Auto-shifted SL to Breakeven!")
+
+                        update_data = {
+                            "sold_20_date": str(s20_date) if s20_price > 0 else None, "sold_20_price": s20_price if s20_price > 0 else None, "sl_after_20": final_sl_20 if final_sl_20 > 0 else None,
+                            "sold_50_date": str(s50_date) if s50_price > 0 else None, "sold_50_price": s50_price if s50_price > 0 else None, "sl_after_50": sl_50 if sl_50 > 0 else None,
+                            "sold_30_date": str(s30_date) if s30_price > 0 else None, "sold_30_price": s30_price if s30_price > 0 else None,
+                        }
+                        supabase.table('trading_journal').update(update_data).eq('id', t['id']).execute()
+                        st.success("Trade updated successfully!")
+                        time.sleep(1)
+                        st.rerun()
+            else:
+                st.info("No active trades found. Add a trade first.")
+        except Exception as e:
+            st.error(f"Error fetching active trades: {e}")
+
+    # --- SUB-TAB 3: JOURNAL GALLERY ---
+    with j_tab3:
+        try:
+            all_trades_res = supabase.table('trading_journal').select("*").order('buying_date', desc=True).execute()
+            all_trades = all_trades_res.data
+            
+            if all_trades:
+                for tr in all_trades:
+                    st.markdown("<div class='journal-card'>", unsafe_allow_html=True)
+                    g1, g2 = st.columns([1, 2])
+                    
+                    with g1:
+                        if tr.get('image_url'):
+                            st.image(tr['image_url'], use_container_width=True)
+                        else:
+                            st.info("No chart uploaded.")
+                    with g2:
+                        st.subheader(f"🚀 {tr['symbol']}")
+                        st.write(f"**Date:** {tr['buying_date']} | **Buy Price:** ₹{tr['buying_price']} | **Qty:** {tr['total_quantity']}")
+                        st.write(f"**Logic:** {tr['trade_logic']}")
+                        
+                        if tr.get('sold_20_price'):
+                            ret_20 = ((tr['sold_20_price'] - tr['buying_price']) / tr['buying_price']) * 100
+                            st.success(f"**20% Booked @ ₹{tr['sold_20_price']} (Return: {ret_20:.2f}%)**")
+                        if tr.get('sold_50_price'):
+                            ret_50 = ((tr['sold_50_price'] - tr['buying_price']) / tr['buying_price']) * 100
+                            st.success(f"**50% Booked @ ₹{tr['sold_50_price']} (Return: {ret_50:.2f}%)**")
+                        if tr.get('sold_30_price'):
+                            ret_30 = ((tr['sold_30_price'] - tr['buying_price']) / tr['buying_price']) * 100
+                            st.success(f"**30% Final Booked @ ₹{tr['sold_30_price']} (Return: {ret_30:.2f}%)**")
+                            
+                    st.markdown("</div>", unsafe_allow_html=True)
+            else:
+                st.info("Journal khali hai. Start trading!")
+        except Exception as e:
+            st.error(f"Error loading gallery: {e}")
 
 # --- TAB 6: LOGS ---
 with tab6:
