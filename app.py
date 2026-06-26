@@ -201,7 +201,7 @@ with tab4:
         if ipo_res.data:
             df_ipo = pd.DataFrame(ipo_res.data)
             
-            # --- 🚀 UPDATED: 3 CLEAN METRICS (Today, This Month, Since January) ---
+            # --- 🚀 UPDATED: 2 CLEAN METRICS (Today, This Month) ---
             if 'listing_date' in df_ipo.columns:
                 df_ipo['calc_date'] = pd.to_datetime(df_ipo['listing_date'], errors='coerce')
                 
@@ -210,17 +210,14 @@ with tab4:
                 # Calculations
                 today_listed_count = len(df_ipo[df_ipo['calc_date'].dt.date == today])
                 this_month_count = len(df_ipo[(df_ipo['calc_date'].dt.month == today.month) & (df_ipo['calc_date'].dt.year == today.year)])
-                since_jan_count = len(df_ipo[df_ipo['calc_date'].dt.year == today.year]) # January se lekar ab tak (This Year)
                 
-                # Metrics UI Display (3 Columns)
+                # Metrics UI Display (2 Columns)
                 st.markdown("### 📊 IPO Market Overview")
-                m1, m2, m3 = st.columns(3)
+                m1, m2 = st.columns(2)
                 with m1:
                     st.metric(label="Today Listed", value=today_listed_count)
                 with m2:
                     st.metric(label="This Month", value=this_month_count)
-                with m3:
-                    st.metric(label="Since January (This Year)", value=since_jan_count)
                 
                 st.divider()
             # ----------------------------------------------------
