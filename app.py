@@ -16,7 +16,7 @@ st.set_page_config(page_title="AlphaSwing Pro", layout="wide", page_icon="📈",
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "Home"
 
-# --- 🎨 UI ENGINE: ANIMATED BG (LOCKED) + NEW NAVBAR STYLES ---
+# --- 🎨 UI ENGINE: ANIMATED BG (LOCKED) + EXACT IMAGE NAVBAR STYLES ---
 custom_css = """
 <style>
     /* Global Font Size Increase */
@@ -45,22 +45,20 @@ custom_css = """
     /* Hide standard header */
     header {visibility: hidden;}
 
-    /* 🌟 BASE NAVBAR STYLING */
-    /* Nav Links (Transparent Base) */
+    /* 🌟 BASE NAVBAR STYLING (INACTIVE TABS) */
     button[kind="secondary"] {
         background: transparent !important;
         border: none !important;
-        color: #8a93a6 !important;
+        color: #7b8fa3 !important; /* Muted blue-grey color just like 'Atlas' or 'Charts' */
         box-shadow: none !important;
-        font-weight: 800 !important; /* BOLD FONT */
-        font-size: 18px !important;  /* BADA SIZE */
+        font-weight: 500 !important; /* Normal font weight for inactive */
+        font-size: 19px !important;  
         letter-spacing: 0.5px !important;
-        transition: all 0.3s ease;
+        transition: color 0.2s ease;
     }
     button[kind="secondary"]:hover {
-        color: #ffffff !important;
-        background-color: rgba(255,255,255,0.05) !important;
-        border-radius: 8px !important;
+        color: #cdd6e0 !important; /* Slight glow on hover */
+        background: transparent !important;
     }
 
     /* Action Button (Cyan 'Get Started' Style) */
@@ -86,7 +84,7 @@ custom_css = """
         font-size: 14px !important;
     }
 
-    /* Metric Adjustments (Smaller Font for Data) */
+    /* Metric Adjustments */
     div[data-testid="metric-container"] {
         background: rgba(0, 0, 0, 0.2);
         border: 1px solid rgba(255, 255, 255, 0.05);
@@ -148,17 +146,16 @@ with col_logo:
     </div>
     """, unsafe_allow_html=True)
 
-# 🌟 NEW: SMART CSS TO HIGHLIGHT THE ACTIVE PAGE LINK
+# 🌟 NEW: EXACT HIGHLIGHT FOR ACTIVE PAGE (LIKE "SCREENS" IN YOUR IMAGE)
 pages = ['Home', 'Scanner', 'Catalyst', 'IPOs', 'Journal']
 active_index = pages.index(st.session_state.current_page) + 2 # +2 because Logo is col 1
 st.markdown(f"""
     <style>
-    /* 🔥 HIGHLIGHT FOR ACTIVE TAB 🔥 */
+    /* 🔥 ACTIVE TAB: Pure White and Extra Bold 🔥 */
     div[data-testid="column"]:nth-child({active_index}) button {{
-        color: #00e5ff !important;
-        background-color: rgba(0, 229, 255, 0.15) !important;
-        border-radius: 8px !important;
-        text-shadow: 0px 0px 10px rgba(0, 229, 255, 0.3);
+        color: #ffffff !important;
+        font-weight: 800 !important;
+        background: transparent !important; /* No box background */
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -234,7 +231,6 @@ if st.session_state.current_page == "Home":
     )
 
 elif st.session_state.current_page == "Scanner":
-    # 🌟 PAGE HEADING
     st.markdown("<div class='page-heading'>📊 Scanner</div>", unsafe_allow_html=True)
     
     col_run, col_empty = st.columns([1.2, 6])
@@ -293,7 +289,6 @@ elif st.session_state.current_page == "Scanner":
             st.write("• 1-Month, 3-Month & 52-Week High Breakouts. | • Heavy volume bursts (Turnover > 10Cr). | • Uptrend (Price sustained above key EMAs).")
 
 elif st.session_state.current_page == "Catalyst":
-    # 🌟 PAGE HEADING
     st.markdown("<div class='page-heading'>🔥 Catalyst</div>", unsafe_allow_html=True)
     
     default_idx = master_symbol_list.index("RELIANCE") if "RELIANCE" in master_symbol_list else 0
@@ -330,7 +325,6 @@ elif st.session_state.current_page == "Catalyst":
     """, height=50)
 
 elif st.session_state.current_page == "IPOs":
-    # 🌟 PAGE HEADING
     st.markdown("<div class='page-heading'>🏢 IPOs</div>", unsafe_allow_html=True)
     
     if raw_ipo_data:
@@ -368,7 +362,6 @@ elif st.session_state.current_page == "IPOs":
         st.dataframe(display_ipo, use_container_width=True, hide_index=True, height=400)
 
 elif st.session_state.current_page == "Journal":
-    # 🌟 PAGE HEADING
     st.markdown("<div class='page-heading'>📓 Journal</div>", unsafe_allow_html=True)
     
     j_tab1, j_tab2, j_tab3 = st.tabs(["➕ New Trade Entry", "🔄 Update Exits", "📚 Journal Gallery"])
