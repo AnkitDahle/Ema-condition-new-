@@ -201,9 +201,10 @@ with tab4:
         if ipo_res.data:
             df_ipo = pd.DataFrame(ipo_res.data)
             
-            # --- 🚀 UPDATED: 2 CLEAN METRICS (Today, This Month) ---
             if 'listing_date' in df_ipo.columns:
                 df_ipo['calc_date'] = pd.to_datetime(df_ipo['listing_date'], errors='coerce')
+                # Mahine ka naam extract karne ke liye
+                df_ipo['Month'] = df_ipo['calc_date'].dt.strftime('%B')
                 
                 today = pd.to_datetime('today').date()
                 
@@ -220,26 +221,42 @@ with tab4:
                     st.metric(label="This Month", value=this_month_count)
                 
                 st.divider()
-            # ----------------------------------------------------
 
-            col_y1, col_y2, col_y3 = st.columns([1.5, 1.5, 3])
+            # --- 🚀 NEW: YEAR AND MONTH FILTERS ---
+            col_y1, col_m1, col_y2, col_y3 = st.columns([1.5, 1.5, 1.5, 2.5])
+            
             with col_y1:
                 years = sorted(df_ipo['listing_year'].dropna().unique(), reverse=True)
                 selected_year = st.selectbox("📅 Select IPO Year:", years)
+                
+            with col_m1:
+                months = ["All Months", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+                selected_month = st.selectbox("🗓️ Select Month:", months)
             
+            # Apply Filters
             filtered_ipo = df_ipo[df_ipo['listing_year'] == selected_year]
+            
+            if selected_month != "All Months":
+                filtered_ipo = filtered_ipo[filtered_ipo['Month'] == selected_month]
+                
             display_ipo = filtered_ipo[['stock_symbol', 'company_name', 'listing_date']]
             display_ipo.columns = ['Symbol', 'Company Name', 'Listing Date']
             display_ipo = display_ipo.sort_values(by='Listing Date', ascending=False)
             
-            with col_y2: st.metric(label=f"Total IPOs ({selected_year})", value=len(display_ipo))
+            with col_y2: 
+                st.metric(label=f"Total IPOs", value=len(display_ipo))
+                
             st.dataframe(display_ipo, use_container_width=True, hide_index=True, height=400)
             
             if not display_ipo.empty:
                 tv_ipo_text = ""
                 for symbol in display_ipo['Symbol']: tv_ipo_text += f"NSE:{symbol}\n"
                 col_i1, col_i2, col_i3 = st.columns([1, 2, 1])
-                with col_i2: st.download_button(f"📥 Download {selected_year} IPO Watchlist (.txt)", data=tv_ipo_text, file_name=f"IPO_Watchlist_{selected_year}.txt", mime="text/plain", use_container_width=True)
+                
+                with col_i2: 
+                    btn_label = f"📥 Download {selected_year} {selected_month if selected_month != 'All Months' else ''} Watchlist (.txt)"
+                    file_name = f"IPO_Watchlist_{selected_year}_{selected_month}.txt"
+                    st.download_button(btn_label, data=tv_ipo_text, file_name=file_name, mime="text/plain", use_container_width=True)
     except Exception as e:
         st.error(f"Database Error: {e}")
 
