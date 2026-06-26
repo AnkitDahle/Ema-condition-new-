@@ -132,7 +132,7 @@ custom_css = f"""
     }}
     .stTextArea textarea {{ background-color: rgba(0,0,0,0.2) !important; color: white !important; border: 1px solid rgba(255,255,255,0.1) !important; border-radius: 8px !important; }}
     
-    /* Page Headings (Kam Bold kiya 800 se 600) */
+    /* Page Headings */
     .page-heading {{
         font-size: 28px; font-weight: 600; color: #ffffff;
         margin-top: -10px; margin-bottom: 20px;
@@ -226,18 +226,6 @@ if st.session_state.current_page == "Home":
 elif st.session_state.current_page == "Scanner":
     st.markdown("<div class='page-heading'>📊 Scanner</div>", unsafe_allow_html=True)
     
-    col_run, col_empty = st.columns([1.2, 6])
-    with col_run:
-        if st.button("🚀 Run Scan", use_container_width=True):
-            with st.spinner("Scanning..."):
-                try:
-                    token = st.secrets["GITHUB_TOKEN"]
-                    repo = st.secrets["GITHUB_REPO"]
-                    requests.post(f"https://api.github.com/repos/{repo}/actions/workflows/daily_scan.yml/dispatches", headers={"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"}, json={"ref": "main"})
-                    time.sleep(2)
-                    st.success("✅ Initiated!")
-                except Exception as e: st.error(f"❌ Error: {e}")
-
     if raw_data:
         df = pd.DataFrame(raw_data)
         cols_to_keep = ['scan_date', 'stock_symbol', 'close_price', 'turnover_cr', 'sector', 'industry_proxy']
@@ -254,7 +242,9 @@ elif st.session_state.current_page == "Scanner":
         
         st.markdown("<br>", unsafe_allow_html=True)
         
-        f_col1, f_col2, f_col3, f_col4 = st.columns([1.5, 1.5, 1.5, 1.2])
+        # 🚀 FIX: Run Scan and Download Button placed together
+        f_col1, f_col2, f_col3, f_col_run, f_col_dl = st.columns([1.3, 1.3, 1.4, 1.0, 1.0])
+        
         with f_col1: selected_date = st.selectbox("📅 Scan Date", sorted(df['Scan Date'].unique(), reverse=True))
         df_filtered = df[df['Scan Date'] == selected_date]
         
@@ -264,13 +254,27 @@ elif st.session_state.current_page == "Scanner":
         if selected_sector != "All Sectors": df_filtered = df_filtered[df_filtered['Sector'] == selected_sector]
         if selected_stock != "All Stocks": df_filtered = df_filtered[df_filtered['Stock Symbol'] == selected_stock]
 
+        # NEW: Run Scan button moved here, just before download
+        with f_col_run:
+            st.markdown("<div style='margin-top: 28px;' class='btn-run-scan'>", unsafe_allow_html=True)
+            if st.button("🚀 Run Scan", use_container_width=True):
+                with st.spinner("Scanning..."):
+                    try:
+                        token = st.secrets["GITHUB_TOKEN"]
+                        repo = st.secrets["GITHUB_REPO"]
+                        requests.post(f"https://api.github.com/repos/{repo}/actions/workflows/daily_scan.yml/dispatches", headers={"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"}, json={"ref": "main"})
+                        time.sleep(2)
+                        st.success("✅ Initiated!")
+                    except Exception as e: st.error(f"❌ Error: {e}")
+            st.markdown("</div>", unsafe_allow_html=True)
+
         tv_text = ""
         if not df_filtered.empty:
             for (sec, proxy), group in df_filtered.sort_values(by=['Sector', 'Proxy / Industry']).groupby(['Sector', 'Proxy / Industry']):
                 tv_text += f"### {sec} / {proxy}\n"
                 for sym in group['Stock Symbol']: tv_text += f"NSE:{sym}\n"
         
-        with f_col4:
+        with f_col_dl:
             st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
             st.download_button("📥 Watchlist (.txt)", data=tv_text, file_name=f"AlphaSwing_{selected_date}.txt", mime="text/plain", use_container_width=True)
 
