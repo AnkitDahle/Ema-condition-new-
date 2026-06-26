@@ -56,29 +56,29 @@ custom_css = f"""
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
-        white-space: nowrap !important; /* 🚀 Text niche wrap nahi hoga */
+        white-space: nowrap !important; 
         min-width: fit-content !important; 
     }}
 
     /* 2. Style the hidden <p> tag inside INACTIVE buttons */
     div[data-testid="stHorizontalBlock"]:first-of-type div.stButton > button p {{
-        color: #7b8fa3 !important;      /* Muted Blue-Grey */
-        font-weight: 500 !important;    /* Normal Weight */
-        font-size: 19px !important;     /* Size matching image */
+        color: #7b8fa3 !important;      
+        font-weight: 500 !important;    
+        font-size: 19px !important;     
         letter-spacing: 0.5px;
         transition: color 0.2s ease;
-        white-space: nowrap !important; /* 🚀 Force single line */
+        white-space: nowrap !important; 
     }}
     
     /* Hover effect for inactive buttons */
     div[data-testid="stHorizontalBlock"]:first-of-type div.stButton > button:hover p {{
-        color: #cdd6e0 !important;      /* Glows slightly on hover */
+        color: #cdd6e0 !important;      
     }}
 
     /* 3. 🔥 ACTIVE TAB STYLE (Pure White & Ultra Bold) 🔥 */
     div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stColumn"]:nth-child({active_index}) div.stButton > button p {{
-        color: #ffffff !important;      /* Pure White Text */
-        font-weight: 900 !important;    /* Extra Bhaari / Bold */
+        color: #ffffff !important;      
+        font-weight: 900 !important;    
     }}
 
     /* 4. Login / Get Started Button (Cyan Color) */
@@ -89,7 +89,7 @@ custom_css = f"""
         white-space: nowrap !important;
     }}
     div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stColumn"]:last-child div.stButton > button p {{
-        color: #000000 !important;      /* Black text on Cyan */
+        color: #000000 !important;      
         font-weight: 900 !important;
         font-size: 15px !important;
         white-space: nowrap !important;
@@ -99,18 +99,34 @@ custom_css = f"""
     }}
 
     /* ---------------------------------------------------
-       🌟 GENERAL APP STYLING
+       🌟 GENERAL APP STYLING (Run Scan & Watchlist Box)
        --------------------------------------------------- */
        
-    /* Regular Buttons (Run Scan, Save, Clear) */
+    /* 🚀 Run Scan & Watchlist Download Buttons (Box Style, Kam Bold) */
     div[data-testid="stHorizontalBlock"]:nth-of-type(n+2) div.stButton > button, 
+    div[data-testid="stDownloadButton"] > button {{
+        background: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        color: #e2e8f0 !important;
+        border-radius: 8px !important;
+        font-weight: 500 !important; /* Thoda kam bold kiya */
+        box-shadow: none !important;
+        transition: all 0.2s ease;
+    }}
+    div[data-testid="stHorizontalBlock"]:nth-of-type(n+2) div.stButton > button:hover, 
+    div[data-testid="stDownloadButton"] > button:hover {{
+        background: rgba(255, 255, 255, 0.1) !important;
+        border-color: #00e5ff !important; /* Cyan highlight on hover */
+        color: #ffffff !important;
+    }}
+
+    /* Forms (Save Trade, Update) Buttons as Premium Gradient */
     div.stForm div.stButton > button {{
         background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%) !important;
         color: white !important;
-        border-radius: 6px !important;
-        font-weight: bold !important;
+        border-radius: 8px !important;
+        font-weight: 700 !important;
         border: none !important;
-        padding: 4px 12px !important;
     }}
     
     /* Metrics Boxes */
@@ -242,7 +258,7 @@ elif st.session_state.current_page == "Scanner":
         
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # 🚀 FIX: Run Scan and Download Button placed together
+        # Run Scan and Download Button placed together
         f_col1, f_col2, f_col3, f_col_run, f_col_dl = st.columns([1.3, 1.3, 1.4, 1.0, 1.0])
         
         with f_col1: selected_date = st.selectbox("📅 Scan Date", sorted(df['Scan Date'].unique(), reverse=True))
@@ -254,9 +270,9 @@ elif st.session_state.current_page == "Scanner":
         if selected_sector != "All Sectors": df_filtered = df_filtered[df_filtered['Sector'] == selected_sector]
         if selected_stock != "All Stocks": df_filtered = df_filtered[df_filtered['Stock Symbol'] == selected_stock]
 
-        # NEW: Run Scan button moved here, just before download
+        # Run Scan button (Box style matched via CSS automatically)
         with f_col_run:
-            st.markdown("<div style='margin-top: 28px;' class='btn-run-scan'>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
             if st.button("🚀 Run Scan", use_container_width=True):
                 with st.spinner("Scanning..."):
                     try:
@@ -266,7 +282,6 @@ elif st.session_state.current_page == "Scanner":
                         time.sleep(2)
                         st.success("✅ Initiated!")
                     except Exception as e: st.error(f"❌ Error: {e}")
-            st.markdown("</div>", unsafe_allow_html=True)
 
         tv_text = ""
         if not df_filtered.empty:
@@ -274,6 +289,7 @@ elif st.session_state.current_page == "Scanner":
                 tv_text += f"### {sec} / {proxy}\n"
                 for sym in group['Stock Symbol']: tv_text += f"NSE:{sym}\n"
         
+        # Download button (Box style matched via CSS automatically)
         with f_col_dl:
             st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
             st.download_button("📥 Watchlist (.txt)", data=tv_text, file_name=f"AlphaSwing_{selected_date}.txt", mime="text/plain", use_container_width=True)
