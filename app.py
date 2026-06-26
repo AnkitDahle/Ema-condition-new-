@@ -48,25 +48,59 @@ custom_css = f"""
     header {{visibility: hidden;}}
 
     /* ---------------------------------------------------
-       🌟 EXACT NAVBAR FIX (ATLAS / SCREENS / CHARTS STYLE) 
+       🌟 1. GLOBAL BUTTON STYLES (RUN SCAN & WATCHLIST)
        --------------------------------------------------- */
     
-    /* 1. Make all navbar buttons transparent and PREVENT WRAPPING */
+    /* Box style & border for both regular buttons and download buttons */
+    div.stButton > button,
+    div[data-testid="stDownloadButton"] > button {{
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        border-radius: 8px !important;
+        box-shadow: none !important;
+        transition: all 0.2s ease !important;
+        padding: 6px 12px !important;
+    }}
+    
+    /* Font style for both (Kam bold) */
+    div.stButton > button p,
+    div[data-testid="stDownloadButton"] > button p {{
+        font-weight: 500 !important; 
+        font-size: 15px !important;
+        color: #e2e8f0 !important;
+        margin: 0 !important;
+    }}
+
+    /* Hover effect for both */
+    div.stButton > button:hover,
+    div[data-testid="stDownloadButton"] > button:hover {{
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        border-color: #00e5ff !important;
+    }}
+    div.stButton > button:hover p,
+    div[data-testid="stDownloadButton"] > button:hover p {{
+        color: #ffffff !important;
+    }}
+
+
+    /* ---------------------------------------------------
+       🌟 2. OVERRIDE: NAVBAR STYLING 
+       --------------------------------------------------- */
+    
+    /* Make navbar buttons transparent and PREVENT WRAPPING */
     div[data-testid="stHorizontalBlock"]:first-of-type div.stButton > button {{
         background: transparent !important;
         border: none !important;
-        box-shadow: none !important;
         white-space: nowrap !important; 
         min-width: fit-content !important; 
     }}
 
-    /* 2. Style the hidden <p> tag inside INACTIVE buttons */
+    /* INACTIVE buttons style */
     div[data-testid="stHorizontalBlock"]:first-of-type div.stButton > button p {{
         color: #7b8fa3 !important;      
         font-weight: 500 !important;    
         font-size: 19px !important;     
         letter-spacing: 0.5px;
-        transition: color 0.2s ease;
         white-space: nowrap !important; 
     }}
     
@@ -75,60 +109,42 @@ custom_css = f"""
         color: #cdd6e0 !important;      
     }}
 
-    /* 3. 🔥 ACTIVE TAB STYLE (Pure White & Ultra Bold) 🔥 */
+    /* 🔥 ACTIVE TAB STYLE (Pure White & Ultra Bold) 🔥 */
     div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stColumn"]:nth-child({active_index}) div.stButton > button p {{
         color: #ffffff !important;      
         font-weight: 900 !important;    
     }}
 
-    /* 4. Login / Get Started Button (Cyan Color) */
+    /* Login / Get Started Button (Cyan Color) */
     div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stColumn"]:last-child div.stButton > button {{
         background-color: #00e5ff !important;
         border-radius: 6px !important;
         padding: 6px 24px !important;
-        white-space: nowrap !important;
     }}
     div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stColumn"]:last-child div.stButton > button p {{
         color: #000000 !important;      
         font-weight: 900 !important;
         font-size: 15px !important;
-        white-space: nowrap !important;
     }}
     div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stColumn"]:last-child div.stButton > button:hover {{
         background-color: #00bfff !important;
     }}
 
     /* ---------------------------------------------------
-       🌟 GENERAL APP STYLING (Run Scan & Watchlist Box)
+       🌟 3. OVERRIDE: FORMS (Save Trade Button)
        --------------------------------------------------- */
-       
-    /* 🚀 Run Scan & Watchlist Download Buttons (Box Style, Kam Bold) */
-    div[data-testid="stHorizontalBlock"]:nth-of-type(n+2) div.stButton > button, 
-    div[data-testid="stDownloadButton"] > button {{
-        background: rgba(255, 255, 255, 0.05) !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        color: #e2e8f0 !important;
-        border-radius: 8px !important;
-        font-weight: 500 !important; /* Thoda kam bold kiya */
-        box-shadow: none !important;
-        transition: all 0.2s ease;
-    }}
-    div[data-testid="stHorizontalBlock"]:nth-of-type(n+2) div.stButton > button:hover, 
-    div[data-testid="stDownloadButton"] > button:hover {{
-        background: rgba(255, 255, 255, 0.1) !important;
-        border-color: #00e5ff !important; /* Cyan highlight on hover */
-        color: #ffffff !important;
-    }}
-
-    /* Forms (Save Trade, Update) Buttons as Premium Gradient */
     div.stForm div.stButton > button {{
         background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%) !important;
-        color: white !important;
-        border-radius: 8px !important;
-        font-weight: 700 !important;
         border: none !important;
     }}
-    
+    div.stForm div.stButton > button p {{
+        font-weight: 700 !important;
+        color: white !important;
+    }}
+
+    /* ---------------------------------------------------
+       🌟 GENERAL APP COMPONENTS
+       --------------------------------------------------- */
     /* Metrics Boxes */
     div[data-testid="metric-container"] {{
         background: rgba(0, 0, 0, 0.2);
@@ -258,7 +274,7 @@ elif st.session_state.current_page == "Scanner":
         
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # Run Scan and Download Button placed together
+        # 🚀 FIX: Run Scan and Download Button placed together
         f_col1, f_col2, f_col3, f_col_run, f_col_dl = st.columns([1.3, 1.3, 1.4, 1.0, 1.0])
         
         with f_col1: selected_date = st.selectbox("📅 Scan Date", sorted(df['Scan Date'].unique(), reverse=True))
@@ -270,7 +286,7 @@ elif st.session_state.current_page == "Scanner":
         if selected_sector != "All Sectors": df_filtered = df_filtered[df_filtered['Sector'] == selected_sector]
         if selected_stock != "All Stocks": df_filtered = df_filtered[df_filtered['Stock Symbol'] == selected_stock]
 
-        # Run Scan button (Box style matched via CSS automatically)
+        # 🚀 Run Scan button (Now matches Watchlist box style 100%)
         with f_col_run:
             st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
             if st.button("🚀 Run Scan", use_container_width=True):
@@ -289,7 +305,7 @@ elif st.session_state.current_page == "Scanner":
                 tv_text += f"### {sec} / {proxy}\n"
                 for sym in group['Stock Symbol']: tv_text += f"NSE:{sym}\n"
         
-        # Download button (Box style matched via CSS automatically)
+        # 📥 Download button (Matches Run Scan Box)
         with f_col_dl:
             st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
             st.download_button("📥 Watchlist (.txt)", data=tv_text, file_name=f"AlphaSwing_{selected_date}.txt", mime="text/plain", use_container_width=True)
