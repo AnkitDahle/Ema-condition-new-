@@ -45,19 +45,21 @@ custom_css = """
     /* Hide standard header */
     header {visibility: hidden;}
 
-    /* 🌟 NEW: Navbar Button Styling (Extra Bold Tabs) */
+    /* 🌟 UPDATED: Navbar Button Styling (ULTRA BOLD TABS) */
     /* Nav Links (Transparent with Hover effect) */
     button[kind="secondary"] {
         background: transparent !important;
         border: none !important;
         color: #8a93a6 !important;
         box-shadow: none !important;
-        font-weight: 800 !important; /* <-- TABS AB BOLD HAIN */
-        font-size: 16px !important;  /* <-- THODA SIZE BADA KIYA HAI */
+        font-weight: 900 !important; /* <-- EXTRA BOLD KAR DIYA HAI */
+        font-size: 17px !important;  /* <-- FONT BADA KIYA */
+        letter-spacing: 0.5px !important;
         transition: 0.2s;
     }
     button[kind="secondary"]:hover {
         color: #ffffff !important;
+        text-shadow: 0px 0px 8px rgba(255,255,255,0.3);
     }
 
     /* Action Button (Cyan 'Get Started' Style) */
@@ -114,6 +116,17 @@ custom_css = """
         color: white !important;
         border: 1px solid rgba(255,255,255,0.1) !important;
         border-radius: 8px !important;
+    }
+    
+    /* Page Headings Styling */
+    .page-heading {
+        font-size: 28px;
+        font-weight: 800;
+        color: #ffffff;
+        margin-top: -10px;
+        margin-bottom: 20px;
+        border-bottom: 2px solid rgba(255,255,255,0.1);
+        padding-bottom: 10px;
     }
 </style>
 """
@@ -216,6 +229,9 @@ if st.session_state.current_page == "Home":
     )
 
 elif st.session_state.current_page == "Scanner":
+    # 🌟 NEW: PAGE HEADING
+    st.markdown("<div class='page-heading'>📊 Scanner</div>", unsafe_allow_html=True)
+    
     col_run, col_empty = st.columns([1.2, 6])
     with col_run:
         st.markdown("<div class='btn-run-scan'>", unsafe_allow_html=True)
@@ -272,6 +288,9 @@ elif st.session_state.current_page == "Scanner":
             st.write("• 1-Month, 3-Month & 52-Week High Breakouts. | • Heavy volume bursts (Turnover > 10Cr). | • Uptrend (Price sustained above key EMAs).")
 
 elif st.session_state.current_page == "Catalyst":
+    # 🌟 NEW: PAGE HEADING
+    st.markdown("<div class='page-heading'>🔥 Catalyst</div>", unsafe_allow_html=True)
+    
     default_idx = master_symbol_list.index("RELIANCE") if "RELIANCE" in master_symbol_list else 0
     user_ticker = st.selectbox("🔤 Select Stock Symbol:", master_symbol_list, index=default_idx)
     
@@ -306,6 +325,9 @@ elif st.session_state.current_page == "Catalyst":
     """, height=50)
 
 elif st.session_state.current_page == "IPOs":
+    # 🌟 NEW: PAGE HEADING
+    st.markdown("<div class='page-heading'>🏢 IPOs</div>", unsafe_allow_html=True)
+    
     if raw_ipo_data:
         df_ipo = pd.DataFrame(raw_ipo_data)
         if 'listing_date' in df_ipo.columns:
@@ -341,6 +363,9 @@ elif st.session_state.current_page == "IPOs":
         st.dataframe(display_ipo, use_container_width=True, hide_index=True, height=400)
 
 elif st.session_state.current_page == "Journal":
+    # 🌟 NEW: PAGE HEADING
+    st.markdown("<div class='page-heading'>📓 Journal</div>", unsafe_allow_html=True)
+    
     j_tab1, j_tab2, j_tab3 = st.tabs(["➕ New Trade Entry", "🔄 Update Exits", "📚 Journal Gallery"])
     
     with j_tab1:
