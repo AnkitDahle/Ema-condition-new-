@@ -16,117 +16,123 @@ st.set_page_config(page_title="AlphaSwing Pro", layout="wide", page_icon="📈",
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "Home"
 
-# --- 🎨 UI ENGINE: ANIMATED BG (LOCKED) + EXACT IMAGE NAVBAR STYLES ---
-custom_css = """
-<style>
-    /* Global Font Size Increase */
-    html, body, [class*="css"] {
-        font-size: 1.05rem !important;
-    }
+# Logic to calculate which tab is Active
+pages = ['Home', 'Scanner', 'Catalyst', 'IPOs', 'Journal']
+active_index = pages.index(st.session_state.current_page) + 2  # +2 because Logo is the 1st column
 
-    /* 🔒 LOCKED: Animated Premium Gradient Background (DO NOT TOUCH) */
-    .stApp {
+# --- 🎨 UI ENGINE: ANIMATED BG (LOCKED) + EXACT IMAGE NAVBAR STYLES ---
+custom_css = f"""
+<style>
+    /* Global Font Size */
+    html, body, [class*="css"] {{
+        font-size: 1.05rem !important;
+    }}
+
+    /* 🔒 LOCKED: Animated Premium Gradient Background */
+    .stApp {{
         background: linear-gradient(-45deg, #09090b, #18181b, #0f172a, #171717);
         background-size: 400% 400%;
         animation: gradientBG 15s ease infinite;
         color: #f8fafc;
-    }
-    @keyframes gradientBG {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-    }
+    }}
+    @keyframes gradientBG {{
+        0% {{ background-position: 0% 50%; }}
+        50% {{ background-position: 100% 50%; }}
+        100% {{ background-position: 0% 50%; }}
+    }}
 
     /* Top Padding Adjust */
-    .block-container {
+    .block-container {{
         padding-top: 1rem !important;
-    }
+    }}
+    header {{visibility: hidden;}}
 
-    /* Hide standard header */
-    header {visibility: hidden;}
-
-    /* 🌟 BASE NAVBAR STYLING (INACTIVE TABS) */
-    button[kind="secondary"] {
+    /* ---------------------------------------------------
+       🌟 EXACT NAVBAR FIX (ATLAS / SCREENS / CHARTS STYLE) 
+       --------------------------------------------------- */
+    
+    /* 1. Make all navbar buttons transparent */
+    div[data-testid="stHorizontalBlock"]:first-of-type div.stButton > button {{
         background: transparent !important;
         border: none !important;
-        color: #7b8fa3 !important; /* Muted blue-grey color just like 'Atlas' or 'Charts' */
         box-shadow: none !important;
-        font-weight: 500 !important; /* Normal font weight for inactive */
-        font-size: 19px !important;  
-        letter-spacing: 0.5px !important;
+    }}
+
+    /* 2. Style the hidden <p> tag inside INACTIVE buttons */
+    div[data-testid="stHorizontalBlock"]:first-of-type div.stButton > button p {{
+        color: #7b8fa3 !important;      /* Muted Blue-Grey */
+        font-weight: 500 !important;    /* Normal Weight */
+        font-size: 19px !important;     /* Size matching image */
+        letter-spacing: 0.5px;
         transition: color 0.2s ease;
-    }
-    button[kind="secondary"]:hover {
-        color: #cdd6e0 !important; /* Slight glow on hover */
-        background: transparent !important;
-    }
+    }}
+    
+    /* Hover effect for inactive buttons */
+    div[data-testid="stHorizontalBlock"]:first-of-type div.stButton > button:hover p {{
+        color: #cdd6e0 !important;      /* Glows slightly on hover */
+    }}
 
-    /* Action Button (Cyan 'Get Started' Style) */
-    button[kind="primary"] {
+    /* 3. 🔥 ACTIVE TAB STYLE (Pure White & Ultra Bold) 🔥 */
+    div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stColumn"]:nth-child({active_index}) div.stButton > button p {{
+        color: #ffffff !important;      /* Pure White Text */
+        font-weight: 900 !important;    /* Extra Bhaari / Bold */
+    }}
+
+    /* 4. Login / Get Started Button (Cyan Color) */
+    div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stColumn"]:last-child div.stButton > button {{
         background-color: #00e5ff !important;
-        color: #000000 !important;
         border-radius: 6px !important;
-        font-weight: 900 !important;
-        border: none !important;
         padding: 6px 24px !important;
-        box-shadow: none !important;
-    }
-    button[kind="primary"]:hover {
+    }}
+    div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stColumn"]:last-child div.stButton > button p {{
+        color: #000000 !important;      /* Black text on Cyan */
+        font-weight: 900 !important;
+        font-size: 15px !important;
+    }}
+    div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stColumn"]:last-child div.stButton > button:hover {{
         background-color: #00bfff !important;
-    }
+    }}
 
-    /* Smaller Run Scan Button */
-    .btn-run-scan button {
+    /* ---------------------------------------------------
+       🌟 GENERAL APP STYLING
+       --------------------------------------------------- */
+       
+    /* Regular Buttons (Run Scan, Save, Clear) */
+    div[data-testid="stHorizontalBlock"]:nth-of-type(n+2) div.stButton > button, 
+    div.stForm div.stButton > button {{
         background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%) !important;
         color: white !important;
         border-radius: 6px !important;
+        font-weight: bold !important;
+        border: none !important;
         padding: 4px 12px !important;
-        font-size: 14px !important;
-    }
-
-    /* Metric Adjustments */
-    div[data-testid="metric-container"] {
+    }}
+    
+    /* Metrics Boxes */
+    div[data-testid="metric-container"] {{
         background: rgba(0, 0, 0, 0.2);
         border: 1px solid rgba(255, 255, 255, 0.05);
         border-radius: 12px;
         padding: 10px 15px;
         backdrop-filter: blur(5px);
-    }
-    div[data-testid="stMetricValue"] {
-        font-size: 1.4rem !important; 
-        color: #e2e8f0;
-    }
-    div[data-testid="stMetricLabel"] {
-        font-size: 0.9rem !important;
-        color: #94a3b8;
-    }
+    }}
+    div[data-testid="stMetricValue"] {{ font-size: 1.4rem !important; color: #e2e8f0; }}
+    div[data-testid="stMetricLabel"] {{ font-size: 0.9rem !important; color: #94a3b8; }}
 
-    /* Journal & Notes Cards */
-    .journal-card { 
+    /* Journal Cards */
+    .journal-card {{ 
         background: rgba(0,0,0,0.2); 
         border: 1px solid rgba(255,255,255,0.05); 
-        padding: 20px; 
-        border-radius: 12px; 
-        margin-bottom: 20px; 
-        backdrop-filter: blur(5px);
-    }
-    .stTextArea textarea {
-        background-color: rgba(0,0,0,0.2) !important;
-        color: white !important;
-        border: 1px solid rgba(255,255,255,0.1) !important;
-        border-radius: 8px !important;
-    }
+        padding: 20px; border-radius: 12px; margin-bottom: 20px; backdrop-filter: blur(5px);
+    }}
+    .stTextArea textarea {{ background-color: rgba(0,0,0,0.2) !important; color: white !important; border: 1px solid rgba(255,255,255,0.1) !important; border-radius: 8px !important; }}
     
-    /* Page Headings Styling */
-    .page-heading {
-        font-size: 28px;
-        font-weight: 800;
-        color: #ffffff;
-        margin-top: -10px;
-        margin-bottom: 20px;
-        border-bottom: 2px solid rgba(255,255,255,0.1);
-        padding-bottom: 10px;
-    }
+    /* Page Headings */
+    .page-heading {{
+        font-size: 28px; font-weight: 800; color: #ffffff;
+        margin-top: -10px; margin-bottom: 20px;
+        border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 10px;
+    }}
 </style>
 """
 st.markdown(custom_css, unsafe_allow_html=True)
@@ -138,27 +144,11 @@ with col_logo:
     st.markdown("""
     <div style="display: flex; align-items: center; gap: 10px; margin-top: 2px;">
         <div style="background-color: #00bfff; width: 30px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2L22 20H2L12 2Z" fill="white"/>
-            </svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L22 20H2L12 2Z" fill="white"/></svg>
         </div>
         <a href="/" target="_self" style="font-size: 22px; font-weight: 800; color: white; letter-spacing: 0.5px; text-decoration: none;">AlphaSwing</a>
     </div>
     """, unsafe_allow_html=True)
-
-# 🌟 NEW: EXACT HIGHLIGHT FOR ACTIVE PAGE (LIKE "SCREENS" IN YOUR IMAGE)
-pages = ['Home', 'Scanner', 'Catalyst', 'IPOs', 'Journal']
-active_index = pages.index(st.session_state.current_page) + 2 # +2 because Logo is col 1
-st.markdown(f"""
-    <style>
-    /* 🔥 ACTIVE TAB: Pure White and Extra Bold 🔥 */
-    div[data-testid="column"]:nth-child({active_index}) button {{
-        color: #ffffff !important;
-        font-weight: 800 !important;
-        background: transparent !important; /* No box background */
-    }}
-    </style>
-""", unsafe_allow_html=True)
 
 with nav1:
     if st.button("Home", use_container_width=True): st.session_state.current_page = "Home"; st.rerun()
@@ -171,7 +161,7 @@ with nav4:
 with nav5:
     if st.button("Journal", use_container_width=True): st.session_state.current_page = "Journal"; st.rerun()
 with col_login:
-    st.button("Get Started", type="primary", use_container_width=True)
+    st.button("Get Started", use_container_width=True)
 
 st.markdown("<hr style='margin-top: 5px; border-color: rgba(255,255,255,0.05);'>", unsafe_allow_html=True)
 
@@ -188,14 +178,12 @@ cloudinary.config(cloud_name=st.secrets["CLOUDINARY_CLOUD_NAME"], api_key=st.sec
 try:
     response = supabase.table('swing_stocks').select("*").order('scan_date', desc=True).execute()
     raw_data = response.data
-except Exception as e:
-    raw_data = None
+except Exception as e: raw_data = None
 
 try:
     ipo_res = supabase.table('ipo_master').select("*").execute()
     raw_ipo_data = ipo_res.data
-except Exception as e:
-    raw_ipo_data = None
+except Exception as e: raw_ipo_data = None
 
 master_symbol_list = ["RELIANCE", "TCS", "INFY", "ZOMATO", "SBIN"]
 if raw_data: master_symbol_list.extend([str(x).upper() for x in pd.DataFrame(raw_data)['stock_symbol'].dropna().unique()])
@@ -235,7 +223,6 @@ elif st.session_state.current_page == "Scanner":
     
     col_run, col_empty = st.columns([1.2, 6])
     with col_run:
-        st.markdown("<div class='btn-run-scan'>", unsafe_allow_html=True)
         if st.button("🚀 Run Scan", use_container_width=True):
             with st.spinner("Scanning..."):
                 try:
@@ -245,7 +232,6 @@ elif st.session_state.current_page == "Scanner":
                     time.sleep(2)
                     st.success("✅ Initiated!")
                 except Exception as e: st.error(f"❌ Error: {e}")
-        st.markdown("</div>", unsafe_allow_html=True)
 
     if raw_data:
         df = pd.DataFrame(raw_data)
@@ -284,9 +270,6 @@ elif st.session_state.current_page == "Scanner":
             st.download_button("📥 Watchlist (.txt)", data=tv_text, file_name=f"AlphaSwing_{selected_date}.txt", mime="text/plain", use_container_width=True)
 
         st.dataframe(df_filtered, use_container_width=True, height=400, hide_index=True)
-        
-        with st.expander("⚙️ View Active Scanner Rules"):
-            st.write("• 1-Month, 3-Month & 52-Week High Breakouts. | • Heavy volume bursts (Turnover > 10Cr). | • Uptrend (Price sustained above key EMAs).")
 
 elif st.session_state.current_page == "Catalyst":
     st.markdown("<div class='page-heading'>🔥 Catalyst</div>", unsafe_allow_html=True)
@@ -384,9 +367,7 @@ elif st.session_state.current_page == "Journal":
             if st.form_submit_button("💾 Save Trade", use_container_width=True) and symbol and quantity > 0 and buying_price > 0:
                 with st.spinner("Saving trade..."):
                     img_url = None
-                    if image_file is not None:
-                        img_url = cloudinary.uploader.upload(image_file, folder="trading_journal").get("secure_url")
-                    
+                    if image_file is not None: img_url = cloudinary.uploader.upload(image_file, folder="trading_journal").get("secure_url")
                     try:
                         supabase.table('trading_journal').insert({"symbol": symbol, "total_quantity": quantity, "buying_date": str(buying_date), "buying_price": float(buying_price), "initial_sl": float(initial_sl), "trade_logic": trade_logic, "image_url": img_url}).execute()
                         st.success(f"✅ Trade {symbol} saved successfully!")
@@ -425,10 +406,8 @@ elif st.session_state.current_page == "Journal":
                             "sold_50_date": str(s50_date) if s50_price > 0 else None, "sold_50_price": s50_price if s50_price > 0 else None, "sl_after_50": sl_50 if sl_50 > 0 else None,
                             "sold_30_date": str(s30_date) if s30_price > 0 else None, "sold_30_price": s30_price if s30_price > 0 else None,
                         }).eq('id', t['id']).execute()
-                        st.success("Trade updated!")
-                        time.sleep(1); st.rerun()
-            else:
-                st.info("No active trades found.")
+                        st.success("Trade updated!"); time.sleep(1); st.rerun()
+            else: st.info("No active trades found.")
         except Exception as e: pass
 
     with j_tab3:
@@ -448,11 +427,7 @@ elif st.session_state.current_page == "Journal":
                     if tr.get('sold_50_price'): st.success(f"**50% Booked @ ₹{tr['sold_50_price']}**")
                     if tr.get('sold_30_price'): st.success(f"**30% Final Booked @ ₹{tr['sold_30_price']}**")
                 st.markdown("</div>", unsafe_allow_html=True)
-        else:
-            st.info("Journal is empty.")
-            
-    with st.expander("⚠️ System Error Logs"):
-        if st.button("Clear Logs"): st.success("Cleared!")
+        else: st.info("Journal is empty.")
 
 # ==========================================
 # 📝 GLOBAL NOTES (Always visible at bottom)
@@ -460,8 +435,7 @@ elif st.session_state.current_page == "Journal":
 st.markdown("<br><br>", unsafe_allow_html=True)
 st.markdown("### Notes")
 
-try:
-    saved_text = supabase.table('global_notes').select('note_text').eq('id', 1).execute().data[0]['note_text']
+try: saved_text = supabase.table('global_notes').select('note_text').eq('id', 1).execute().data[0]['note_text']
 except: saved_text = ""
 
 with st.form("global_scratchpad_form"):
