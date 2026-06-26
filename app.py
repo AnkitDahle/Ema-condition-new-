@@ -200,9 +200,39 @@ with tab4:
         ipo_res = supabase.table('ipo_master').select("*").execute()
         if ipo_res.data:
             df_ipo = pd.DataFrame(ipo_res.data)
+            
+            # --- 🚀 NAYA ADDITION: IPO MARKET OVERVIEW METRICS ---
+            if 'listing_date' in df_ipo.columns:
+                # Date ko sahi format mein convert karna
+                df_ipo['calc_date'] = pd.to_datetime(df_ipo['listing_date'], errors='coerce')
+                
+                today = pd.to_datetime('today').date()
+                six_months_ago = today - pd.DateOffset(months=6)
+                
+                # Calculations
+                today_listed_count = len(df_ipo[df_ipo['calc_date'].dt.date == today])
+                this_month_count = len(df_ipo[(df_ipo['calc_date'].dt.month == today.month) & (df_ipo['calc_date'].dt.year == today.year)])
+                last_6_months_count = len(df_ipo[df_ipo['calc_date'].dt.date >= six_months_ago.date()])
+                this_year_count = len(df_ipo[df_ipo['calc_date'].dt.year == today.year])
+                
+                # Metrics UI Display
+                st.markdown("### 📊 IPO Market Overview")
+                m1, m2, m3, m4 = st.columns(4)
+                with m1:
+                    st.metric(label="Today Listed", value=today_listed_count)
+                with m2:
+                    st.metric(label="This Month", value=this_month_count)
+                with m3:
+                    st.metric(label="Last 6 Months", value=last_6_months_count)
+                with m4:
+                    st.metric(label="Total This Year", value=this_year_count)
+                
+                st.divider()
+            # ----------------------------------------------------
+
             col_y1, col_y2, col_y3 = st.columns([1.5, 1.5, 3])
             with col_y1:
-                years = sorted(df_ipo['listing_year'].unique(), reverse=True)
+                years = sorted(df_ipo['listing_year'].dropna().unique(), reverse=True)
                 selected_year = st.selectbox("📅 Select IPO Year:", years)
             
             filtered_ipo = df_ipo[df_ipo['listing_year'] == selected_year]
