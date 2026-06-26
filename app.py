@@ -7,6 +7,7 @@ import time
 import datetime
 import cloudinary
 import cloudinary.uploader
+import json  # Prompt string ko safely escape karne ke liye
 
 # 1. Page Configuration
 st.set_page_config(page_title="AlphaSwing Pro | Momentum Scanner", layout="wide", page_icon="📈")
@@ -79,7 +80,7 @@ except Exception as e:
     raw_data = None
 
 # 5. Tabs Setup
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📊 Combined Scanner", "⚙️ Strategy Rules", "💡 Trading Guide", "🏢 IPO Tracker", "📓 Trading Journal", "⚠️ Error Logs"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📊 Combined Scanner", "⚙️ Strategy Rules", "🔥 Catalyst Prompt", "🏢 IPO & Demerger", "📓 Trading Journal", "⚠️ Error Logs"])
 
 # --- TAB 1: MAIN SCANNER ---
 with tab1:
@@ -138,7 +139,6 @@ with tab1:
         rename_dict = {'scan_date': 'Scan Date', 'stock_symbol': 'Stock Symbol', 'close_price': 'Close Price (₹)', 'turnover_cr': 'Turnover (Cr)', 'sector': 'Sector', 'industry_proxy': 'Proxy / Industry'}
         df.rename(columns=rename_dict, inplace=True)
         
-        # 🚀 YAHAN PAR DUPLICATES HATAYE GAYE HAIN
         df = df.drop_duplicates(subset=['Scan Date', 'Stock Symbol'], keep='first')
         
         latest_date = df['Scan Date'].max()
@@ -182,20 +182,97 @@ with tab1:
     else:
         st.info("Database mein abhi koi data nahi hai.")
 
-# --- TAB 2 & 3: Strategy Rules and Guide ---
+# --- TAB 2: Strategy Rules ---
 with tab2:
     st.header("⚙️ Scanner Rules")
     st.write("📈 **Pure Momentum & Breakout Setup:**")
     st.write("• 1-Month, 3-Month aur 52-Week High Breakouts par strong focus.")
     st.write("• High Relative Strength aur heavy volume bursts (Turnover > 10Cr) wale stocks.")
     st.write("• Strong uptrend (Price apne key EMAs ke upar sustain kar raha ho).")
-with tab3:
-    st.header("💡 Trading Guide")
-    st.write("Hamesha 2-3% ka Stoploss use karein aur 1:2 Risk Reward ratio follow karein.")
 
-# --- TAB 4: IPO TRACKER ---
+# --- TAB 3: CATALYST PROMPT (Updated with Copy Button) ---
+with tab3:
+    st.header("🔥 Ultimate Catalyst AI Prompt")
+    st.markdown("Is prompt ko copy karke ChatGPT, Gemini ya Claude me paste karein taaki aap kisi bhi stock ki fundamental aur catalyst research asani se kar sakein.")
+    
+    # User se Ticker input lena
+    user_ticker = st.text_input("🔤 Enter Ticker Symbol (e.g., RELIANCE, ZOMATO):", value="[TICKER]")
+    
+    # Prompt Template
+    catalyst_prompt = f"""Please analyze {user_ticker} for me and provide the following, concise and clearly organized:
+
+1. Explain what the company does like I'm 12 years old - three short bullet points about what it does and any helpful relatable examples and analogies.
+
+2. Professional summary (max 10 sentences) - industry, main products/services, primary competitors (list tickers), notable metrics or achievements, competitive advantage/moat, why they are unique and if they are a biotech provide if they have a commercial product or in clinical stages. 
+
+3. In a table, provide the following:
+   - Any hot theme, narrative or story of the stock
+   - Any catalysts (earnings, news, macro)
+   - Any significant fundamentals (huge growth in earnings or revenues, moat, unique product or service, superior management, patents etc)
+
+4. Show all the main news/events for the last 3 months: - Use a bullet-point table for: 
+   - Date (YYYY-MM-DD) 
+   - Event type (Earnings, Product Launch, Analyst Upgrade/Downgrade, etc.) 
+   - Short summary (max 1-2 sentences) 
+   - Direct source link 
+   - Mark any major price-moving events (surprise earnings, large guidance shift, top-tier analyst actions).
+
+5. Mention any recent insider buys/sells or institutional filings if visible.
+
+6. Summarize how the stock is moving vs. main competitors and overall sector trend in past month (up/down).
+
+7. Flag upcoming catalysts (earnings, product launches, regulatory events) in the next 30 days.
+
+8. Note any changes in analyst price targets for this ticker during the period above. 
+
+Format for easy review. If possible, use tables for events and peer moves. Respond in clear, concise, easily readable style for use in trading decisions. 
+
+Overall, Focus on the reasons why the stock can make a big move in the future - earnings, sales, guidance, product launches, analyst upgrades/downgrades, insider buying especially from CEO/Founder and executive team, partnerships, and sector/news catalysts. I want to focus on stocks with catalysts and themes as catalysts are the cause of big moves in the stock market."""
+
+    # Prompt ko box me display karna
+    st.code(catalyst_prompt, language="text")
+    
+    # 🚀 NEW: SMART JS-BASED COPY BUTTON
+    escaped_prompt_json = json.dumps(catalyst_prompt)
+    components.html(f"""
+        <button id="copyPromptBtn" style="background-color: #1E88E5; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; font-family: sans-serif; font-size: 15px;">📋 Copy Full Prompt</button>
+        <script>
+        document.getElementById('copyPromptBtn').addEventListener('click', function() {{
+            const textToCopy = {escaped_prompt_json};
+            navigator.clipboard.writeText(textToCopy).then(function() {{
+                const btn = document.getElementById('copyPromptBtn');
+                btn.style.backgroundColor = '#4CAF50';
+                btn.innerText = '✅ Prompt Copied to Clipboard!';
+                setTimeout(() => {{
+                    btn.style.backgroundColor = '#1E88E5';
+                    btn.innerText = '📋 Copy Full Prompt';
+                }}, 2500);
+            }}).catch(function(err) {{
+                console.error('Could not copy prompt: ', err);
+            }});
+        }});
+        </script>
+    """, height=50)
+
+# --- TAB 4: IPO & DEMERGER TRACKER ---
 with tab4:
-    st.header("🏢 IPO & New Listings Tracker (2020 - Present)")
+    st.header("🏢 IPO & Demerger Tracker")
+    
+    st.markdown("### 📰 Recent Demergers & Spin-offs (Last 3 Months)")
+    st.info("💡 **Mega Demerger Alert:** Vedanta Group has successfully demerged into 5 independent entities. Newly formed companies listed on June 24, 2026.")
+    
+    demerger_data = [
+        {"Company Name": "Vedanta Aluminium", "Symbol": "VAML", "Listing Date": "2026-06-24", "Sector": "Aluminium", "Parent Company": "Vedanta Ltd"},
+        {"Company Name": "Vedanta Oil & Gas", "Symbol": "VOGL", "Listing Date": "2026-06-24", "Sector": "Oil & Gas", "Parent Company": "Vedanta Ltd"},
+        {"Company Name": "Vedanta Iron & Steel", "Symbol": "VISL", "Listing Date": "2026-06-24", "Sector": "Iron & Steel", "Parent Company": "Vedanta Ltd"},
+        {"Company Name": "Vedanta Power", "Symbol": "VEDPOWER", "Listing Date": "2026-06-24", "Sector": "Power / Energy", "Parent Company": "Vedanta Ltd"},
+        {"Company Name": "Prima Plastics Ltd", "Symbol": "PRIMA", "Listing Date": "2026-04-17", "Sector": "Plastics", "Parent Company": "Self Restructuring"}
+    ]
+    df_demerger = pd.DataFrame(demerger_data)
+    st.dataframe(df_demerger, use_container_width=True, hide_index=True)
+    
+    st.markdown("---")
+    
     try:
         ipo_res = supabase.table('ipo_master').select("*").execute()
         if ipo_res.data:
@@ -203,17 +280,14 @@ with tab4:
             
             if 'listing_date' in df_ipo.columns:
                 df_ipo['calc_date'] = pd.to_datetime(df_ipo['listing_date'], errors='coerce')
-                # Mahine ka naam extract karne ke liye
                 df_ipo['Month'] = df_ipo['calc_date'].dt.strftime('%B')
                 
                 today = pd.to_datetime('today').date()
                 
-                # Calculations
                 today_listed_count = len(df_ipo[df_ipo['calc_date'].dt.date == today])
                 this_month_count = len(df_ipo[(df_ipo['calc_date'].dt.month == today.month) & (df_ipo['calc_date'].dt.year == today.year)])
                 
-                # Metrics UI Display (2 Columns)
-                st.markdown("### 📊 IPO Market Overview")
+                st.markdown("### 📊 Regular IPO Market Overview")
                 m1, m2 = st.columns(2)
                 with m1:
                     st.metric(label="Today Listed", value=today_listed_count)
@@ -222,7 +296,6 @@ with tab4:
                 
                 st.divider()
 
-            # --- 🚀 NEW: YEAR AND MONTH FILTERS ---
             col_y1, col_m1, col_y2, col_y3 = st.columns([1.5, 1.5, 1.5, 2.5])
             
             with col_y1:
@@ -233,7 +306,6 @@ with tab4:
                 months = ["All Months", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
                 selected_month = st.selectbox("🗓️ Select Month:", months)
             
-            # Apply Filters
             filtered_ipo = df_ipo[df_ipo['listing_year'] == selected_year]
             
             if selected_month != "All Months":
@@ -266,7 +338,6 @@ with tab5:
     
     j_tab1, j_tab2, j_tab3 = st.tabs(["➕ New Trade Entry", "🔄 Update Exits & TSL", "📚 Journal Gallery"])
     
-    # --- SUB-TAB 1: NEW TRADE ---
     with j_tab1:
         with st.form("new_trade_form", clear_on_submit=True):
             st.subheader("Enter New Trade Details")
@@ -303,7 +374,6 @@ with tab5:
                     except Exception as e:
                         st.error(f"Error saving data: {e}")
 
-    # --- SUB-TAB 2: UPDATE TRADE (Exits & TSL) ---
     with j_tab2:
         try:
             active_res = supabase.table('trading_journal').select("*").is_("sold_30_date", "null").execute()
@@ -358,7 +428,6 @@ with tab5:
         except Exception as e:
             st.error(f"Error fetching active trades: {e}")
 
-    # --- SUB-TAB 3: JOURNAL GALLERY ---
     with j_tab3:
         try:
             all_trades_res = supabase.table('trading_journal').select("*").order('buying_date', desc=True).execute()
@@ -395,7 +464,7 @@ with tab5:
         except Exception as e:
             st.error(f"Error loading gallery: {e}")
 
-# --- TAB 6: ERROR LOGS (Text Format) ---
+# --- TAB 6: ERROR LOGS ---
 with tab6:
     st.header("⚠️ System Error Logs")
     st.markdown("Yahan wo stocks dikhenge jinka data fetch ya calculate karne mein backend par error aayi thi.")
@@ -432,7 +501,7 @@ with tab6:
     except Exception as e:
         st.error(f"Error fetching logs: {e}")
 
-# --- 📝 GLOBAL TRADER'S SCRATCHPAD (At the very bottom of the page) ---
+# --- GLOBAL TRADER'S SCRATCHPAD ---
 st.markdown("<br><br>", unsafe_allow_html=True)
 st.markdown("---")
 st.subheader("📝 Trader's Personal Scratchpad / Sticky Notes")
