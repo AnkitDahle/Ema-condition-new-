@@ -71,13 +71,28 @@ cloudinary.config(
     api_secret=st.secrets["CLOUDINARY_API_SECRET"]
 )
 
-# Fetch Scan Data
+# 🚀 GLOBAL DATA FETCH (For Fast Load & Auto-Suggestions)
 try:
     response = supabase.table('swing_stocks').select("*").order('scan_date', desc=True).execute()
     raw_data = response.data
 except Exception as e:
-    st.error(f"Database Error: {e}")
+    st.error(f"Database Error (Swing Stocks): {e}")
     raw_data = None
+
+try:
+    ipo_res = supabase.table('ipo_master').select("*").execute()
+    raw_ipo_data = ipo_res.data
+except Exception as e:
+    st.error(f"Database Error (IPO Master): {e}")
+    raw_ipo_data = None
+
+# 🚀 MASTER SYSTEM: Creating Auto-Suggestion Master List for Catalyst Prompt
+master_symbol_list = ["RELIANCE", "TCS", "INFY", "ZOMATO", "SBIN"]  # Default base options
+if raw_data:
+    master_symbol_list.extend([str(x).upper() for x in pd.DataFrame(raw_data)['stock_symbol'].dropna().unique()])
+if raw_ipo_data:
+    master_symbol_list.extend([str(x).upper() for x in pd.DataFrame(raw_ipo_data)['stock_symbol'].dropna().unique()])
+master_symbol_list = sorted(list(set(master_symbol_list)))
 
 # 5. Tabs Setup
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📊 Combined Scanner", "⚙️ Strategy Rules", "🔥 Catalyst Prompt", "🏢 IPO Tracker", "📓 Trading Journal", "⚠️ Error Logs"])
@@ -160,10 +175,13 @@ with tab1:
                 selected_sector = st.selectbox("🎯 Filter by Sector", sector_list)
             else: selected_sector = "All Sectors"
                 
-        with f_col3: search_symbol = st.text_input("🔤 Search Stock", "").upper()
+        # 🚀 UPDATED: Scanner Stock Search with Auto-Suggestion Dropdown
+        with f_col3: 
+            scanner_symbols = ["All Stocks"] + sorted(list(df_filtered['Stock Symbol'].dropna().unique()))
+            selected_stock = st.selectbox("🔤 Search Stock (Type to Suggest):", scanner_symbols)
 
         if selected_sector != "All Sectors": df_filtered = df_filtered[df_filtered['Sector'] == selected_sector]
-        if search_symbol: df_filtered = df_filtered[df_filtered['Stock Symbol'].str.contains(search_symbol)]
+        if selected_stock != "All Stocks": df_filtered = df_filtered[df_filtered['Stock Symbol'] == selected_stock]
 
         st.dataframe(df_filtered, use_container_width=True, height=400, hide_index=True)
         
@@ -190,13 +208,14 @@ with tab2:
     st.write("• High Relative Strength aur heavy volume bursts (Turnover > 10Cr) wale stocks.")
     st.write("• Strong uptrend (Price apne key EMAs ke upar sustain kar raha ho).")
 
-# --- TAB 3: CATALYST PROMPT (Updated with Copy Button) ---
+# --- TAB 3: CATALYST PROMPT ---
 with tab3:
     st.header("🔥 Ultimate Catalyst AI Prompt")
     st.markdown("Is prompt ko copy karke ChatGPT, Gemini ya Claude me paste karein taaki aap kisi bhi stock ki fundamental aur catalyst research asani se kar sakein.")
     
-    # User se Ticker input lena
-    user_ticker = st.text_input("🔤 Enter Ticker Symbol (e.g., RELIANCE, ZOMATO):", value="[TICKER]")
+    # 🚀 UPDATED: Stock Search Input replaced with Global Master Auto-Suggestion Dropdown
+    default_idx = master_symbol_list.index("RELIANCE") if "RELIANCE" in master_symbol_list else 0
+    user_ticker = st.selectbox("🔤 Search & Select Stock Symbol (Type to Suggest):", master_symbol_list, index=default_idx)
     
     # Prompt Template
     catalyst_prompt = f"""Please analyze {user_ticker} for me and provide the following, concise and clearly organized:
@@ -232,7 +251,7 @@ Overall, Focus on the reasons why the stock can make a big move in the future - 
     # Prompt ko box me display karna
     st.code(catalyst_prompt, language="text")
     
-    # 🚀 NEW: SMART JS-BASED COPY BUTTON
+    # SMART JS-BASED COPY BUTTON
     escaped_prompt_json = json.dumps(catalyst_prompt)
     components.html(f"""
         <button id="copyPromptBtn" style="background-color: #1E88E5; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; font-family: sans-serif; font-size: 15px;">📋 Copy Full Prompt</button>
@@ -258,66 +277,78 @@ Overall, Focus on the reasons why the stock can make a big move in the future - 
 with tab4:
     st.header("🏢 IPO Tracker")
     
-    try:
-        ipo_res = supabase.table('ipo_master').select("*").execute()
-        if ipo_res.data:
-            df_ipo = pd.DataFrame(ipo_res.data)
+    if raw_ipo_data:
+        df_ipo = pd.DataFrame(raw_ipo_data)
+        
+        if 'listing_date' in df_ipo.columns:
+            df_ipo['calc_date'] = pd.to_datetime(df_ipo['listing_date'], errors='coerce')
+            df_ipo['Month'] = df_ipo['calc_date'].dt.strftime('%B')
             
-            if 'listing_date' in df_ipo.columns:
-                df_ipo['calc_date'] = pd.to_datetime(df_ipo['listing_date'], errors='coerce')
-                df_ipo['Month'] = df_ipo['calc_date'].dt.strftime('%B')
-                
-                today = pd.to_datetime('today').date()
-                
-                today_listed_count = len(df_ipo[df_ipo['calc_date'].dt.date == today])
-                this_month_count = len(df_ipo[(df_ipo['calc_date'].dt.month == today.month) & (df_ipo['calc_date'].dt.year == today.year)])
-                
-                st.markdown("### 📊 Regular IPO Market Overview")
-                m1, m2 = st.columns(2)
-                with m1:
-                    st.metric(label="Today Listed", value=today_listed_count)
-                with m2:
-                    st.metric(label="This Month", value=this_month_count)
-                
-                st.divider()
+            today = pd.to_datetime('today').date()
+            
+            today_listed_count = len(df_ipo[df_ipo['calc_date'].dt.date == today])
+            this_month_count = len(df_ipo[(df_ipo['calc_date'].dt.month == today.month) & (df_ipo['calc_date'].dt.year == today.year)])
+            
+            st.markdown("### 📊 Regular IPO Market Overview")
+            m1, m2 = st.columns(2)
+            with m1:
+                st.metric(label="Today Listed", value=today_listed_count)
+            with m2:
+                st.metric(label="This Month", value=this_month_count)
+            
+            st.divider()
 
-            col_y1, col_m1, col_y2, col_y3 = st.columns([1.5, 1.5, 1.5, 2.5])
+        # 🚀 UPDATED: Modified Grid Layout to include the new "Search IPO Stock" Auto-Suggestion Filter
+        col_y1, col_m1, col_search, col_y2 = st.columns([1.5, 1.5, 1.5, 1.5])
+        
+        with col_y1:
+            years = sorted(df_ipo['listing_year'].dropna().unique(), reverse=True)
+            selected_year = st.selectbox("📅 Select IPO Year:", years)
             
-            with col_y1:
-                years = sorted(df_ipo['listing_year'].dropna().unique(), reverse=True)
-                selected_year = st.selectbox("📅 Select IPO Year:", years)
-                
-            with col_m1:
-                months = ["All Months", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
-                selected_month = st.selectbox("🗓️ Select Month:", months)
+        with col_m1:
+            months = ["All Months", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+            selected_month = st.selectbox("🗓️ Select Month:", months)
             
-            filtered_ipo = df_ipo[df_ipo['listing_year'] == selected_year]
-            
+        # 🚀 NEW: IPO Stock Search filter with dynamic suggestion matching anywhere in string
+        with col_search:
+            filtered_by_date = df_ipo[df_ipo['listing_year'] == selected_year]
             if selected_month != "All Months":
-                filtered_ipo = filtered_ipo[filtered_ipo['Month'] == selected_month]
+                filtered_by_date = filtered_by_date[filtered_by_date['Month'] == selected_month]
                 
-            display_ipo = filtered_ipo[['stock_symbol', 'company_name', 'listing_date']]
-            display_ipo.columns = ['Symbol', 'Company Name', 'Listing Date']
-            display_ipo = display_ipo.sort_values(by='Listing Date', ascending=False)
+            ipo_symbols = ["All IPOs"] + sorted(list(filtered_by_date['stock_symbol'].dropna().unique()))
+            selected_ipo_stock = st.selectbox("🔤 Search IPO Stock (Type to Suggest):", ipo_symbols)
+        
+        # Apply Filters to Dataframe
+        filtered_ipo = df_ipo[df_ipo['listing_year'] == selected_year]
+        
+        if selected_month != "All Months":
+            filtered_ipo = filtered_ipo[filtered_ipo['Month'] == selected_month]
             
-            with col_y2: 
-                st.metric(label=f"Total IPOs", value=len(display_ipo))
-                
-            st.dataframe(display_ipo, use_container_width=True, hide_index=True, height=400)
+        if selected_ipo_stock != "All IPOs":
+            filtered_ipo = filtered_ipo[filtered_ipo['stock_symbol'] == selected_ipo_stock]
             
-            if not display_ipo.empty:
-                tv_ipo_text = ""
-                for symbol in display_ipo['Symbol']: tv_ipo_text += f"NSE:{symbol}\n"
-                col_i1, col_i2, col_i3 = st.columns([1, 2, 1])
-                
-                with col_i2: 
-                    btn_label = f"📥 Download {selected_year} {selected_month if selected_month != 'All Months' else ''} Watchlist (.txt)"
-                    file_name = f"IPO_Watchlist_{selected_year}_{selected_month}.txt"
-                    st.download_button(btn_label, data=tv_ipo_text, file_name=file_name, mime="text/plain", use_container_width=True)
-    except Exception as e:
-        st.error(f"Database Error: {e}")
+        display_ipo = filtered_ipo[['stock_symbol', 'company_name', 'listing_date']]
+        display_ipo.columns = ['Symbol', 'Company Name', 'Listing Date']
+        display_ipo = display_ipo.sort_values(by='Listing Date', ascending=False)
+        
+        with col_y2: 
+            st.metric(label=f"Total IPOs", value=len(display_ipo))
+            
+        st.dataframe(display_ipo, use_container_width=True, hide_index=True, height=400)
+        
+        if not display_ipo.empty:
+            tv_ipo_text = ""
+            for symbol in display_ipo['Symbol']: tv_ipo_text += f"NSE:{symbol}\n"
+            col_i1, col_i2, col_i3 = st.columns([1, 2, 1])
+            
+            with col_i2: 
+                btn_label = f"📥 Download {selected_year} {selected_month if selected_month != 'All Months' else ''} Watchlist (.txt)"
+                file_name = f"IPO_Watchlist_{selected_year}_{selected_month}.txt"
+                st.download_button(btn_label, data=tv_ipo_text, file_name=file_name, mime="text/plain", use_container_width=True)
+    else:
+        st.info("Database mein abhi koi IPO data nahi hai.")
 
-# --- TAB 5: TRADING JOURNAL (PRO RISK MANAGEMENT) ---
+# --- TAB 5: TRADING JOURNAL ---
 with tab5:
     st.header("📓 Pro Trading Journal (20-50-30 Rule)")
     
