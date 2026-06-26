@@ -45,21 +45,22 @@ custom_css = """
     /* Hide standard header */
     header {visibility: hidden;}
 
-    /* 🌟 UPDATED: Navbar Button Styling (ULTRA BOLD TABS) */
-    /* Nav Links (Transparent with Hover effect) */
+    /* 🌟 BASE NAVBAR STYLING */
+    /* Nav Links (Transparent Base) */
     button[kind="secondary"] {
         background: transparent !important;
         border: none !important;
         color: #8a93a6 !important;
         box-shadow: none !important;
-        font-weight: 900 !important; /* <-- EXTRA BOLD KAR DIYA HAI */
-        font-size: 17px !important;  /* <-- FONT BADA KIYA */
+        font-weight: 800 !important; /* BOLD FONT */
+        font-size: 18px !important;  /* BADA SIZE */
         letter-spacing: 0.5px !important;
-        transition: 0.2s;
+        transition: all 0.3s ease;
     }
     button[kind="secondary"]:hover {
         color: #ffffff !important;
-        text-shadow: 0px 0px 8px rgba(255,255,255,0.3);
+        background-color: rgba(255,255,255,0.05) !important;
+        border-radius: 8px !important;
     }
 
     /* Action Button (Cyan 'Get Started' Style) */
@@ -132,7 +133,7 @@ custom_css = """
 """
 st.markdown(custom_css, unsafe_allow_html=True)
 
-# 2. 🌟 TOP NAVIGATION BAR (Exact Structure with Logo Hyperlink)
+# 2. 🌟 TOP NAVIGATION BAR
 col_logo, nav1, nav2, nav3, nav4, nav5, space, col_login = st.columns([3, 1, 1, 1, 1, 1, 0.5, 1.5])
 
 with col_logo:
@@ -147,13 +148,17 @@ with col_logo:
     </div>
     """, unsafe_allow_html=True)
 
-# Smart CSS to Highlight Active Page Link
+# 🌟 NEW: SMART CSS TO HIGHLIGHT THE ACTIVE PAGE LINK
 pages = ['Home', 'Scanner', 'Catalyst', 'IPOs', 'Journal']
 active_index = pages.index(st.session_state.current_page) + 2 # +2 because Logo is col 1
 st.markdown(f"""
     <style>
+    /* 🔥 HIGHLIGHT FOR ACTIVE TAB 🔥 */
     div[data-testid="column"]:nth-child({active_index}) button {{
         color: #00e5ff !important;
+        background-color: rgba(0, 229, 255, 0.15) !important;
+        border-radius: 8px !important;
+        text-shadow: 0px 0px 10px rgba(0, 229, 255, 0.3);
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -229,7 +234,7 @@ if st.session_state.current_page == "Home":
     )
 
 elif st.session_state.current_page == "Scanner":
-    # 🌟 NEW: PAGE HEADING
+    # 🌟 PAGE HEADING
     st.markdown("<div class='page-heading'>📊 Scanner</div>", unsafe_allow_html=True)
     
     col_run, col_empty = st.columns([1.2, 6])
@@ -288,7 +293,7 @@ elif st.session_state.current_page == "Scanner":
             st.write("• 1-Month, 3-Month & 52-Week High Breakouts. | • Heavy volume bursts (Turnover > 10Cr). | • Uptrend (Price sustained above key EMAs).")
 
 elif st.session_state.current_page == "Catalyst":
-    # 🌟 NEW: PAGE HEADING
+    # 🌟 PAGE HEADING
     st.markdown("<div class='page-heading'>🔥 Catalyst</div>", unsafe_allow_html=True)
     
     default_idx = master_symbol_list.index("RELIANCE") if "RELIANCE" in master_symbol_list else 0
@@ -325,7 +330,7 @@ elif st.session_state.current_page == "Catalyst":
     """, height=50)
 
 elif st.session_state.current_page == "IPOs":
-    # 🌟 NEW: PAGE HEADING
+    # 🌟 PAGE HEADING
     st.markdown("<div class='page-heading'>🏢 IPOs</div>", unsafe_allow_html=True)
     
     if raw_ipo_data:
@@ -363,7 +368,7 @@ elif st.session_state.current_page == "IPOs":
         st.dataframe(display_ipo, use_container_width=True, hide_index=True, height=400)
 
 elif st.session_state.current_page == "Journal":
-    # 🌟 NEW: PAGE HEADING
+    # 🌟 PAGE HEADING
     st.markdown("<div class='page-heading'>📓 Journal</div>", unsafe_allow_html=True)
     
     j_tab1, j_tab2, j_tab3 = st.tabs(["➕ New Trade Entry", "🔄 Update Exits", "📚 Journal Gallery"])
