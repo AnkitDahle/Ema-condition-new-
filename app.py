@@ -204,12 +204,11 @@ if raw_ipo_data:
     master_symbol_list.extend([str(x).upper() for x in pd.DataFrame(raw_ipo_data)['stock_symbol'].dropna().unique()])
 master_symbol_list = sorted(list(set(master_symbol_list)))
 
-# 4. Tabs Setup (Moved directly below the custom header)
+# 4. Tabs Setup
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📊 Scanner", "⚙️ Rules", "🔥 Catalyst", "🏢 IPOs", "📓 Journal", "⚠️ Logs"])
 
 # --- TAB 1: MAIN SCANNER ---
 with tab1:
-    # Run Scan Button - Made Smaller
     col_run, col_empty = st.columns([1, 5])
     with col_run:
         if st.button("🚀 Run Scan", use_container_width=True):
@@ -237,14 +236,12 @@ with tab1:
         latest_date = df['Scan Date'].max()
         total_stocks = len(df[df['Scan Date'] == latest_date])
         
-        # Metrics - Smaller Font
         m1, m2, m3 = st.columns([1, 1, 2])
         with m1: st.metric("📅 Last Scan Date", str(latest_date))
         with m2: st.metric("🎯 Breakout Count", f"{total_stocks}")
         
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # Filters AND Download Button in the same row
         f_col1, f_col2, f_col3, f_col4 = st.columns([1.5, 1.5, 1.5, 1.2])
         with f_col1: selected_date = st.selectbox("📅 Scan Date", sorted(df['Scan Date'].unique(), reverse=True))
         df_filtered = df[df['Scan Date'] == selected_date]
@@ -260,7 +257,6 @@ with tab1:
         if selected_sector != "All Sectors": df_filtered = df_filtered[df_filtered['Sector'] == selected_sector]
         if selected_stock != "All Stocks": df_filtered = df_filtered[df_filtered['Stock Symbol'] == selected_stock]
 
-        # Shifted Download Button UPAR
         tv_text = ""
         if not df_filtered.empty:
             sorted_df = df_filtered.sort_values(by=['Sector', 'Proxy / Industry'])
@@ -269,7 +265,7 @@ with tab1:
                 for sym in group['Stock Symbol']: tv_text += f"NSE:{sym}\n"
         
         with f_col4:
-            st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True) # Align with dropdowns
+            st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
             st.download_button("📥 Watchlist (.txt)", data=tv_text, file_name=f"AlphaSwing_{selected_date}.txt", mime="text/plain", use_container_width=True)
 
         st.dataframe(df_filtered, use_container_width=True, height=350, hide_index=True)
@@ -335,7 +331,6 @@ with tab4:
             
             st.markdown("<br>", unsafe_allow_html=True)
 
-        # Filters and Download UPAR SHIFTED
         col_y1, col_m1, col_search, col_dl = st.columns([1.2, 1.2, 1.5, 1.2])
         
         with col_y1: selected_year = st.selectbox("📅 IPO Year:", sorted(df_ipo['listing_year'].dropna().unique(), reverse=True))
@@ -348,10 +343,13 @@ with tab4:
         
         filtered_ipo = fil
         if selected_ipo_stock != "All IPOs": filtered_ipo = filtered_ipo[filtered_ipo['stock_symbol'] == selected_ipo_stock]
-        display_ipo = filtered_ipo[['stock_symbol', 'company_name', 'listing_date']].sort_values(by='Listing Date', ascending=False)
+        
+        # 🐛 THE FIX IS HERE: Pehle sort karo, phir column name change karo
+        display_ipo = filtered_ipo[['stock_symbol', 'company_name', 'listing_date']].sort_values(by='listing_date', ascending=False)
+        display_ipo.columns = ['Symbol', 'Company Name', 'Listing Date']
         
         tv_ipo_text = ""
-        for sym in display_ipo['stock_symbol']: tv_ipo_text += f"NSE:{sym}\n"
+        for sym in display_ipo['Symbol']: tv_ipo_text += f"NSE:{sym}\n"
         
         with col_dl:
             st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
@@ -391,7 +389,6 @@ except:
 with st.form("global_scratchpad_form"):
     user_notes = st.text_area(" ", value=saved_text, height=200, label_visibility="collapsed")
     
-    # Styled Save Button
     col_save, col_spacer = st.columns([1, 5])
     with col_save:
         if st.form_submit_button("💾 Save Notes", use_container_width=True):
