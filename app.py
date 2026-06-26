@@ -80,7 +80,7 @@ except Exception as e:
     raw_data = None
 
 # 5. Tabs Setup
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📊 Combined Scanner", "⚙️ Strategy Rules", "🔥 Catalyst Prompt", "🏢 IPO & Demerger", "📓 Trading Journal", "⚠️ Error Logs"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📊 Combined Scanner", "⚙️ Strategy Rules", "🔥 Catalyst Prompt", "🏢 IPO Tracker", "📓 Trading Journal", "⚠️ Error Logs"])
 
 # --- TAB 1: MAIN SCANNER ---
 with tab1:
@@ -254,24 +254,9 @@ Overall, Focus on the reasons why the stock can make a big move in the future - 
         </script>
     """, height=50)
 
-# --- TAB 4: IPO & DEMERGER TRACKER ---
+# --- TAB 4: IPO TRACKER ---
 with tab4:
-    st.header("🏢 IPO & Demerger Tracker")
-    
-    st.markdown("### 📰 Recent Demergers & Spin-offs (Last 3 Months)")
-    st.info("💡 **Mega Demerger Alert:** Vedanta Group has successfully demerged into 5 independent entities. Newly formed companies listed on June 24, 2026.")
-    
-    demerger_data = [
-        {"Company Name": "Vedanta Aluminium", "Symbol": "VAML", "Listing Date": "2026-06-24", "Sector": "Aluminium", "Parent Company": "Vedanta Ltd"},
-        {"Company Name": "Vedanta Oil & Gas", "Symbol": "VOGL", "Listing Date": "2026-06-24", "Sector": "Oil & Gas", "Parent Company": "Vedanta Ltd"},
-        {"Company Name": "Vedanta Iron & Steel", "Symbol": "VISL", "Listing Date": "2026-06-24", "Sector": "Iron & Steel", "Parent Company": "Vedanta Ltd"},
-        {"Company Name": "Vedanta Power", "Symbol": "VEDPOWER", "Listing Date": "2026-06-24", "Sector": "Power / Energy", "Parent Company": "Vedanta Ltd"},
-        {"Company Name": "Prima Plastics Ltd", "Symbol": "PRIMA", "Listing Date": "2026-04-17", "Sector": "Plastics", "Parent Company": "Self Restructuring"}
-    ]
-    df_demerger = pd.DataFrame(demerger_data)
-    st.dataframe(df_demerger, use_container_width=True, hide_index=True)
-    
-    st.markdown("---")
+    st.header("🏢 IPO Tracker")
     
     try:
         ipo_res = supabase.table('ipo_master').select("*").execute()
