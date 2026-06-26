@@ -9,186 +9,171 @@ import cloudinary
 import cloudinary.uploader
 import json
 
-# 1. Page Configuration (Sidebar collapsed for full-width screener look)
+# 1. Page Configuration (Sidebar collapsed by default for full-width SaaS look)
 st.set_page_config(page_title="AlphaSwing Pro", layout="wide", page_icon="📈", initial_sidebar_state="collapsed")
 
 # Initialize Session State for Navigation
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "Dashboard"
 
-# --- 🎨 CHARTINK STYLE UI ENGINE (FUNCTIONAL, SOLID, DATA-DENSE) ---
+# --- 🎨 STEP 1: LOCKED CLAUDE-STYLE ANIMATED BACKGROUND ---
 custom_css = """
 <style>
-    /* Base App Styling - Solid Dark Theme like Chartink Dark Mode */
+    /* Global Font Size Increase */
+    html, body, [class*="css"] {
+        font-size: 1.05rem !important;
+    }
+
+    /* 🔒 LOCKED: Animated Premium Gradient Background (DO NOT CHANGE) */
     .stApp {
-        background-color: #121419;
-        color: #d1d4dc;
+        background: linear-gradient(-45deg, #09090b, #18181b, #0f172a, #171717);
+        background-size: 400% 400%;
+        animation: gradientBG 15s ease infinite;
+        color: #f8fafc;
+    }
+    @keyframes gradientBG {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
     }
 
     /* Top Padding Adjust */
     .block-container {
-        padding-top: 0rem !important;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
+        padding-top: 1rem !important;
     }
 
-    /* Hide standard header */
-    header {visibility: hidden;}
-
-    /* Custom Top Navigation Bar (Chartink Style) */
-    .top-navbar-container {
-        background-color: #1a1e25;
-        border-bottom: 2px solid #2962ff;
-        padding: 10px 20px;
-        margin: -4rem -1rem 20px -1rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    
-    .brand-logo {
-        font-size: 20px;
-        font-weight: 800;
-        color: #ffffff;
-        letter-spacing: 0.5px;
-    }
-    .brand-logo span {
-        color: #2962ff;
-    }
-
-    /* Functional Button Styling (Square, Solid Colors) */
+    /* Premium Nav & Main Buttons Styling */
     div.stButton > button {
-        background-color: #2962ff;
+        background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
         color: white;
-        border-radius: 3px;
-        font-weight: 600;
+        border-radius: 8px;
+        font-weight: bold;
         border: none;
-        padding: 4px 15px; 
-        transition: 0.2s ease;
+        padding: 4px 12px; 
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         font-size: 14px !important;
-        box-shadow: none !important;
     }
     div.stButton > button:hover {
-        background-color: #1e4bd8;
-        border: none;
-        color: white;
-    }
-
-    /* Specific Green Button for "Run Scan" */
-    .btn-run-scan button {
-        background-color: #00c853 !important;
-    }
-    .btn-run-scan button:hover {
-        background-color: #00e676 !important;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
     }
 
     /* Secondary Download Buttons */
     div[data-testid="stDownloadButton"] > button {
-        background-color: #2a2e39;
-        border: 1px solid #363c4e;
-        color: #d1d4dc;
-        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255,255,255,0.2);
+        color: #e2e8f0;
     }
     div[data-testid="stDownloadButton"] > button:hover {
-        background-color: #363c4e;
-        border-color: #2962ff;
-        color: white;
+        background: rgba(255, 255, 255, 0.1);
+        border-color: #3b82f6;
     }
 
-    /* Metric Adjustments (Clean Data Boxes) */
+    /* Metric Adjustments (Smaller Font for Data) */
     div[data-testid="metric-container"] {
-        background-color: #1a1e25;
-        border: 1px solid #2a2e39;
-        border-radius: 4px;
-        padding: 12px 15px;
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        padding: 10px 15px;
+        backdrop-filter: blur(5px);
     }
     div[data-testid="stMetricValue"] {
-        font-size: 1.5rem !important; 
-        color: #ffffff;
-        font-weight: 700;
+        font-size: 1.4rem !important; 
+        color: #e2e8f0;
     }
     div[data-testid="stMetricLabel"] {
-        font-size: 0.85rem !important;
-        color: #8a93a6;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
+        font-size: 0.9rem !important;
+        color: #94a3b8;
     }
 
-    /* Streamlit Tabs Styling (Functional Web Tabs) */
+    /* Streamlit Tabs Styling */
     div[data-baseweb="tab-list"] {
-        background-color: transparent;
-        border-bottom: 1px solid #2a2e39;
-        gap: 0;
-        padding: 0;
+        background: rgba(0,0,0,0.2);
+        padding: 5px;
+        border-radius: 10px;
+        gap: 5px;
     }
     div[data-baseweb="tab"] {
-        border-radius: 4px 4px 0 0;
-        padding: 10px 20px;
-        color: #8a93a6;
-        background-color: #1a1e25;
-        border: 1px solid transparent;
-        margin-right: 5px;
+        border-radius: 8px;
+        padding: 8px 16px;
+        color: #94a3b8;
     }
     div[data-baseweb="tab"][aria-selected="true"] {
-        background-color: #2962ff;
+        background: rgba(255, 255, 255, 0.1);
         color: #ffffff;
-        border-color: #2962ff;
-        font-weight: bold;
     }
     
     /* Journal Card Styling */
     .journal-card { 
-        background-color: #1a1e25; 
-        border: 1px solid #2a2e39; 
+        background: rgba(0,0,0,0.2); 
+        border: 1px solid rgba(255,255,255,0.05); 
         padding: 20px; 
-        border-radius: 4px; 
-        margin-bottom: 15px; 
+        border-radius: 12px; 
+        margin-bottom: 20px; 
+        backdrop-filter: blur(5px);
     }
 
-    /* Input Fields & Text Areas */
-    .stTextArea textarea, .stTextInput input, .stSelectbox div[data-baseweb="select"] {
-        background-color: #1a1e25 !important;
+    /* Hide standard header */
+    header {visibility: hidden;}
+    
+    /* Notes Text Area Cleanup */
+    .stTextArea textarea {
+        background-color: rgba(0,0,0,0.2) !important;
         color: white !important;
-        border: 1px solid #363c4e !important;
-        border-radius: 3px !important;
+        border: 1px solid rgba(255,255,255,0.1) !important;
+        border-radius: 8px !important;
     }
 </style>
 """
 st.markdown(custom_css, unsafe_allow_html=True)
 
-# 2. TOP NAVIGATION BAR (Chartink Style)
-st.markdown("""
-<div class="top-navbar-container">
-    <div class="brand-logo">AlphaSwing <span>Pro</span></div>
-    <div style='font-size: 14px; font-weight: 500; color: #8a93a6;'>User: Ankit Dahle | Account: Premium</div>
-</div>
-""", unsafe_allow_html=True)
-
+# 2. TOP NAVIGATION BAR
 nav_c1, nav_c2, nav_c3 = st.columns([1.5, 1.5, 7])
 with nav_c1:
     if st.button("🏠 Home", use_container_width=True):
         st.session_state.current_page = "Home"
         st.rerun()
 with nav_c2:
-    if st.button("📊 Screener", use_container_width=True):
+    if st.button("📈 Dashboard", use_container_width=True):
         st.session_state.current_page = "Dashboard"
         st.rerun()
 with nav_c3:
-    pass # Empty space for alignment
+    st.markdown("""
+        <div style='text-align: right; padding-top: 8px;'>
+            <span style='background: rgba(255, 255, 255, 0.1); padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); cursor: pointer;'>👤 Login / Auth</span>
+        </div>
+    """, unsafe_allow_html=True)
 
-st.markdown("<hr style='margin-top: 5px; border-color: #2a2e39;'>", unsafe_allow_html=True)
+st.markdown("<br>", unsafe_allow_html=True)
 
 # ==========================================
 # 🏠 PAGE 1: HOME PAGE
 # ==========================================
 if st.session_state.current_page == "Home":
-    st.markdown("""
-        <div style='text-align: center; padding: 100px 0;'>
-            <h1 style='font-size: 40px; color: #ffffff;'>Welcome to <span style='color: #2962ff;'>AlphaSwing Pro</span></h1>
-            <p style='color: #8a93a6; font-size: 18px;'>Your advanced momentum scanning and trading journal platform.</p>
+    components.html(
+        """
+        <script src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12"></script>
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@700&display=swap');
+            body { font-family: 'Inter', sans-serif; text-align: center; background-color: transparent; margin: 0; padding-top: 100px; color: #f8fafc; }
+            .main-text { font-size: 50px; font-weight: 800; letter-spacing: -1px; }
+            .highlight { color: #3b82f6; text-shadow: 0 0 20px rgba(59, 130, 246, 0.5);}
+        </style>
+        <div class="main-text">
+            AlphaSwing Pro: Best tool for <br><span id="typed" class="highlight"></span>
         </div>
-    """, unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #50586e;'>Home page is currently empty. Click 'Screener' to view the dashboard.</p>", unsafe_allow_html=True)
+        <script>
+            var typed = new Typed('#typed', {
+                strings: ['Swing Trading.', 'Live Market Scans.', 'Technical Analysis.', 'Pro Trading Journal.'],
+                typeSpeed: 60, backSpeed: 40, backDelay: 1500, loop: true, showCursor: true, cursorChar: '|'
+            });
+        </script>
+        """,
+        height=300,
+    )
+    st.markdown("<p style='text-align: center; color: #64748b;'>Home page is currently empty as requested.</p>", unsafe_allow_html=True)
+
 
 # ==========================================
 # 📈 PAGE 2: DASHBOARD (SCANNER & TOOLS)
@@ -232,17 +217,16 @@ elif st.session_state.current_page == "Dashboard":
         master_symbol_list.extend([str(x).upper() for x in pd.DataFrame(raw_ipo_data)['stock_symbol'].dropna().unique()])
     master_symbol_list = sorted(list(set(master_symbol_list)))
 
-    # --- 📌 TABS ---
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📊 Screener Results", "⚙️ Scan Conditions", "🔥 Catalyst Research", "🏢 IPOs", "📓 Trades", "⚠️ Logs"])
+    # --- 📌 TABS PLACED AT THE VERY TOP ---
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📊 Scanner", "⚙️ Rules", "🔥 Catalyst", "🏢 IPOs", "📓 Journal", "⚠️ Logs"])
 
     # --- TAB 1: MAIN SCANNER ---
     with tab1:
         st.markdown("<br>", unsafe_allow_html=True)
-        col_run, col_empty = st.columns([1.5, 6])
+        col_run, col_empty = st.columns([1, 5])
         with col_run:
-            st.markdown("<div class='btn-run-scan'>", unsafe_allow_html=True)
-            if st.button("▶ Run Scanner", use_container_width=True):
-                with st.spinner("Executing Scan..."):
+            if st.button("🚀 Run Scan", use_container_width=True):
+                with st.spinner("Scanning..."):
                     try:
                         token = st.secrets["GITHUB_TOKEN"]
                         repo = st.secrets["GITHUB_REPO"]
@@ -250,10 +234,9 @@ elif st.session_state.current_page == "Dashboard":
                         headers = {"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"}
                         requests.post(url, headers=headers, json={"ref": "main"})
                         time.sleep(2)
-                        st.success("✅ Scan Initiated!")
+                        st.success("✅ Initiated!")
                     except Exception as e:
                         st.error(f"❌ Error: {e}")
-            st.markdown("</div>", unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
             
@@ -267,9 +250,9 @@ elif st.session_state.current_page == "Dashboard":
             latest_date = df['Scan Date'].max()
             total_stocks = len(df[df['Scan Date'] == latest_date])
             
-            m1, m2, m3 = st.columns([1.5, 1.5, 4])
+            m1, m2, m3 = st.columns([1, 1, 2])
             with m1: st.metric("📅 Last Scan Date", str(latest_date))
-            with m2: st.metric("🎯 Total Breakouts", f"{total_stocks}")
+            with m2: st.metric("🎯 Breakout Count", f"{total_stocks}")
             
             st.markdown("<br>", unsafe_allow_html=True)
             
@@ -297,30 +280,24 @@ elif st.session_state.current_page == "Dashboard":
             
             with f_col4:
                 st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-                st.download_button("📥 Export (.txt)", data=tv_text, file_name=f"AlphaSwing_{selected_date}.txt", mime="text/plain", use_container_width=True)
+                st.download_button("📥 Watchlist (.txt)", data=tv_text, file_name=f"AlphaSwing_{selected_date}.txt", mime="text/plain", use_container_width=True)
 
-            st.dataframe(df_filtered, use_container_width=True, height=400, hide_index=True)
+            st.dataframe(df_filtered, use_container_width=True, height=350, hide_index=True)
         else:
             st.info("Database is empty.")
 
     # --- TAB 2: Strategy Rules ---
     with tab2:
         st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("### Active Scan Conditions")
-        st.code("""
-        # Momentum Breakout Setup
-        Condition 1: Close Price > 1-Month High
-        Condition 2: Close Price > 3-Month High
-        Condition 3: Close Price > 52-Week High
-        Condition 4: Daily Volume Turnover > 10 Crores
-        Condition 5: Close Price > 20 EMA > 50 EMA > 200 EMA
-        """, language="text")
+        st.write("• 1-Month, 3-Month & 52-Week High Breakouts.")
+        st.write("• Heavy volume bursts (Turnover > 10Cr).")
+        st.write("• Uptrend (Price sustained above key EMAs).")
 
     # --- TAB 3: CATALYST PROMPT ---
     with tab3:
         st.markdown("<br>", unsafe_allow_html=True)
         default_idx = master_symbol_list.index("RELIANCE") if "RELIANCE" in master_symbol_list else 0
-        user_ticker = st.selectbox("🔤 Select Stock Symbol for Analysis:", master_symbol_list, index=default_idx)
+        user_ticker = st.selectbox("🔤 Select Stock Symbol:", master_symbol_list, index=default_idx)
         
         catalyst_prompt = f"""Please analyze {user_ticker} for me and provide the following, concise and clearly organized:
 1. Explain what the company does like I'm 12 years old.
@@ -336,15 +313,15 @@ elif st.session_state.current_page == "Dashboard":
         escaped_prompt_json = json.dumps(catalyst_prompt)
         
         components.html(f"""
-            <button id="copyPromptBtn" style="background-color: #2962ff; color: white; border: none; padding: 10px 20px; border-radius: 3px; font-weight: bold; cursor: pointer; width: 100%; font-family: sans-serif; font-size: 14px;">📋 Copy Full Prompt</button>
+            <button id="copyPromptBtn" style="background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; font-family: sans-serif; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">📋 Copy Full Prompt</button>
             <script>
             document.getElementById('copyPromptBtn').addEventListener('click', function() {{
                 navigator.clipboard.writeText({escaped_prompt_json}).then(function() {{
                     const btn = document.getElementById('copyPromptBtn');
-                    btn.style.backgroundColor = '#00c853';
+                    btn.style.background = '#10b981';
                     btn.innerText = '✅ Prompt Copied!';
                     setTimeout(() => {{
-                        btn.style.backgroundColor = '#2962ff';
+                        btn.style.background = 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)';
                         btn.innerText = '📋 Copy Full Prompt';
                     }}, 2000);
                 }});
@@ -364,7 +341,7 @@ elif st.session_state.current_page == "Dashboard":
                 today_listed = len(df_ipo[df_ipo['calc_date'].dt.date == today])
                 this_month = len(df_ipo[(df_ipo['calc_date'].dt.month == today.month) & (df_ipo['calc_date'].dt.year == today.year)])
                 
-                m1, m2, m3 = st.columns([1.5, 1.5, 4])
+                m1, m2, m3 = st.columns([1, 1, 2])
                 with m1: st.metric("Today Listed", today_listed)
                 with m2: st.metric("This Month", this_month)
                 
@@ -391,17 +368,18 @@ elif st.session_state.current_page == "Dashboard":
             
             with col_dl:
                 st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-                st.download_button("📥 Export (.txt)", data=tv_ipo_text, file_name=f"IPO_{selected_year}.txt", mime="text/plain", use_container_width=True)
+                st.download_button("📥 Watchlist (.txt)", data=tv_ipo_text, file_name=f"IPO_{selected_year}.txt", mime="text/plain", use_container_width=True)
                 
-            st.dataframe(display_ipo, use_container_width=True, hide_index=True, height=400)
+            st.dataframe(display_ipo, use_container_width=True, hide_index=True, height=350)
 
-    # --- TAB 5: TRADING JOURNAL ---
+    # --- TAB 5: TRADING JOURNAL (RESTORED PRO VERSION) ---
     with tab5:
         st.markdown("<br>", unsafe_allow_html=True)
-        j_tab1, j_tab2, j_tab3 = st.tabs(["➕ New Trade", "🔄 Update Exits", "📚 Journal Data"])
+        j_tab1, j_tab2, j_tab3 = st.tabs(["➕ New Trade Entry", "🔄 Update Exits & TSL", "📚 Journal Gallery"])
         
         with j_tab1:
             with st.form("new_trade_form", clear_on_submit=True):
+                st.subheader("Enter New Trade Details")
                 c1, c2, c3 = st.columns(3)
                 with c1:
                     symbol = st.text_input("Stock Symbol (e.g., RELIANCE)").upper()
@@ -412,7 +390,7 @@ elif st.session_state.current_page == "Dashboard":
                 with c3:
                     initial_sl = st.number_input("Initial Stoploss (₹)", min_value=0.0, step=0.1, format="%.2f")
                 
-                trade_logic = st.text_area("Trade Logic")
+                trade_logic = st.text_area("Trade Logic (Setup, EMA, Breakout, etc.)")
                 image_file = st.file_uploader("Upload Chart Screenshot (Optional)", type=['png', 'jpg', 'jpeg'])
                 
                 if st.form_submit_button("💾 Save Trade", use_container_width=True) and symbol and quantity > 0 and buying_price > 0:
@@ -443,19 +421,24 @@ elif st.session_state.current_page == "Dashboard":
                     selected_trade_label = st.selectbox("🎯 Select Active Trade to Update", list(trade_options.keys()))
                     t = trade_options[selected_trade_label]
                     
-                    st.markdown(f"**Qty:** {t['total_quantity']} | **Buy Price:** ₹{t['buying_price']}")
+                    st.markdown(f"**Current Total Quantity:** {t['total_quantity']} | **Buy Price:** ₹{t['buying_price']}")
                     
                     with st.form("update_trade_form"):
+                        st.markdown("### 1️⃣ 20% Quantity Booking")
                         c1, c2, c3 = st.columns(3)
                         with c1: s20_date = st.date_input("20% Sold Date", value=None)
                         with c2: s20_price = st.number_input("20% Sold Price", value=float(t['sold_20_price'] or 0.0))
-                        with c3: sl_20 = st.number_input("New SL (0 for BE)", value=float(t['sl_after_20'] or 0.0))
+                        with c3:
+                            st.caption("💡 Leave 0 to auto-shift SL to Breakeven")
+                            sl_20 = st.number_input("New SL After 20%", value=float(t['sl_after_20'] or 0.0))
                             
+                        st.markdown("### 2️⃣ 50% Quantity Booking")
                         c4, c5, c6 = st.columns(3)
                         with c4: s50_date = st.date_input("50% Sold Date", value=None)
                         with c5: s50_price = st.number_input("50% Sold Price", value=float(t['sold_50_price'] or 0.0))
                         with c6: sl_50 = st.number_input("New TSL After 50%", value=float(t['sl_after_50'] or 0.0))
                         
+                        st.markdown("### 3️⃣ Final 30% Quantity Booking")
                         c7, c8 = st.columns(2)
                         with c7: s30_date = st.date_input("30% Sold Date", value=None)
                         with c8: s30_price = st.number_input("30% Sold Price", value=float(t['sold_30_price'] or 0.0))
@@ -464,6 +447,7 @@ elif st.session_state.current_page == "Dashboard":
                             final_sl_20 = sl_20
                             if s20_price > 0 and sl_20 == 0:
                                 final_sl_20 = float(t['buying_price'])
+                                st.toast("Auto-shifted SL to Breakeven!")
 
                             update_data = {
                                 "sold_20_date": str(s20_date) if s20_price > 0 else None, "sold_20_price": s20_price if s20_price > 0 else None, "sl_after_20": final_sl_20 if final_sl_20 > 0 else None,
@@ -475,7 +459,7 @@ elif st.session_state.current_page == "Dashboard":
                             time.sleep(1)
                             st.rerun()
                 else:
-                    st.info("No active trades found.")
+                    st.info("No active trades found. Add a trade first.")
             except Exception as e:
                 st.error(f"Error fetching active trades: {e}")
 
@@ -487,12 +471,12 @@ elif st.session_state.current_page == "Dashboard":
                 if all_trades:
                     for tr in all_trades:
                         st.markdown("<div class='journal-card'>", unsafe_allow_html=True)
-                        g1, g2 = st.columns([1, 3])
+                        g1, g2 = st.columns([1, 2])
                         with g1:
                             if tr.get('image_url'):
                                 st.image(tr['image_url'], use_container_width=True)
                             else:
-                                st.info("No chart")
+                                st.info("No chart uploaded.")
                         with g2:
                             st.subheader(f"🚀 {tr['symbol']}")
                             st.write(f"**Date:** {tr['buying_date']} | **Buy Price:** ₹{tr['buying_price']} | **Qty:** {tr['total_quantity']}")
@@ -506,7 +490,7 @@ elif st.session_state.current_page == "Dashboard":
                                 st.success(f"**30% Final Booked @ ₹{tr['sold_30_price']}**")
                         st.markdown("</div>", unsafe_allow_html=True)
                 else:
-                    st.info("Journal is empty.")
+                    st.info("Journal khali hai. Start trading!")
             except Exception as e:
                 st.error(f"Error loading gallery: {e}")
 
@@ -516,9 +500,9 @@ elif st.session_state.current_page == "Dashboard":
         st.header("⚠️ Error Logs")
         if st.button("Clear Logs"): st.success("Cleared!")
 
-    # --- 📝 GLOBAL NOTES (Chartink Style Bottom Panel) ---
-    st.markdown("<br><hr style='border-color: #2a2e39;'><br>", unsafe_allow_html=True)
-    st.markdown("### 📝 Sticky Notes")
+    # --- 📝 GLOBAL NOTES (Minimal Layout) ---
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.markdown("### Notes")
 
     try:
         note_res = supabase.table('global_notes').select('note_text').eq('id', 1).execute()
@@ -527,12 +511,12 @@ elif st.session_state.current_page == "Dashboard":
         saved_text = ""
 
     with st.form("global_scratchpad_form"):
-        user_notes = st.text_area(" ", value=saved_text, height=150, label_visibility="collapsed")
+        user_notes = st.text_area(" ", value=saved_text, height=200, label_visibility="collapsed")
         
-        col_save, col_spacer = st.columns([1.5, 6])
+        col_save, col_spacer = st.columns([1, 5])
         with col_save:
             if st.form_submit_button("💾 Save Notes", use_container_width=True):
                 supabase.table('global_notes').upsert({"id": 1, "note_text": user_notes}).execute()
-                st.toast("✅ Notes Saved!")
+                st.toast("✅ Saved!")
                 time.sleep(0.5)
                 st.rerun()
