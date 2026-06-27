@@ -43,10 +43,9 @@ custom_css = f"""
 
     /* ---------------------------------------------------
        🌟 1. GLOBAL ACTION BUTTONS (Run Scan & Watchlist)
-       Dono Buttons par exact same Watchlist Box Logic lagega
+       Dono exactly same Watchlist Box Style me aayenge
        --------------------------------------------------- */
-    button[kind="secondary"], 
-    div[data-testid="stDownloadButton"] > button {{
+    button[kind="secondary"] {{
         background-color: rgba(255, 255, 255, 0.05) !important;
         border: 1px solid rgba(255, 255, 255, 0.2) !important;
         border-radius: 8px !important;
@@ -55,20 +54,17 @@ custom_css = f"""
         box-shadow: none !important;
         min-height: 42px !important;
     }}
-    button[kind="secondary"] p, 
-    div[data-testid="stDownloadButton"] > button p {{
+    button[kind="secondary"] p {{
         font-weight: 500 !important; /* Kam Bold */
         color: #e2e8f0 !important;
         font-size: 15px !important;
         margin: 0 !important;
     }}
-    button[kind="secondary"]:hover, 
-    div[data-testid="stDownloadButton"] > button:hover {{
+    button[kind="secondary"]:hover {{
         border-color: #00e5ff !important;
         background-color: rgba(255, 255, 255, 0.1) !important;
     }}
-    button[kind="secondary"]:hover p, 
-    div[data-testid="stDownloadButton"] > button:hover p {{
+    button[kind="secondary"]:hover p {{
         color: #ffffff !important;
     }}
 
@@ -79,21 +75,17 @@ custom_css = f"""
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
-        white-space: nowrap !important; 
-        min-width: fit-content !important; 
     }}
     div[data-testid="stHorizontalBlock"]:first-of-type button[kind="secondary"] p {{
         color: #7b8fa3 !important;      
         font-weight: 500 !important;    
         font-size: 19px !important;     
         letter-spacing: 0.5px;
-        transition: color 0.2s ease;
-        white-space: nowrap !important; 
     }}
     div[data-testid="stHorizontalBlock"]:first-of-type button[kind="secondary"]:hover p {{ color: #cdd6e0 !important; }}
 
-    /* 🔥 ACTIVE TAB STYLE (Pure White & Bhaari) */
-    div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="column"]:nth-child({active_index}) button[kind="secondary"] p {{
+    /* 🔥 ACTIVE TAB STYLE (Pure White & Ultra Bold) */
+    div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stColumn"]:nth-child({active_index}) button[kind="secondary"] p {{
         color: #ffffff !important;      
         font-weight: 900 !important;    
     }}
@@ -243,7 +235,7 @@ elif st.session_state.current_page == "Scanner":
         
         with f_col2: selected_sector = st.selectbox("🎯 Sector", ["All Sectors"] + list(df['Sector'].dropna().unique()) if 'Sector' in df.columns else ["All Sectors"])
         
-        # ✅ TYPE TO SEARCH ONLY (No default dropdown list)
+        # ✅ FIX: Smart Autocomplete Search (Empty by default)
         with f_col3: 
             selected_stock = st.selectbox("🔤 Search Stock", sorted(list(df_filtered['Stock Symbol'].dropna().unique())), index=None, placeholder="Type symbol...")
 
