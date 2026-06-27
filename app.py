@@ -22,7 +22,7 @@ pages = ['Home', 'Scanner', 'Catalyst', 'IPOs', 'Journal']
 active_index = pages.index(st.session_state.current_page) + 2 
 
 # ==========================================
-# 2. 🎨 UI ENGINE & CUSTOM CSS (LOCKED)
+# 2. 🎨 UI ENGINE & CUSTOM CSS
 # ==========================================
 custom_css = f"""
 <style>
@@ -38,12 +38,41 @@ custom_css = f"""
     }}
     @keyframes gradientBG {{ 0% {{ background-position: 0% 50%; }} 50% {{ background-position: 100% 50%; }} 100% {{ background-position: 0% 50%; }} }}
 
-    /* Layout Adjustments */
     .block-container {{ padding-top: 1rem !important; }}
     header {{ visibility: hidden; }}
 
     /* ---------------------------------------------------
-       🌟 NAVBAR STYLING (ATLAS STYLE)
+       🌟 1. GLOBAL BUTTONS (Run Scan & Watchlist Box)
+       --------------------------------------------------- */
+    .stButton > button, 
+    div[data-testid="stDownloadButton"] > button {{
+        background: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        border-radius: 8px !important;
+        padding: 6px 12px !important;
+        transition: all 0.2s ease !important;
+        box-shadow: none !important;
+        min-height: 42px !important;
+    }}
+    .stButton > button p, 
+    div[data-testid="stDownloadButton"] > button p {{
+        font-weight: 500 !important; /* Kam Bold */
+        color: #e2e8f0 !important;
+        font-size: 15px !important;
+        margin: 0 !important;
+    }}
+    .stButton > button:hover, 
+    div[data-testid="stDownloadButton"] > button:hover {{
+        border-color: #00e5ff !important;
+        background: rgba(255, 255, 255, 0.1) !important;
+    }}
+    .stButton > button:hover p, 
+    div[data-testid="stDownloadButton"] > button:hover p {{
+        color: #ffffff !important;
+    }}
+
+    /* ---------------------------------------------------
+       🌟 2. NAVBAR LINKS (ATLAS STYLE) - OVERRIDE
        --------------------------------------------------- */
     div[data-testid="stHorizontalBlock"]:first-of-type div.stButton > button {{
         background: transparent !important;
@@ -52,7 +81,6 @@ custom_css = f"""
         white-space: nowrap !important; 
         min-width: fit-content !important; 
     }}
-
     /* Inactive Tabs */
     div[data-testid="stHorizontalBlock"]:first-of-type div.stButton > button p {{
         color: #7b8fa3 !important;      
@@ -76,38 +104,16 @@ custom_css = f"""
         border-radius: 6px !important;
         padding: 6px 24px !important;
         white-space: nowrap !important;
+        border: none !important;
     }}
     div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stColumn"]:last-child div.stButton > button p {{
         color: #000000 !important;      
         font-weight: 900 !important;
-        font-size: 15px !important;
     }}
     div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stColumn"]:last-child div.stButton > button:hover {{ background-color: #00bfff !important; }}
 
     /* ---------------------------------------------------
-       🌟 ACTION BUTTONS (Run Scan & Watchlist Box)
-       --------------------------------------------------- */
-    .button-box-style button, div[data-testid="stDownloadButton"] > button {{
-        background: rgba(255, 255, 255, 0.05) !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        border-radius: 8px !important;
-        padding: 6px 12px !important;
-        transition: all 0.2s ease !important;
-    }}
-    .button-box-style button p, div[data-testid="stDownloadButton"] > button p {{
-        font-weight: 500 !important; /* Kam bold as requested */
-        color: #e2e8f0 !important;
-        font-size: 15px !important;
-        margin: 0 !important;
-    }}
-    .button-box-style button:hover, div[data-testid="stDownloadButton"] > button:hover {{
-        border-color: #00e5ff !important;
-        background: rgba(255, 255, 255, 0.1) !important;
-    }}
-    .button-box-style button:hover p, div[data-testid="stDownloadButton"] > button:hover p {{ color: #ffffff !important; }}
-
-    /* ---------------------------------------------------
-       🌟 FORMS & COMPONENTS
+       🌟 3. FORMS (Save Trade Button) - OVERRIDE
        --------------------------------------------------- */
     div.stForm div.stButton > button {{
         background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%) !important;
@@ -115,7 +121,10 @@ custom_css = f"""
         border-radius: 8px !important;
     }}
     div.stForm div.stButton > button p {{ font-weight: 700 !important; color: white !important; }}
-    
+
+    /* ---------------------------------------------------
+       🌟 4. COMPONENTS
+       --------------------------------------------------- */
     .page-heading {{ font-size: 28px; font-weight: 600; color: #ffffff; margin-top: -10px; margin-bottom: 20px; border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 10px; }}
     div[data-testid="metric-container"] {{ background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 10px 15px; backdrop-filter: blur(5px); }}
     div[data-testid="stMetricValue"] {{ font-size: 1.4rem !important; color: #e2e8f0; }}
@@ -245,7 +254,7 @@ elif st.session_state.current_page == "Scanner":
 
         # Styled Run Scan Button
         with f_col_run:
-            st.markdown("<div style='margin-top: 28px;' class='button-box-style'>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
             if st.button("🚀 Run Scan", use_container_width=True):
                 with st.spinner("Scanning..."):
                     try:
@@ -255,13 +264,13 @@ elif st.session_state.current_page == "Scanner":
                         time.sleep(2)
                         st.success("✅ Initiated!")
                     except Exception as e: st.error(f"❌ Error: {e}")
-            st.markdown("</div>", unsafe_allow_html=True)
 
+        # ✅ FIX: Appended comma ',' at the end of each ticker
         tv_text = ""
         if not df_filtered.empty:
             for (sec, proxy), group in df_filtered.sort_values(by=['Sector', 'Proxy / Industry']).groupby(['Sector', 'Proxy / Industry']):
                 tv_text += f"### {sec} / {proxy}\n"
-                for sym in group['Stock Symbol']: tv_text += f"NSE:{sym}\n"
+                for sym in group['Stock Symbol']: tv_text += f"NSE:{sym},\n"
         
         # Styled Download Button
         with f_col_dl:
@@ -276,15 +285,30 @@ elif st.session_state.current_page == "Catalyst":
     default_idx = master_symbol_list.index("RELIANCE") if "RELIANCE" in master_symbol_list else 0
     user_ticker = st.selectbox("🔤 Select Stock Symbol:", master_symbol_list, index=default_idx)
     
+    # ✅ FIX: New highly detailed Catalyst prompt integration
     catalyst_prompt = f"""Please analyze {user_ticker} for me and provide the following, concise and clearly organized:
-1. Explain what the company does like I'm 12 years old.
-2. Professional summary (industry, peers, moat).
-3. Table: Hot themes, Catalysts, Significant fundamentals.
-4. Main news/events for the last 3 months.
-5. Recent insider buys/sells.
-6. Stock movement vs competitors.
-7. Upcoming catalysts in next 30 days.
-8. Analyst price target changes."""
+
+1. Explain what the company does in like I'm 12 years old - three short bullet points about what it does and any helpful relatable examples and analogies.
+
+2. Professional summary (max 10 sentences) - industry, main products/services, primary competitors (list tickers), notable metrics or achievements, competitive advantage/moat, why they are unique and if they are a biotech provide if they have a commercial product or in clinical stages. 
+
+3. In a table, provide the follwoing:
+
+* Any hot theme, narrative or story of the stock
+* Any catalysts (earnings, news, macro)
+* Any significant fundamentals (huge growth in earnings or revenues, moat, unique product or service, superior management, patents etc)
+
+4. Show all the main news/events for the last 3 months: - Use a bullet-point table for: - Date (YYYY-MM-DD) - Event type (Earnings, Product Launch, Analyst Upgrade/Downgrade, etc.) - Short summary (max 1-2 sentences) - Direct source link - Mark any major price-moving events (surprise earnings, large guidance shift, top-tier analyst actions).
+
+5. Mention any recent insider buys/sells or institutional filings if visible.
+
+6. Summarize how the stock is moving vs. main competitors and overall sector trend in past month (up/down).
+
+7. Flag upcoming catalysts (earnings, product launches, regulatory events) in the next 30 days.
+
+8. Note any changes in analyst price targets for this ticker during the period above. - Format for easy review. If possible, use tables for events and peer moves. - Respond in clear, concise, easily readable style for use in trading decisions. 
+
+Overall, Focus on the reasons why the stock can make a big move in the future - earnings, sales, guidance, product launches, analyst upgrades/downgrades, insider buying especially from CEO/Founder and executive team, partnerships, and sector/news catalysts. I want to focus on stocks with catalysts and themes as catalysts are the cause of big moves in the stock market."""
 
     st.code(catalyst_prompt, language="text")
     escaped_prompt_json = json.dumps(catalyst_prompt)
@@ -334,8 +358,9 @@ elif st.session_state.current_page == "IPOs":
         display_ipo = fil[['stock_symbol', 'company_name', 'listing_date']].sort_values(by='listing_date', ascending=False)
         display_ipo.columns = ['Symbol', 'Company Name', 'Listing Date']
         
+        # ✅ FIX: Appended comma ',' at the end of each IPO ticker
         tv_ipo_text = ""
-        for sym in display_ipo['Symbol']: tv_ipo_text += f"NSE:{sym}\n"
+        for sym in display_ipo['Symbol']: tv_ipo_text += f"NSE:{sym},\n"
         
         with col_dl:
             st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
