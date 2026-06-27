@@ -9,24 +9,25 @@ import cloudinary
 import cloudinary.uploader
 import json
 
-# 1. Page Configuration (Sidebar collapsed for full-width view)
+# ==========================================
+# 1. PAGE CONFIGURATION & SESSION STATE
+# ==========================================
 st.set_page_config(page_title="AlphaSwing Pro", layout="wide", page_icon="📈", initial_sidebar_state="collapsed")
 
-# Initialize Session State for Navigation
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "Home"
 
-# Logic to calculate which tab is Active
 pages = ['Home', 'Scanner', 'Catalyst', 'IPOs', 'Journal']
-active_index = pages.index(st.session_state.current_page) + 2  # +2 because Logo is the 1st column
+# +2 because Logo takes the 1st column in our layout
+active_index = pages.index(st.session_state.current_page) + 2 
 
-# --- 🎨 UI ENGINE: ANIMATED BG (LOCKED) + EXACT IMAGE NAVBAR STYLES ---
+# ==========================================
+# 2. 🎨 UI ENGINE & CUSTOM CSS (LOCKED)
+# ==========================================
 custom_css = f"""
 <style>
     /* Global Font Size */
-    html, body, [class*="css"] {{
-        font-size: 1.05rem !important;
-    }}
+    html, body, [class*="css"] {{ font-size: 1.05rem !important; }}
 
     /* 🔒 LOCKED: Animated Premium Gradient Background */
     .stApp {{
@@ -35,146 +36,100 @@ custom_css = f"""
         animation: gradientBG 15s ease infinite;
         color: #f8fafc;
     }}
-    @keyframes gradientBG {{
-        0% {{ background-position: 0% 50%; }}
-        50% {{ background-position: 100% 50%; }}
-        100% {{ background-position: 0% 50%; }}
-    }}
+    @keyframes gradientBG {{ 0% {{ background-position: 0% 50%; }} 50% {{ background-position: 100% 50%; }} 100% {{ background-position: 0% 50%; }} }}
 
-    /* Top Padding Adjust */
-    .block-container {{
-        padding-top: 1rem !important;
-    }}
-    header {{visibility: hidden;}}
+    /* Layout Adjustments */
+    .block-container {{ padding-top: 1rem !important; }}
+    header {{ visibility: hidden; }}
 
     /* ---------------------------------------------------
-       🌟 1. GLOBAL BUTTON STYLES (RUN SCAN & WATCHLIST)
+       🌟 NAVBAR STYLING (ATLAS STYLE)
        --------------------------------------------------- */
-    
-    /* Box style & border for both regular buttons and download buttons */
-    div.stButton > button,
-    div[data-testid="stDownloadButton"] > button {{
-        background-color: rgba(255, 255, 255, 0.05) !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        border-radius: 8px !important;
-        box-shadow: none !important;
-        transition: all 0.2s ease !important;
-        padding: 6px 12px !important;
-    }}
-    
-    /* Font style for both (Kam bold) */
-    div.stButton > button p,
-    div[data-testid="stDownloadButton"] > button p {{
-        font-weight: 500 !important; 
-        font-size: 15px !important;
-        color: #e2e8f0 !important;
-        margin: 0 !important;
-    }}
-
-    /* Hover effect for both */
-    div.stButton > button:hover,
-    div[data-testid="stDownloadButton"] > button:hover {{
-        background-color: rgba(255, 255, 255, 0.1) !important;
-        border-color: #00e5ff !important;
-    }}
-    div.stButton > button:hover p,
-    div[data-testid="stDownloadButton"] > button:hover p {{
-        color: #ffffff !important;
-    }}
-
-
-    /* ---------------------------------------------------
-       🌟 2. OVERRIDE: NAVBAR STYLING 
-       --------------------------------------------------- */
-    
-    /* Make navbar buttons transparent and PREVENT WRAPPING */
     div[data-testid="stHorizontalBlock"]:first-of-type div.stButton > button {{
         background: transparent !important;
         border: none !important;
+        box-shadow: none !important;
         white-space: nowrap !important; 
         min-width: fit-content !important; 
     }}
 
-    /* INACTIVE buttons style */
+    /* Inactive Tabs */
     div[data-testid="stHorizontalBlock"]:first-of-type div.stButton > button p {{
         color: #7b8fa3 !important;      
         font-weight: 500 !important;    
         font-size: 19px !important;     
         letter-spacing: 0.5px;
+        transition: color 0.2s ease;
         white-space: nowrap !important; 
     }}
-    
-    /* Hover effect for inactive buttons */
-    div[data-testid="stHorizontalBlock"]:first-of-type div.stButton > button:hover p {{
-        color: #cdd6e0 !important;      
-    }}
+    div[data-testid="stHorizontalBlock"]:first-of-type div.stButton > button:hover p {{ color: #cdd6e0 !important; }}
 
-    /* 🔥 ACTIVE TAB STYLE (Pure White & Ultra Bold) 🔥 */
+    /* 🔥 ACTIVE TAB STYLE (Pure White & Ultra Bold) */
     div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stColumn"]:nth-child({active_index}) div.stButton > button p {{
         color: #ffffff !important;      
         font-weight: 900 !important;    
     }}
 
-    /* Login / Get Started Button (Cyan Color) */
+    /* Login / Get Started Button */
     div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stColumn"]:last-child div.stButton > button {{
         background-color: #00e5ff !important;
         border-radius: 6px !important;
         padding: 6px 24px !important;
+        white-space: nowrap !important;
     }}
     div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stColumn"]:last-child div.stButton > button p {{
         color: #000000 !important;      
         font-weight: 900 !important;
         font-size: 15px !important;
     }}
-    div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stColumn"]:last-child div.stButton > button:hover {{
-        background-color: #00bfff !important;
-    }}
+    div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stColumn"]:last-child div.stButton > button:hover {{ background-color: #00bfff !important; }}
 
     /* ---------------------------------------------------
-       🌟 3. OVERRIDE: FORMS (Save Trade Button)
+       🌟 ACTION BUTTONS (Run Scan & Watchlist Box)
+       --------------------------------------------------- */
+    .button-box-style button, div[data-testid="stDownloadButton"] > button {{
+        background: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        border-radius: 8px !important;
+        padding: 6px 12px !important;
+        transition: all 0.2s ease !important;
+    }}
+    .button-box-style button p, div[data-testid="stDownloadButton"] > button p {{
+        font-weight: 500 !important; /* Kam bold as requested */
+        color: #e2e8f0 !important;
+        font-size: 15px !important;
+        margin: 0 !important;
+    }}
+    .button-box-style button:hover, div[data-testid="stDownloadButton"] > button:hover {{
+        border-color: #00e5ff !important;
+        background: rgba(255, 255, 255, 0.1) !important;
+    }}
+    .button-box-style button:hover p, div[data-testid="stDownloadButton"] > button:hover p {{ color: #ffffff !important; }}
+
+    /* ---------------------------------------------------
+       🌟 FORMS & COMPONENTS
        --------------------------------------------------- */
     div.stForm div.stButton > button {{
         background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%) !important;
         border: none !important;
+        border-radius: 8px !important;
     }}
-    div.stForm div.stButton > button p {{
-        font-weight: 700 !important;
-        color: white !important;
-    }}
-
-    /* ---------------------------------------------------
-       🌟 GENERAL APP COMPONENTS
-       --------------------------------------------------- */
-    /* Metrics Boxes */
-    div[data-testid="metric-container"] {{
-        background: rgba(0, 0, 0, 0.2);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        border-radius: 12px;
-        padding: 10px 15px;
-        backdrop-filter: blur(5px);
-    }}
+    div.stForm div.stButton > button p {{ font-weight: 700 !important; color: white !important; }}
+    
+    .page-heading {{ font-size: 28px; font-weight: 600; color: #ffffff; margin-top: -10px; margin-bottom: 20px; border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 10px; }}
+    div[data-testid="metric-container"] {{ background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 10px 15px; backdrop-filter: blur(5px); }}
     div[data-testid="stMetricValue"] {{ font-size: 1.4rem !important; color: #e2e8f0; }}
     div[data-testid="stMetricLabel"] {{ font-size: 0.9rem !important; color: #94a3b8; }}
-
-    /* Journal Cards */
-    .journal-card {{ 
-        background: rgba(0,0,0,0.2); 
-        border: 1px solid rgba(255,255,255,0.05); 
-        padding: 20px; border-radius: 12px; margin-bottom: 20px; backdrop-filter: blur(5px);
-    }}
-    .stTextArea textarea {{ background-color: rgba(0,0,0,0.2) !important; color: white !important; border: 1px solid rgba(255,255,255,0.1) !important; border-radius: 8px !important; }}
     
-    /* Page Headings */
-    .page-heading {{
-        font-size: 28px; font-weight: 600; color: #ffffff;
-        margin-top: -10px; margin-bottom: 20px;
-        border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 10px;
-    }}
+    .journal-card {{ background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; margin-bottom: 20px; backdrop-filter: blur(5px); }}
+    .stTextArea textarea {{ background-color: rgba(0,0,0,0.2) !important; color: white !important; border: 1px solid rgba(255,255,255,0.1) !important; border-radius: 8px !important; }}
 </style>
 """
 st.markdown(custom_css, unsafe_allow_html=True)
 
-# 2. 🌟 TOP NAVIGATION BAR
+# ==========================================
+# 3. TOP NAVIGATION BAR RENDERING
+# ==========================================
 col_logo, nav1, nav2, nav3, nav4, nav5, space, col_login = st.columns([2.5, 1.2, 1.2, 1.2, 1.2, 1.2, 0.5, 1.5])
 
 with col_logo:
@@ -202,7 +157,9 @@ with col_login:
 
 st.markdown("<hr style='margin-top: 5px; border-color: rgba(255,255,255,0.05);'>", unsafe_allow_html=True)
 
-# 3. Databases & Global Data Fetch
+# ==========================================
+# 4. DATABASES & GLOBAL FETCH
+# ==========================================
 @st.cache_resource
 def init_supabase():
     url = st.secrets["SUPABASE_URL"]
@@ -229,7 +186,7 @@ master_symbol_list = sorted(list(set(master_symbol_list)))
 
 
 # ==========================================
-# 🏠 PAGE ROUTING CONTENT
+# 5. MAIN ROUTING & CONTENT
 # ==========================================
 
 if st.session_state.current_page == "Home":
@@ -274,7 +231,7 @@ elif st.session_state.current_page == "Scanner":
         
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # 🚀 FIX: Run Scan and Download Button placed together
+        # Action Buttons Aligned Properly
         f_col1, f_col2, f_col3, f_col_run, f_col_dl = st.columns([1.3, 1.3, 1.4, 1.0, 1.0])
         
         with f_col1: selected_date = st.selectbox("📅 Scan Date", sorted(df['Scan Date'].unique(), reverse=True))
@@ -286,9 +243,9 @@ elif st.session_state.current_page == "Scanner":
         if selected_sector != "All Sectors": df_filtered = df_filtered[df_filtered['Sector'] == selected_sector]
         if selected_stock != "All Stocks": df_filtered = df_filtered[df_filtered['Stock Symbol'] == selected_stock]
 
-        # 🚀 Run Scan button (Now matches Watchlist box style 100%)
+        # Styled Run Scan Button
         with f_col_run:
-            st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-top: 28px;' class='button-box-style'>", unsafe_allow_html=True)
             if st.button("🚀 Run Scan", use_container_width=True):
                 with st.spinner("Scanning..."):
                     try:
@@ -298,6 +255,7 @@ elif st.session_state.current_page == "Scanner":
                         time.sleep(2)
                         st.success("✅ Initiated!")
                     except Exception as e: st.error(f"❌ Error: {e}")
+            st.markdown("</div>", unsafe_allow_html=True)
 
         tv_text = ""
         if not df_filtered.empty:
@@ -305,7 +263,7 @@ elif st.session_state.current_page == "Scanner":
                 tv_text += f"### {sec} / {proxy}\n"
                 for sym in group['Stock Symbol']: tv_text += f"NSE:{sym}\n"
         
-        # 📥 Download button (Matches Run Scan Box)
+        # Styled Download Button
         with f_col_dl:
             st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
             st.download_button("📥 Watchlist (.txt)", data=tv_text, file_name=f"AlphaSwing_{selected_date}.txt", mime="text/plain", use_container_width=True)
@@ -470,23 +428,20 @@ elif st.session_state.current_page == "Journal":
                 st.markdown("</div>", unsafe_allow_html=True)
         else:
             st.info("Journal is empty.")
-            
-    with st.expander("⚠️ System Error Logs"):
-        if st.button("Clear Logs"): st.success("Cleared!")
 
 # ==========================================
-# 📝 GLOBAL NOTES (Always visible at bottom)
+# 6. GLOBAL NOTES (Sticky Footer)
 # ==========================================
 st.markdown("<br><br>", unsafe_allow_html=True)
-st.markdown("### Notes")
+st.markdown("### 📝 Sticky Notes")
 
 try: saved_text = supabase.table('global_notes').select('note_text').eq('id', 1).execute().data[0]['note_text']
 except: saved_text = ""
 
 with st.form("global_scratchpad_form"):
-    user_notes = st.text_area(" ", value=saved_text, height=200, label_visibility="collapsed")
+    user_notes = st.text_area(" ", value=saved_text, height=150, label_visibility="collapsed")
     col_save, col_spacer = st.columns([1, 5])
     with col_save:
         if st.form_submit_button("💾 Save Notes", use_container_width=True):
             supabase.table('global_notes').upsert({"id": 1, "note_text": user_notes}).execute()
-            st.toast("✅ Saved!"); time.sleep(0.5); st.rerun()
+            st.toast("✅ Notes Saved!"); time.sleep(0.5); st.rerun()
