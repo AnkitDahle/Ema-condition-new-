@@ -18,7 +18,6 @@ if 'current_page' not in st.session_state:
     st.session_state.current_page = "Home"
 
 pages = ['Home', 'Scanner', 'Catalyst', 'IPOs', 'Journal']
-# +2 because Logo takes the 1st column in our layout
 active_index = pages.index(st.session_state.current_page) + 2 
 
 # ==========================================
@@ -44,7 +43,7 @@ custom_css = f"""
     /* ---------------------------------------------------
        🌟 1. GLOBAL BUTTONS (Run Scan & Watchlist Box)
        --------------------------------------------------- */
-    .stButton > button, 
+    div.stButton > button, 
     div[data-testid="stDownloadButton"] > button {{
         background: rgba(255, 255, 255, 0.05) !important;
         border: 1px solid rgba(255, 255, 255, 0.2) !important;
@@ -54,19 +53,19 @@ custom_css = f"""
         box-shadow: none !important;
         min-height: 42px !important;
     }}
-    .stButton > button p, 
+    div.stButton > button p, 
     div[data-testid="stDownloadButton"] > button p {{
-        font-weight: 500 !important; /* Kam Bold */
+        font-weight: 500 !important;
         color: #e2e8f0 !important;
         font-size: 15px !important;
         margin: 0 !important;
     }}
-    .stButton > button:hover, 
+    div.stButton > button:hover, 
     div[data-testid="stDownloadButton"] > button:hover {{
         border-color: #00e5ff !important;
         background: rgba(255, 255, 255, 0.1) !important;
     }}
-    .stButton > button:hover p, 
+    div.stButton > button:hover p, 
     div[data-testid="stDownloadButton"] > button:hover p {{
         color: #ffffff !important;
     }}
@@ -81,7 +80,6 @@ custom_css = f"""
         white-space: nowrap !important; 
         min-width: fit-content !important; 
     }}
-    /* Inactive Tabs */
     div[data-testid="stHorizontalBlock"]:first-of-type div.stButton > button p {{
         color: #7b8fa3 !important;      
         font-weight: 500 !important;    
@@ -92,7 +90,7 @@ custom_css = f"""
     }}
     div[data-testid="stHorizontalBlock"]:first-of-type div.stButton > button:hover p {{ color: #cdd6e0 !important; }}
 
-    /* 🔥 ACTIVE TAB STYLE (Pure White & Ultra Bold) */
+    /* 🔥 ACTIVE TAB STYLE */
     div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stColumn"]:nth-child({active_index}) div.stButton > button p {{
         color: #ffffff !important;      
         font-weight: 900 !important;    
@@ -103,7 +101,6 @@ custom_css = f"""
         background-color: #00e5ff !important;
         border-radius: 6px !important;
         padding: 6px 24px !important;
-        white-space: nowrap !important;
         border: none !important;
     }}
     div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stColumn"]:last-child div.stButton > button p {{
@@ -131,7 +128,7 @@ custom_css = f"""
     div[data-testid="stMetricLabel"] {{ font-size: 0.9rem !important; color: #94a3b8; }}
     
     .journal-card {{ background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; margin-bottom: 20px; backdrop-filter: blur(5px); }}
-    .stTextArea textarea {{ background-color: rgba(0,0,0,0.2) !important; color: white !important; border: 1px solid rgba(255,255,255,0.1) !important; border-radius: 8px !important; }}
+    .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {{ background-color: rgba(0,0,0,0.2) !important; color: white !important; border: 1px solid rgba(255,255,255,0.1) !important; border-radius: 8px !important; }}
 </style>
 """
 st.markdown(custom_css, unsafe_allow_html=True)
@@ -240,19 +237,21 @@ elif st.session_state.current_page == "Scanner":
         
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # Action Buttons Aligned Properly
         f_col1, f_col2, f_col3, f_col_run, f_col_dl = st.columns([1.3, 1.3, 1.4, 1.0, 1.0])
         
         with f_col1: selected_date = st.selectbox("📅 Scan Date", sorted(df['Scan Date'].unique(), reverse=True))
         df_filtered = df[df['Scan Date'] == selected_date]
         
         with f_col2: selected_sector = st.selectbox("🎯 Sector", ["All Sectors"] + list(df['Sector'].dropna().unique()) if 'Sector' in df.columns else ["All Sectors"])
-        with f_col3: selected_stock = st.selectbox("🔤 Search Stock", ["All Stocks"] + sorted(list(df_filtered['Stock Symbol'].dropna().unique())))
+        
+        # ✅ FIX: Smart Autocomplete Search (Empty by default)
+        with f_col3: 
+            selected_stock = st.selectbox("🔤 Search Stock", sorted(list(df_filtered['Stock Symbol'].dropna().unique())), index=None, placeholder="Type symbol...")
 
         if selected_sector != "All Sectors": df_filtered = df_filtered[df_filtered['Sector'] == selected_sector]
-        if selected_stock != "All Stocks": df_filtered = df_filtered[df_filtered['Stock Symbol'] == selected_stock]
+        if selected_stock: df_filtered = df_filtered[df_filtered['Stock Symbol'] == selected_stock] # Matches user input
 
-        # Styled Run Scan Button
+        # ✅ FIX: Native button, CSS handles the box styling
         with f_col_run:
             st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
             if st.button("🚀 Run Scan", use_container_width=True):
@@ -265,14 +264,13 @@ elif st.session_state.current_page == "Scanner":
                         st.success("✅ Initiated!")
                     except Exception as e: st.error(f"❌ Error: {e}")
 
-        # ✅ FIX: Appended comma ',' at the end of each ticker
+        # ✅ FIX: Sector ke aage comma lagaya
         tv_text = ""
         if not df_filtered.empty:
             for (sec, proxy), group in df_filtered.sort_values(by=['Sector', 'Proxy / Industry']).groupby(['Sector', 'Proxy / Industry']):
-                tv_text += f"### {sec} / {proxy}\n"
+                tv_text += f"### {sec} / {proxy},\n"
                 for sym in group['Stock Symbol']: tv_text += f"NSE:{sym},\n"
         
-        # Styled Download Button
         with f_col_dl:
             st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
             st.download_button("📥 Watchlist (.txt)", data=tv_text, file_name=f"AlphaSwing_{selected_date}.txt", mime="text/plain", use_container_width=True)
@@ -282,11 +280,14 @@ elif st.session_state.current_page == "Scanner":
 elif st.session_state.current_page == "Catalyst":
     st.markdown("<div class='page-heading'>🔥 Catalyst</div>", unsafe_allow_html=True)
     
-    default_idx = master_symbol_list.index("RELIANCE") if "RELIANCE" in master_symbol_list else 0
-    user_ticker = st.selectbox("🔤 Select Stock Symbol:", master_symbol_list, index=default_idx)
+    # ✅ FIX: Make select symbol box smaller and use Smart Autocomplete
+    cat_col1, cat_col2 = st.columns([2, 5])
+    with cat_col1:
+        user_ticker = st.selectbox("🔤 Search Symbol:", master_symbol_list, index=None, placeholder="Type symbol...")
     
-    # ✅ FIX: New highly detailed Catalyst prompt integration
-    catalyst_prompt = f"""Please analyze {user_ticker} for me and provide the following, concise and clearly organized:
+    if user_ticker:
+        # ✅ FIX: Replaced with User's Detailed Prompt
+        catalyst_prompt = f"""Please analyze {user_ticker} for me and provide the following, concise and clearly organized:
 
 1. Explain what the company does in like I'm 12 years old - three short bullet points about what it does and any helpful relatable examples and analogies.
 
@@ -310,25 +311,27 @@ elif st.session_state.current_page == "Catalyst":
 
 Overall, Focus on the reasons why the stock can make a big move in the future - earnings, sales, guidance, product launches, analyst upgrades/downgrades, insider buying especially from CEO/Founder and executive team, partnerships, and sector/news catalysts. I want to focus on stocks with catalysts and themes as catalysts are the cause of big moves in the stock market."""
 
-    st.code(catalyst_prompt, language="text")
-    escaped_prompt_json = json.dumps(catalyst_prompt)
-    
-    components.html(f"""
-        <button id="copyPromptBtn" style="background-color: #00e5ff; color: #000000; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 800; cursor: pointer; width: 100%; font-family: sans-serif;">📋 Copy Full Prompt</button>
-        <script>
-        document.getElementById('copyPromptBtn').addEventListener('click', function() {{
-            navigator.clipboard.writeText({escaped_prompt_json}).then(function() {{
-                const btn = document.getElementById('copyPromptBtn');
-                btn.style.backgroundColor = '#10b981'; btn.style.color = 'white';
-                btn.innerText = '✅ Prompt Copied!';
-                setTimeout(() => {{
-                    btn.style.backgroundColor = '#00e5ff'; btn.style.color = '#000000';
-                    btn.innerText = '📋 Copy Full Prompt';
-                }}, 2000);
+        st.code(catalyst_prompt, language="text")
+        escaped_prompt_json = json.dumps(catalyst_prompt)
+        
+        components.html(f"""
+            <button id="copyPromptBtn" style="background-color: #00e5ff; color: #000000; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 800; cursor: pointer; width: 100%; font-family: sans-serif;">📋 Copy Full Prompt</button>
+            <script>
+            document.getElementById('copyPromptBtn').addEventListener('click', function() {{
+                navigator.clipboard.writeText({escaped_prompt_json}).then(function() {{
+                    const btn = document.getElementById('copyPromptBtn');
+                    btn.style.backgroundColor = '#10b981'; btn.style.color = 'white';
+                    btn.innerText = '✅ Prompt Copied!';
+                    setTimeout(() => {{
+                        btn.style.backgroundColor = '#00e5ff'; btn.style.color = '#000000';
+                        btn.innerText = '📋 Copy Full Prompt';
+                    }}, 2000);
+                }});
             }});
-        }});
-        </script>
-    """, height=50)
+            </script>
+        """, height=50)
+    else:
+        st.info("👆 Please type and select a stock symbol above to generate the prompt.")
 
 elif st.session_state.current_page == "IPOs":
     st.markdown("<div class='page-heading'>🏢 IPOs</div>", unsafe_allow_html=True)
@@ -340,9 +343,12 @@ elif st.session_state.current_page == "IPOs":
             df_ipo['Month'] = df_ipo['calc_date'].dt.strftime('%B')
             today = pd.to_datetime('today').date()
             
-            m1, m2, m3 = st.columns([1, 1, 3])
+            # ✅ FIX: Added "This Year" Metric
+            this_year_count = len(df_ipo[df_ipo['calc_date'].dt.year == today.year])
+            m1, m2, m3, m4 = st.columns([1, 1, 1, 3])
             with m1: st.metric("Today Listed", len(df_ipo[df_ipo['calc_date'].dt.date == today]))
             with m2: st.metric("This Month", len(df_ipo[(df_ipo['calc_date'].dt.month == today.month) & (df_ipo['calc_date'].dt.year == today.year)]))
+            with m3: st.metric("This Year", this_year_count)
             st.markdown("<br>", unsafe_allow_html=True)
 
         col_y1, col_m1, col_search, col_dl = st.columns([1.2, 1.2, 1.5, 1.2])
@@ -352,13 +358,14 @@ elif st.session_state.current_page == "IPOs":
         fil = df_ipo[df_ipo['listing_year'] == selected_year]
         if selected_month != "All Months": fil = fil[fil['Month'] == selected_month]
         
-        with col_search: selected_ipo_stock = st.selectbox("🔤 Search IPO:", ["All IPOs"] + sorted(list(fil['stock_symbol'].dropna().unique())))
-        if selected_ipo_stock != "All IPOs": fil = fil[fil['stock_symbol'] == selected_ipo_stock]
+        # ✅ FIX: Smart Autocomplete Search
+        with col_search: selected_ipo_stock = st.selectbox("🔤 Search IPO:", sorted(list(fil['stock_symbol'].dropna().unique())), index=None, placeholder="Type symbol...")
+        if selected_ipo_stock: fil = fil[fil['stock_symbol'] == selected_ipo_stock]
         
         display_ipo = fil[['stock_symbol', 'company_name', 'listing_date']].sort_values(by='listing_date', ascending=False)
         display_ipo.columns = ['Symbol', 'Company Name', 'Listing Date']
         
-        # ✅ FIX: Appended comma ',' at the end of each IPO ticker
+        # ✅ FIX: Appended comma ',' at the end of IPO ticker
         tv_ipo_text = ""
         for sym in display_ipo['Symbol']: tv_ipo_text += f"NSE:{sym},\n"
         
