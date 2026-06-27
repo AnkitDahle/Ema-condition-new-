@@ -22,7 +22,7 @@ pages = ['Home', 'Scanner', 'Catalyst', 'IPOs', 'Journal']
 active_index = pages.index(st.session_state.current_page) + 2 
 
 # ==========================================
-# 2. 🎨 UI ENGINE & CUSTOM CSS
+# 2. 🎨 UI ENGINE & CUSTOM CSS (BULLETPROOF)
 # ==========================================
 custom_css = f"""
 <style>
@@ -42,10 +42,50 @@ custom_css = f"""
     header {{ visibility: hidden; }}
 
     /* ---------------------------------------------------
-       🌟 1. GLOBAL ACTION BUTTONS (Run Scan & Watchlist Box)
+       🌟 1. NAVBAR LINKS (1st Row ONLY)
        --------------------------------------------------- */
-    /* Target regular secondary buttons & download buttons universally */
-    div[data-testid="stButton"] button[kind="secondary"], 
+    div[data-testid="stHorizontalBlock"]:nth-of-type(1) div[data-testid="stButton"] button {{
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        white-space: nowrap !important; 
+        min-width: fit-content !important; 
+    }}
+    /* Inactive Tabs */
+    div[data-testid="stHorizontalBlock"]:nth-of-type(1) div[data-testid="stButton"] button p {{
+        color: #7b8fa3 !important;      
+        font-weight: 500 !important;    
+        font-size: 19px !important;     
+        letter-spacing: 0.5px;
+        transition: color 0.2s ease;
+        white-space: nowrap !important; 
+    }}
+    div[data-testid="stHorizontalBlock"]:nth-of-type(1) div[data-testid="stButton"] button:hover p {{ color: #cdd6e0 !important; }}
+
+    /* 🔥 ACTIVE TAB STYLE (Pure White & Ultra Bold) */
+    div[data-testid="stHorizontalBlock"]:nth-of-type(1) div[data-testid="stColumn"]:nth-child({active_index}) div[data-testid="stButton"] button p {{
+        color: #ffffff !important;      
+        font-weight: 900 !important;    
+    }}
+
+    /* Login / Get Started Button */
+    div[data-testid="stHorizontalBlock"]:nth-of-type(1) div[data-testid="stColumn"]:last-child div[data-testid="stButton"] button {{
+        background-color: #00e5ff !important;
+        border-radius: 6px !important;
+        padding: 6px 24px !important;
+        border: none !important;
+    }}
+    div[data-testid="stHorizontalBlock"]:nth-of-type(1) div[data-testid="stColumn"]:last-child div[data-testid="stButton"] button p {{
+        color: #000000 !important;      
+        font-weight: 900 !important;
+        font-size: 15px !important;
+    }}
+    div[data-testid="stHorizontalBlock"]:nth-of-type(1) div[data-testid="stColumn"]:last-child div[data-testid="stButton"] button:hover {{ background-color: #00bfff !important; }}
+
+    /* ---------------------------------------------------
+       🌟 2. RUN SCAN & WATCHLIST BOXES (Rows after Navbar)
+       --------------------------------------------------- */
+    div[data-testid="stHorizontalBlock"]:nth-of-type(n+2) div[data-testid="stButton"] button, 
     div[data-testid="stDownloadButton"] button {{
         background: rgba(255, 255, 255, 0.05) !important;
         border: 1px solid rgba(255, 255, 255, 0.2) !important;
@@ -55,68 +95,35 @@ custom_css = f"""
         box-shadow: none !important;
         min-height: 42px !important;
     }}
-    div[data-testid="stButton"] button[kind="secondary"] p, 
+    div[data-testid="stHorizontalBlock"]:nth-of-type(n+2) div[data-testid="stButton"] button p, 
     div[data-testid="stDownloadButton"] button p {{
         font-weight: 500 !important; /* Kam Bold */
         color: #e2e8f0 !important;
         font-size: 15px !important;
         margin: 0 !important;
     }}
-    div[data-testid="stButton"] button[kind="secondary"]:hover, 
+    div[data-testid="stHorizontalBlock"]:nth-of-type(n+2) div[data-testid="stButton"] button:hover, 
     div[data-testid="stDownloadButton"] button:hover {{
         border-color: #00e5ff !important;
         background: rgba(255, 255, 255, 0.1) !important;
     }}
-    div[data-testid="stButton"] button[kind="secondary"]:hover p, 
+    div[data-testid="stHorizontalBlock"]:nth-of-type(n+2) div[data-testid="stButton"] button:hover p, 
     div[data-testid="stDownloadButton"] button:hover p {{
         color: #ffffff !important;
     }}
 
     /* ---------------------------------------------------
-       🌟 2. NAVBAR LINKS (ATLAS STYLE) - EXPLICIT OVERRIDE
+       🌟 3. FORMS (Save Trade Button)
        --------------------------------------------------- */
-    /* Remove box style specifically from the Navbar row */
-    div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stButton"] button[kind="secondary"] {{
-        background: transparent !important;
+    div.stForm div[data-testid="stButton"] button {{
+        background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%) !important;
         border: none !important;
-        box-shadow: none !important;
-        white-space: nowrap !important; 
-        min-width: fit-content !important; 
+        border-radius: 8px !important;
     }}
-    div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stButton"] button[kind="secondary"] p {{
-        color: #7b8fa3 !important;      
-        font-weight: 500 !important;    
-        font-size: 19px !important;     
-        letter-spacing: 0.5px;
-        transition: color 0.2s ease;
-        white-space: nowrap !important; 
-    }}
-    div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stButton"] button[kind="secondary"]:hover p {{ color: #cdd6e0 !important; }}
-
-    /* 🔥 ACTIVE TAB STYLE (Pure White & Ultra Bold) */
-    div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="column"]:nth-child({active_index}) button[kind="secondary"] p {{
-        color: #ffffff !important;      
-        font-weight: 900 !important;    
-    }}
+    div.stForm div[data-testid="stButton"] button p {{ font-weight: 700 !important; color: white !important; }}
 
     /* ---------------------------------------------------
-       🌟 3. PRIMARY BUTTONS (Login, Save Trade)
-       --------------------------------------------------- */
-    button[kind="primary"] {{
-        background: linear-gradient(135deg, #00e5ff 0%, #00bfff 100%) !important;
-        border: none !important;
-        border-radius: 6px !important;
-        padding: 6px 24px !important;
-        white-space: nowrap !important;
-    }}
-    button[kind="primary"] p {{
-        color: #000000 !important;      
-        font-weight: 900 !important;
-    }}
-    button[kind="primary"]:hover {{ filter: brightness(1.1); }}
-
-    /* ---------------------------------------------------
-       🌟 4. COMPONENTS & MISC
+       🌟 4. COMPONENTS
        --------------------------------------------------- */
     .page-heading {{ font-size: 28px; font-weight: 600; color: #ffffff; margin-top: -10px; margin-bottom: 20px; border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 10px; }}
     div[data-testid="metric-container"] {{ background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 10px 15px; backdrop-filter: blur(5px); }}
@@ -155,7 +162,7 @@ with nav4:
 with nav5:
     if st.button("Journal", use_container_width=True): st.session_state.current_page = "Journal"; st.rerun()
 with col_login:
-    st.button("Get Started", type="primary", use_container_width=True)
+    st.button("Get Started", use_container_width=True)
 
 st.markdown("<hr style='margin-top: 5px; border-color: rgba(255,255,255,0.05);'>", unsafe_allow_html=True)
 
@@ -240,14 +247,14 @@ elif st.session_state.current_page == "Scanner":
         
         with f_col2: selected_sector = st.selectbox("🎯 Sector", ["All Sectors"] + list(df['Sector'].dropna().unique()) if 'Sector' in df.columns else ["All Sectors"])
         
-        # ✅ FIX: Smart Autocomplete Search (Empty by default)
+        # Smart Autocomplete Search (Empty by default)
         with f_col3: 
             selected_stock = st.selectbox("🔤 Search Stock", sorted(list(df_filtered['Stock Symbol'].dropna().unique())), index=None, placeholder="Type symbol...")
 
         if selected_sector != "All Sectors": df_filtered = df_filtered[df_filtered['Sector'] == selected_sector]
         if selected_stock: df_filtered = df_filtered[df_filtered['Stock Symbol'] == selected_stock] 
 
-        # ✅ FIX: Run Scan Button (Now naturally picks up the CSS Box Style)
+        # Run Scan Button - Automatically styled as BOX by global CSS
         with f_col_run:
             st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
             if st.button("🚀 Run Scan", use_container_width=True):
@@ -260,7 +267,7 @@ elif st.session_state.current_page == "Scanner":
                         st.success("✅ Initiated!")
                     except Exception as e: st.error(f"❌ Error: {e}")
 
-        # ✅ FIX: Appended comma ',' at the end of Sectors and Stocks
+        # Generating Text with Comma (,) at the end of Sectors and Stocks
         tv_text = ""
         if not df_filtered.empty:
             for (sec, proxy), group in df_filtered.sort_values(by=['Sector', 'Proxy / Industry']).groupby(['Sector', 'Proxy / Industry']):
@@ -276,13 +283,13 @@ elif st.session_state.current_page == "Scanner":
 elif st.session_state.current_page == "Catalyst":
     st.markdown("<div class='page-heading'>🔥 Catalyst</div>", unsafe_allow_html=True)
     
-    # ✅ FIX: Make select symbol box smaller and use Smart Autocomplete
+    # 50% width search box for Catalyst
     cat_col1, cat_col2 = st.columns([2, 5])
     with cat_col1:
         user_ticker = st.selectbox("🔤 Search Symbol:", master_symbol_list, index=None, placeholder="Type symbol...")
     
     if user_ticker:
-        # ✅ FIX: Replaced with User's Detailed Prompt EXACTLY
+        # New Detailed Prompt
         catalyst_prompt = f"""Please analyze {user_ticker} for me and provide the following, concise and clearly organized:
 
 1. Explain what the company does in like I'm 12 years old - three short bullet points about what it does and any helpful relatable examples and analogies.
@@ -339,7 +346,7 @@ elif st.session_state.current_page == "IPOs":
             df_ipo['Month'] = df_ipo['calc_date'].dt.strftime('%B')
             today = pd.to_datetime('today').date()
             
-            # ✅ FIX: Added "This Year" Metric
+            # "This Year" Metric Included
             this_year_count = len(df_ipo[df_ipo['calc_date'].dt.year == today.year])
             m1, m2, m3, m4 = st.columns([1, 1, 1, 3])
             with m1: st.metric("Today Listed", len(df_ipo[df_ipo['calc_date'].dt.date == today]))
@@ -354,15 +361,15 @@ elif st.session_state.current_page == "IPOs":
         fil = df_ipo[df_ipo['listing_year'] == selected_year]
         if selected_month != "All Months": fil = fil[fil['Month'] == selected_month]
         
-        # ✅ FIX: Smart Autocomplete Search (Empty by default)
+        # Smart Autocomplete Search (Empty by default)
         with col_search: selected_ipo_stock = st.selectbox("🔤 Search IPO:", sorted(list(fil['stock_symbol'].dropna().unique())), index=None, placeholder="Type symbol...")
         if selected_ipo_stock: fil = fil[fil['stock_symbol'] == selected_ipo_stock]
         
         display_ipo = fil[['stock_symbol', 'company_name', 'listing_date']].sort_values(by='listing_date', ascending=False)
         display_ipo.columns = ['Symbol', 'Company Name', 'Listing Date']
         
-        # ✅ FIX: Appended comma ',' at the end of IPO Header and Tickers
-        tv_ipo_text = "### IPOs,\n"
+        # Append commas at the end of IPO ticker
+        tv_ipo_text = ""
         for sym in display_ipo['Symbol']: tv_ipo_text += f"NSE:{sym},\n"
         
         with col_dl:
@@ -391,7 +398,7 @@ elif st.session_state.current_page == "Journal":
             trade_logic = st.text_area("Trade Logic")
             image_file = st.file_uploader("Upload Chart (Optional)", type=['png', 'jpg', 'jpeg'])
             
-            if st.form_submit_button("💾 Save Trade", type="primary", use_container_width=True) and symbol and quantity > 0 and buying_price > 0:
+            if st.form_submit_button("💾 Save Trade", use_container_width=True) and symbol and quantity > 0 and buying_price > 0:
                 with st.spinner("Saving trade..."):
                     img_url = None
                     if image_file is not None: img_url = cloudinary.uploader.upload(image_file, folder="trading_journal").get("secure_url")
@@ -427,7 +434,7 @@ elif st.session_state.current_page == "Journal":
                     with c7: s30_date = st.date_input("30% Sold Date", value=None)
                     with c8: s30_price = st.number_input("30% Sold Price", value=float(t['sold_30_price'] or 0.0))
 
-                    if st.form_submit_button("🔄 Update Exits", type="primary"):
+                    if st.form_submit_button("🔄 Update Exits"):
                         supabase.table('trading_journal').update({
                             "sold_20_date": str(s20_date) if s20_price > 0 else None, "sold_20_price": s20_price if s20_price > 0 else None, "sl_after_20": float(t['buying_price']) if (s20_price > 0 and sl_20 == 0) else sl_20,
                             "sold_50_date": str(s50_date) if s50_price > 0 else None, "sold_50_price": s50_price if s50_price > 0 else None, "sl_after_50": sl_50 if sl_50 > 0 else None,
@@ -470,6 +477,6 @@ with st.form("global_scratchpad_form"):
     user_notes = st.text_area(" ", value=saved_text, height=150, label_visibility="collapsed")
     col_save, col_spacer = st.columns([1, 5])
     with col_save:
-        if st.form_submit_button("💾 Save Notes", type="primary", use_container_width=True):
+        if st.form_submit_button("💾 Save Notes", use_container_width=True):
             supabase.table('global_notes').upsert({"id": 1, "note_text": user_notes}).execute()
             st.toast("✅ Notes Saved!"); time.sleep(0.5); st.rerun()
