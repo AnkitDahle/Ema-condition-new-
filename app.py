@@ -8,7 +8,7 @@ import datetime
 import cloudinary
 import cloudinary.uploader
 import json
-import plotly.express as px  # 🚀 NAYA: Circle Graph ke liye Plotly add kiya
+import plotly.express as px  # 🚀 Graph ke liye Plotly 
 
 # ==========================================
 # 1. PAGE CONFIGURATION & SESSION STATE
@@ -43,8 +43,7 @@ custom_css = f"""
     header {{ visibility: hidden; }}
 
     /* ---------------------------------------------------
-       🌟 1. GLOBAL ACTION BUTTONS (Run Scan & Watchlist)
-       Bulletproof Selectors for Box Style
+       🌟 1. GLOBAL ACTION BUTTONS (Run Scan & Watchlist Box)
        --------------------------------------------------- */
     .stButton > button[kind="secondary"], 
     .stDownloadButton > button,
@@ -70,7 +69,6 @@ custom_css = f"""
         margin: 0 !important;
     }}
     
-    /* Hover Effects */
     .stButton > button[kind="secondary"]:hover, 
     .stDownloadButton > button:hover,
     div[data-testid="stButton"] button[kind="secondary"]:hover,
@@ -232,71 +230,23 @@ elif st.session_state.current_page == "Scanner":
         df.rename(columns={'scan_date': 'Scan Date', 'stock_symbol': 'Stock Symbol', 'close_price': 'Close Price (₹)', 'turnover_cr': 'Turnover (Cr)', 'sector': 'Sector', 'industry_proxy': 'Proxy / Industry'}, inplace=True)
         df = df.drop_duplicates(subset=['Scan Date', 'Stock Symbol'], keep='first')
         
-        # Determine latest Date
         latest_date = df['Scan Date'].max()
         
-        # Dropdown for Date Selection (Placed first so chart updates accordingly)
+        # Upper Filters Row
         f_col1, f_col2, f_col3, f_col_run, f_col_dl = st.columns([1.3, 1.3, 1.4, 1.0, 1.0])
-        with f_col1: 
-            selected_date = st.selectbox("📅 Scan Date", sorted(df['Scan Date'].unique(), reverse=True))
         
-        # Filter Data completely for Selected Date
+        with f_col1: selected_date = st.selectbox("📅 Scan Date", sorted(df['Scan Date'].unique(), reverse=True))
         df_selected_date = df[df['Scan Date'] == selected_date]
         total_stocks = len(df_selected_date)
         
-        # Metrics Display
-        m1, m2, m3 = st.columns([1, 1, 3])
-        with m1: st.metric("📅 Selected Scan Date", str(selected_date))
-        with m2: st.metric("🎯 Total Breakouts", f"{total_stocks}")
-        st.markdown("<br>", unsafe_allow_html=True)
+        with f_col2: selected_sector = st.selectbox("🎯 Sector", ["All Sectors"] + list(df_selected_date['Sector'].dropna().unique()) if 'Sector' in df_selected_date.columns else ["All Sectors"])
         
-        # ==========================================
-        # 🚀 NEW: PLOTLY SECTOR DONUT CHART
-        # ==========================================
-        if not df_selected_date.empty:
-            sector_counts = df_selected_date['Sector'].value_counts().reset_index()
-            sector_counts.columns = ['Sector', 'Stock Count']
-            
-            fig = px.pie(
-                sector_counts, 
-                values='Stock Count', 
-                names='Sector', 
-                hole=0.5, # Donut style
-                title=f"Sector Distribution for {selected_date}",
-                color_discrete_sequence=px.colors.qualitative.Pastel
-            )
-            # Custom Hover info and text positioning
-            fig.update_traces(
-                textposition='inside', 
-                textinfo='percent', 
-                hovertemplate="<b>%{label}</b><br>Breakout Stocks: %{value}<extra></extra>"
-            )
-            # Styling for Dark Mode integration
-            fig.update_layout(
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='white'),
-                margin=dict(t=40, b=10, l=0, r=0),
-                legend=dict(title="Sectors (Illustration)", orientation="v", yanchor="top", y=1, xanchor="left", x=1.0)
-            )
-            
-            # Display Chart inside an expander so it doesn't take too much vertical space, or display directly
-            with st.expander("📊 View Sector Weightage Graph", expanded=True):
-                st.plotly_chart(fig, use_container_width=True)
-        # ==========================================
+        with f_col3: selected_stock = st.selectbox("🔤 Search Stock", sorted(list(df_selected_date['Stock Symbol'].dropna().unique())), index=None, placeholder="Type symbol...")
 
-        # Remaining Filters (Sector & Stock)
-        with f_col2: 
-            selected_sector = st.selectbox("🎯 Sector", ["All Sectors"] + list(df_selected_date['Sector'].dropna().unique()) if 'Sector' in df_selected_date.columns else ["All Sectors"])
-        with f_col3: 
-            selected_stock = st.selectbox("🔤 Search Stock", sorted(list(df_selected_date['Stock Symbol'].dropna().unique())), index=None, placeholder="Type symbol...")
-
-        # Apply specific filters for table display
         df_filtered = df_selected_date.copy()
         if selected_sector != "All Sectors": df_filtered = df_filtered[df_filtered['Sector'] == selected_sector]
         if selected_stock: df_filtered = df_filtered[df_filtered['Stock Symbol'] == selected_stock] 
 
-        # ✅ RUN SCAN BUTTON
         with f_col_run:
             st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
             if st.button("🚀 Run Scan", use_container_width=True):
@@ -309,7 +259,7 @@ elif st.session_state.current_page == "Scanner":
                         st.success("✅ Initiated!")
                     except Exception as e: st.error(f"❌ Error: {e}")
 
-        # ✅ WATCHLIST GENERATOR (With Commas)
+        # Watchlist generation with Commas
         tv_text = ""
         if not df_filtered.empty:
             for (sec, proxy), group in df_filtered.sort_values(by=['Sector', 'Proxy / Industry']).groupby(['Sector', 'Proxy / Industry']):
@@ -320,18 +270,85 @@ elif st.session_state.current_page == "Scanner":
             st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
             st.download_button("📥 Watchlist (.txt)", data=tv_text, file_name=f"AlphaSwing_{selected_date}.txt", mime="text/plain", use_container_width=True)
 
-        st.dataframe(df_filtered, use_container_width=True, height=400, hide_index=True)
+        # Main Table Display
+        st.dataframe(df_filtered, use_container_width=True, height=350, hide_index=True)
+
+        # ==========================================
+        # 🚀 GRAPH SECTION (Moved Below Table)
+        # ==========================================
+        st.markdown("<hr style='border-color: rgba(255,255,255,0.05); margin-top: 30px;'>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color: #ffffff; margin-bottom: 20px;'>🍩 Sector Distribution Breakdown</h3>", unsafe_allow_html=True)
+
+        if not df_selected_date.empty:
+            sector_counts = df_selected_date['Sector'].value_counts().reset_index()
+            sector_counts.columns = ['Sector', 'Stock Count']
+            
+            # Interactive Donut Chart Configuration
+            fig = px.pie(
+                sector_counts, 
+                values='Stock Count', 
+                names='Sector', 
+                hole=0.45, 
+                color_discrete_sequence=px.colors.qualitative.Pastel
+            )
+            fig.update_traces(
+                textposition='inside', 
+                textinfo='percent', 
+                hovertemplate="<b>%{label}</b><br>Breakout Stocks: %{value}<extra></extra>"
+            )
+            fig.update_layout(
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='white'),
+                margin=dict(t=10, b=10, l=0, r=0),
+                legend=dict(title="Sector Illustration", orientation="v", yanchor="top", y=1, xanchor="left", x=1.0)
+            )
+
+            # Columns for Chart and Interactive Click-Results side-by-side
+            c_chart, c_details = st.columns([2, 1.2])
+            
+            with c_chart:
+                # Try-Except to gracefully handle older Streamlit versions without on_select
+                try:
+                    # Rendering Chart with 'on_select' to capture user clicks
+                    chart_event = st.plotly_chart(fig, use_container_width=True, on_select="rerun", selection_mode=("points",))
+                    
+                    clicked_sector = None
+                    if chart_event and hasattr(chart_event, 'selection') and chart_event.selection:
+                        # Extracting the clicked segment label (Sector Name)
+                        points = chart_event.selection.get('points', []) if isinstance(chart_event.selection, dict) else getattr(chart_event.selection, 'points', [])
+                        if points:
+                            clicked_sector = points[0].get('label') if isinstance(points[0], dict) else getattr(points[0], 'label', None)
+                except TypeError:
+                    # Fallback if Streamlit version < 1.35
+                    st.plotly_chart(fig, use_container_width=True)
+                    clicked_sector = None
+                    st.caption("Update Streamlit to newer version to enable click-to-view feature.")
+
+            with c_details:
+                st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
+                if clicked_sector:
+                    # Creating a beautiful Sidebar box for clicked sector results
+                    st.markdown(f"<div style='background: rgba(0, 229, 255, 0.05); border: 1px solid #00e5ff; padding: 20px; border-radius: 12px;'>", unsafe_allow_html=True)
+                    st.markdown(f"<h3 style='margin-top:0; color:#00e5ff;'>{clicked_sector}</h3>", unsafe_allow_html=True)
+                    
+                    # Fetching stocks for that specific sector
+                    sector_stocks = df_selected_date[df_selected_date['Sector'] == clicked_sector]['Stock Symbol'].tolist()
+                    
+                    st.markdown(f"**Total Breakout Stocks:** {len(sector_stocks)}")
+                    st.markdown("`" + "`, `".join(sector_stocks) + "`")
+                    st.markdown("</div>", unsafe_allow_html=True)
+                else:
+                    st.info("👈 **Interactive Feature:** Click on any colored section in the Donut Chart to see the complete list of stocks belonging to that sector here.")
 
 elif st.session_state.current_page == "Catalyst":
     st.markdown("<div class='page-heading'>🔥 Catalyst</div>", unsafe_allow_html=True)
     
-    # Half-width search box
     cat_col1, cat_col2 = st.columns([2, 5])
     with cat_col1:
         user_ticker = st.selectbox("🔤 Search Symbol:", master_symbol_list, index=None, placeholder="Type symbol...")
     
     if user_ticker:
-        # ✅ NAYA DETAILED PROMPT
         catalyst_prompt = f"""Please analyze {user_ticker} for me and provide the following, concise and clearly organized:
 
 1. Explain what the company does in like I'm 12 years old - three short bullet points about what it does and any helpful relatable examples and analogies.
@@ -388,7 +405,6 @@ elif st.session_state.current_page == "IPOs":
             df_ipo['Month'] = df_ipo['calc_date'].dt.strftime('%B')
             today = pd.to_datetime('today').date()
             
-            # ✅ "This Year" Metric
             this_year_count = len(df_ipo[df_ipo['calc_date'].dt.year == today.year])
             m1, m2, m3, m4 = st.columns([1, 1, 1, 3])
             with m1: st.metric("Today Listed", len(df_ipo[df_ipo['calc_date'].dt.date == today]))
@@ -409,7 +425,6 @@ elif st.session_state.current_page == "IPOs":
         display_ipo = fil[['stock_symbol', 'company_name', 'listing_date']].sort_values(by='listing_date', ascending=False)
         display_ipo.columns = ['Symbol', 'Company Name', 'Listing Date']
         
-        # ✅ Comma in IPO Watchlist
         tv_ipo_text = "### IPOs,\n"
         for sym in display_ipo['Symbol']: tv_ipo_text += f"NSE:{sym},\n"
         
