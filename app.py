@@ -8,6 +8,7 @@ import datetime
 import cloudinary
 import cloudinary.uploader
 import json
+import plotly.express as px  # 🚀 NAYA: Circle Graph ke liye Plotly add kiya
 
 # ==========================================
 # 1. PAGE CONFIGURATION & SESSION STATE
@@ -43,49 +44,68 @@ custom_css = f"""
 
     /* ---------------------------------------------------
        🌟 1. GLOBAL ACTION BUTTONS (Run Scan & Watchlist)
-       Dono exactly same Watchlist Box Style me aayenge
+       Bulletproof Selectors for Box Style
        --------------------------------------------------- */
-    button[kind="secondary"] {{
-        background-color: rgba(255, 255, 255, 0.05) !important;
+    .stButton > button[kind="secondary"], 
+    .stDownloadButton > button,
+    div[data-testid="stButton"] button[kind="secondary"],
+    div[data-testid="stDownloadButton"] button {{
+        background: rgba(255, 255, 255, 0.05) !important;
         border: 1px solid rgba(255, 255, 255, 0.2) !important;
         border-radius: 8px !important;
         padding: 6px 12px !important;
         transition: all 0.2s ease !important;
         box-shadow: none !important;
         min-height: 42px !important;
-    }}
-    button[kind="secondary"] p {{
+        color: #e2e8f0 !important;
         font-weight: 500 !important; /* Kam Bold */
+    }}
+    .stButton > button[kind="secondary"] p, 
+    .stDownloadButton > button p,
+    div[data-testid="stButton"] button[kind="secondary"] p,
+    div[data-testid="stDownloadButton"] button p {{
+        font-weight: 500 !important; 
         color: #e2e8f0 !important;
         font-size: 15px !important;
         margin: 0 !important;
     }}
-    button[kind="secondary"]:hover {{
+    
+    /* Hover Effects */
+    .stButton > button[kind="secondary"]:hover, 
+    .stDownloadButton > button:hover,
+    div[data-testid="stButton"] button[kind="secondary"]:hover,
+    div[data-testid="stDownloadButton"] button:hover {{
         border-color: #00e5ff !important;
-        background-color: rgba(255, 255, 255, 0.1) !important;
+        background: rgba(255, 255, 255, 0.1) !important;
+        color: #ffffff !important;
     }}
-    button[kind="secondary"]:hover p {{
+    .stButton > button[kind="secondary"]:hover p, 
+    .stDownloadButton > button:hover p,
+    div[data-testid="stButton"] button[kind="secondary"]:hover p,
+    div[data-testid="stDownloadButton"] button:hover p {{
         color: #ffffff !important;
     }}
 
     /* ---------------------------------------------------
        🌟 2. NAVBAR OVERRIDE (Remove Box Style from Tabs)
        --------------------------------------------------- */
-    div[data-testid="stHorizontalBlock"]:first-of-type button[kind="secondary"] {{
+    div[data-testid="stHorizontalBlock"]:first-of-type .stButton > button,
+    div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stButton"] button[kind="secondary"] {{
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
     }}
-    div[data-testid="stHorizontalBlock"]:first-of-type button[kind="secondary"] p {{
+    div[data-testid="stHorizontalBlock"]:first-of-type .stButton > button p,
+    div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stButton"] button[kind="secondary"] p {{
         color: #7b8fa3 !important;      
         font-weight: 500 !important;    
         font-size: 19px !important;     
         letter-spacing: 0.5px;
     }}
-    div[data-testid="stHorizontalBlock"]:first-of-type button[kind="secondary"]:hover p {{ color: #cdd6e0 !important; }}
+    div[data-testid="stHorizontalBlock"]:first-of-type .stButton > button:hover p {{ color: #cdd6e0 !important; }}
 
     /* 🔥 ACTIVE TAB STYLE (Pure White & Ultra Bold) */
-    div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stColumn"]:nth-child({active_index}) button[kind="secondary"] p {{
+    div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stColumn"]:nth-child({active_index}) .stButton > button p {{
         color: #ffffff !important;      
         font-weight: 900 !important;    
     }}
@@ -97,20 +117,13 @@ custom_css = f"""
         padding: 6px 24px !important;
         border: none !important;
     }}
-    div[data-testid="stHorizontalBlock"]:first-of-type button[kind="primary"] p {{
-        color: #000000 !important;      
-        font-weight: 900 !important;
-    }}
+    div[data-testid="stHorizontalBlock"]:first-of-type button[kind="primary"] p {{ color: #000000 !important; font-weight: 900 !important; }}
     div[data-testid="stHorizontalBlock"]:first-of-type button[kind="primary"]:hover {{ background-color: #00bfff !important; }}
 
     /* ---------------------------------------------------
        🌟 3. FORMS & MISC COMPONENTS
        --------------------------------------------------- */
-    div.stForm button[kind="primaryFormSubmit"] {{
-        background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%) !important;
-        border: none !important;
-        border-radius: 8px !important;
-    }}
+    div.stForm button[kind="primaryFormSubmit"] {{ background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%) !important; border: none !important; border-radius: 8px !important; }}
     div.stForm button[kind="primaryFormSubmit"] p {{ font-weight: 700 !important; color: white !important; }}
 
     .page-heading {{ font-size: 28px; font-weight: 600; color: #ffffff; margin-top: -10px; margin-bottom: 20px; border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 10px; }}
@@ -219,30 +232,71 @@ elif st.session_state.current_page == "Scanner":
         df.rename(columns={'scan_date': 'Scan Date', 'stock_symbol': 'Stock Symbol', 'close_price': 'Close Price (₹)', 'turnover_cr': 'Turnover (Cr)', 'sector': 'Sector', 'industry_proxy': 'Proxy / Industry'}, inplace=True)
         df = df.drop_duplicates(subset=['Scan Date', 'Stock Symbol'], keep='first')
         
+        # Determine latest Date
         latest_date = df['Scan Date'].max()
-        total_stocks = len(df[df['Scan Date'] == latest_date])
         
+        # Dropdown for Date Selection (Placed first so chart updates accordingly)
+        f_col1, f_col2, f_col3, f_col_run, f_col_dl = st.columns([1.3, 1.3, 1.4, 1.0, 1.0])
+        with f_col1: 
+            selected_date = st.selectbox("📅 Scan Date", sorted(df['Scan Date'].unique(), reverse=True))
+        
+        # Filter Data completely for Selected Date
+        df_selected_date = df[df['Scan Date'] == selected_date]
+        total_stocks = len(df_selected_date)
+        
+        # Metrics Display
         m1, m2, m3 = st.columns([1, 1, 3])
-        with m1: st.metric("📅 Last Scan Date", str(latest_date))
-        with m2: st.metric("🎯 Breakout Count", f"{total_stocks}")
-        
+        with m1: st.metric("📅 Selected Scan Date", str(selected_date))
+        with m2: st.metric("🎯 Total Breakouts", f"{total_stocks}")
         st.markdown("<br>", unsafe_allow_html=True)
         
-        f_col1, f_col2, f_col3, f_col_run, f_col_dl = st.columns([1.3, 1.3, 1.4, 1.0, 1.0])
-        
-        with f_col1: selected_date = st.selectbox("📅 Scan Date", sorted(df['Scan Date'].unique(), reverse=True))
-        df_filtered = df[df['Scan Date'] == selected_date]
-        
-        with f_col2: selected_sector = st.selectbox("🎯 Sector", ["All Sectors"] + list(df['Sector'].dropna().unique()) if 'Sector' in df.columns else ["All Sectors"])
-        
-        # ✅ FIX: Smart Autocomplete Search (Empty by default)
-        with f_col3: 
-            selected_stock = st.selectbox("🔤 Search Stock", sorted(list(df_filtered['Stock Symbol'].dropna().unique())), index=None, placeholder="Type symbol...")
+        # ==========================================
+        # 🚀 NEW: PLOTLY SECTOR DONUT CHART
+        # ==========================================
+        if not df_selected_date.empty:
+            sector_counts = df_selected_date['Sector'].value_counts().reset_index()
+            sector_counts.columns = ['Sector', 'Stock Count']
+            
+            fig = px.pie(
+                sector_counts, 
+                values='Stock Count', 
+                names='Sector', 
+                hole=0.5, # Donut style
+                title=f"Sector Distribution for {selected_date}",
+                color_discrete_sequence=px.colors.qualitative.Pastel
+            )
+            # Custom Hover info and text positioning
+            fig.update_traces(
+                textposition='inside', 
+                textinfo='percent', 
+                hovertemplate="<b>%{label}</b><br>Breakout Stocks: %{value}<extra></extra>"
+            )
+            # Styling for Dark Mode integration
+            fig.update_layout(
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='white'),
+                margin=dict(t=40, b=10, l=0, r=0),
+                legend=dict(title="Sectors (Illustration)", orientation="v", yanchor="top", y=1, xanchor="left", x=1.0)
+            )
+            
+            # Display Chart inside an expander so it doesn't take too much vertical space, or display directly
+            with st.expander("📊 View Sector Weightage Graph", expanded=True):
+                st.plotly_chart(fig, use_container_width=True)
+        # ==========================================
 
+        # Remaining Filters (Sector & Stock)
+        with f_col2: 
+            selected_sector = st.selectbox("🎯 Sector", ["All Sectors"] + list(df_selected_date['Sector'].dropna().unique()) if 'Sector' in df_selected_date.columns else ["All Sectors"])
+        with f_col3: 
+            selected_stock = st.selectbox("🔤 Search Stock", sorted(list(df_selected_date['Stock Symbol'].dropna().unique())), index=None, placeholder="Type symbol...")
+
+        # Apply specific filters for table display
+        df_filtered = df_selected_date.copy()
         if selected_sector != "All Sectors": df_filtered = df_filtered[df_filtered['Sector'] == selected_sector]
         if selected_stock: df_filtered = df_filtered[df_filtered['Stock Symbol'] == selected_stock] 
 
-        # ✅ PERFECT BUTTON ALIGNMENT (Run Scan acts exactly like Watchlist Box)
+        # ✅ RUN SCAN BUTTON
         with f_col_run:
             st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
             if st.button("🚀 Run Scan", use_container_width=True):
@@ -255,7 +309,7 @@ elif st.session_state.current_page == "Scanner":
                         st.success("✅ Initiated!")
                     except Exception as e: st.error(f"❌ Error: {e}")
 
-        # ✅ APPEND COMMA TO SECTOR AND STOCK FOR WATCHLIST
+        # ✅ WATCHLIST GENERATOR (With Commas)
         tv_text = ""
         if not df_filtered.empty:
             for (sec, proxy), group in df_filtered.sort_values(by=['Sector', 'Proxy / Industry']).groupby(['Sector', 'Proxy / Industry']):
@@ -271,13 +325,13 @@ elif st.session_state.current_page == "Scanner":
 elif st.session_state.current_page == "Catalyst":
     st.markdown("<div class='page-heading'>🔥 Catalyst</div>", unsafe_allow_html=True)
     
-    # ✅ CHOTA BOX FOR CATALYST SEARCH & TYPE TO SEARCH
+    # Half-width search box
     cat_col1, cat_col2 = st.columns([2, 5])
     with cat_col1:
         user_ticker = st.selectbox("🔤 Search Symbol:", master_symbol_list, index=None, placeholder="Type symbol...")
     
     if user_ticker:
-        # ✅ NEW DETAILED PROMPT EXACTLY AS REQUESTED
+        # ✅ NAYA DETAILED PROMPT
         catalyst_prompt = f"""Please analyze {user_ticker} for me and provide the following, concise and clearly organized:
 
 1. Explain what the company does in like I'm 12 years old - three short bullet points about what it does and any helpful relatable examples and analogies.
@@ -334,7 +388,7 @@ elif st.session_state.current_page == "IPOs":
             df_ipo['Month'] = df_ipo['calc_date'].dt.strftime('%B')
             today = pd.to_datetime('today').date()
             
-            # ✅ IPO "THIS YEAR" METRIC ADDED
+            # ✅ "This Year" Metric
             this_year_count = len(df_ipo[df_ipo['calc_date'].dt.year == today.year])
             m1, m2, m3, m4 = st.columns([1, 1, 1, 3])
             with m1: st.metric("Today Listed", len(df_ipo[df_ipo['calc_date'].dt.date == today]))
@@ -349,14 +403,13 @@ elif st.session_state.current_page == "IPOs":
         fil = df_ipo[df_ipo['listing_year'] == selected_year]
         if selected_month != "All Months": fil = fil[fil['Month'] == selected_month]
         
-        # ✅ TYPE TO SEARCH ONLY
         with col_search: selected_ipo_stock = st.selectbox("🔤 Search IPO:", sorted(list(fil['stock_symbol'].dropna().unique())), index=None, placeholder="Type symbol...")
         if selected_ipo_stock: fil = fil[fil['stock_symbol'] == selected_ipo_stock]
         
         display_ipo = fil[['stock_symbol', 'company_name', 'listing_date']].sort_values(by='listing_date', ascending=False)
         display_ipo.columns = ['Symbol', 'Company Name', 'Listing Date']
         
-        # ✅ APPEND COMMA TO IPOS WATCHLIST
+        # ✅ Comma in IPO Watchlist
         tv_ipo_text = "### IPOs,\n"
         for sym in display_ipo['Symbol']: tv_ipo_text += f"NSE:{sym},\n"
         
