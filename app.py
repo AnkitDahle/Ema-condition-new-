@@ -8,7 +8,7 @@ import datetime
 import cloudinary
 import cloudinary.uploader
 import json
-import plotly.express as px  # 🚀 Graph ke liye Plotly 
+import plotly.express as px  
 
 # ==========================================
 # 1. PAGE CONFIGURATION & SESSION STATE
@@ -19,7 +19,6 @@ if 'current_page' not in st.session_state:
     st.session_state.current_page = "Home"
 
 pages = ['Home', 'Scanner', 'Catalyst', 'IPOs', 'Journal']
-# +2 because Logo takes the 1st column in our layout
 active_index = pages.index(st.session_state.current_page) + 2 
 
 # ==========================================
@@ -43,7 +42,7 @@ custom_css = f"""
     header {{ visibility: hidden; }}
 
     /* ---------------------------------------------------
-       🌟 1. GLOBAL ACTION BUTTONS (Run Scan & Watchlist Box)
+       🌟 1. GLOBAL ACTION BUTTONS (Run Scan & Watchlist)
        --------------------------------------------------- */
     .stButton > button[kind="secondary"], 
     .stDownloadButton > button,
@@ -57,7 +56,7 @@ custom_css = f"""
         box-shadow: none !important;
         min-height: 42px !important;
         color: #e2e8f0 !important;
-        font-weight: 500 !important; /* Kam Bold */
+        font-weight: 500 !important; 
     }}
     .stButton > button[kind="secondary"] p, 
     .stDownloadButton > button p,
@@ -232,15 +231,20 @@ elif st.session_state.current_page == "Scanner":
         
         latest_date = df['Scan Date'].max()
         
-        # Upper Filters Row
+        # Filters Row
         f_col1, f_col2, f_col3, f_col_run, f_col_dl = st.columns([1.3, 1.3, 1.4, 1.0, 1.0])
         
         with f_col1: selected_date = st.selectbox("📅 Scan Date", sorted(df['Scan Date'].unique(), reverse=True))
         df_selected_date = df[df['Scan Date'] == selected_date]
         total_stocks = len(df_selected_date)
         
+        # Metrics Display
+        m1, m2, m3 = st.columns([1, 1, 3])
+        with m1: st.metric("📅 Selected Scan Date", str(selected_date))
+        with m2: st.metric("🎯 Total Breakouts", f"{total_stocks}")
+        st.markdown("<br>", unsafe_allow_html=True)
+
         with f_col2: selected_sector = st.selectbox("🎯 Sector", ["All Sectors"] + list(df_selected_date['Sector'].dropna().unique()) if 'Sector' in df_selected_date.columns else ["All Sectors"])
-        
         with f_col3: selected_stock = st.selectbox("🔤 Search Stock", sorted(list(df_selected_date['Stock Symbol'].dropna().unique())), index=None, placeholder="Type symbol...")
 
         df_filtered = df_selected_date.copy()
@@ -259,7 +263,7 @@ elif st.session_state.current_page == "Scanner":
                         st.success("✅ Initiated!")
                     except Exception as e: st.error(f"❌ Error: {e}")
 
-        # Watchlist generation with Commas
+        # Watchlist generation
         tv_text = ""
         if not df_filtered.empty:
             for (sec, proxy), group in df_filtered.sort_values(by=['Sector', 'Proxy / Industry']).groupby(['Sector', 'Proxy / Industry']):
@@ -270,11 +274,11 @@ elif st.session_state.current_page == "Scanner":
             st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
             st.download_button("📥 Watchlist (.txt)", data=tv_text, file_name=f"AlphaSwing_{selected_date}.txt", mime="text/plain", use_container_width=True)
 
-        # Main Table Display
+        # Main Table
         st.dataframe(df_filtered, use_container_width=True, height=350, hide_index=True)
 
         # ==========================================
-        # 🚀 GRAPH SECTION (Moved Below Table)
+        # 🚀 GRAPH SECTION (Below Main Table)
         # ==========================================
         st.markdown("<hr style='border-color: rgba(255,255,255,0.05); margin-top: 30px;'>", unsafe_allow_html=True)
         st.markdown("<h3 style='color: #ffffff; margin-bottom: 20px;'>🍩 Sector Distribution Breakdown</h3>", unsafe_allow_html=True)
@@ -283,7 +287,6 @@ elif st.session_state.current_page == "Scanner":
             sector_counts = df_selected_date['Sector'].value_counts().reset_index()
             sector_counts.columns = ['Sector', 'Stock Count']
             
-            # Interactive Donut Chart Configuration
             fig = px.pie(
                 sector_counts, 
                 values='Stock Count', 
@@ -304,23 +307,18 @@ elif st.session_state.current_page == "Scanner":
                 legend=dict(title="Sector Illustration", orientation="v", yanchor="top", y=1, xanchor="left", x=1.0)
             )
 
-            # Columns for Chart and Interactive Click-Results side-by-side
+            # Columns for Chart and TABLE side-by-side
             c_chart, c_details = st.columns([2, 1.2])
             
             with c_chart:
-                # Try-Except to gracefully handle older Streamlit versions without on_select
                 try:
-                    # Rendering Chart with 'on_select' to capture user clicks
                     chart_event = st.plotly_chart(fig, use_container_width=True, on_select="rerun", selection_mode=("points",))
-                    
                     clicked_sector = None
                     if chart_event and hasattr(chart_event, 'selection') and chart_event.selection:
-                        # Extracting the clicked segment label (Sector Name)
                         points = chart_event.selection.get('points', []) if isinstance(chart_event.selection, dict) else getattr(chart_event.selection, 'points', [])
                         if points:
                             clicked_sector = points[0].get('label') if isinstance(points[0], dict) else getattr(points[0], 'label', None)
                 except TypeError:
-                    # Fallback if Streamlit version < 1.35
                     st.plotly_chart(fig, use_container_width=True)
                     clicked_sector = None
                     st.caption("Update Streamlit to newer version to enable click-to-view feature.")
@@ -328,18 +326,16 @@ elif st.session_state.current_page == "Scanner":
             with c_details:
                 st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
                 if clicked_sector:
-                    # Creating a beautiful Sidebar box for clicked sector results
-                    st.markdown(f"<div style='background: rgba(0, 229, 255, 0.05); border: 1px solid #00e5ff; padding: 20px; border-radius: 12px;'>", unsafe_allow_html=True)
+                    # ✅ DISPLAYING CLICKED SECTOR AS A TABLE 
                     st.markdown(f"<h3 style='margin-top:0; color:#00e5ff;'>{clicked_sector}</h3>", unsafe_allow_html=True)
                     
-                    # Fetching stocks for that specific sector
-                    sector_stocks = df_selected_date[df_selected_date['Sector'] == clicked_sector]['Stock Symbol'].tolist()
+                    # Filtering columns for the side table
+                    sector_df = df_selected_date[df_selected_date['Sector'] == clicked_sector][['Stock Symbol', 'Close Price (₹)']]
                     
-                    st.markdown(f"**Total Breakout Stocks:** {len(sector_stocks)}")
-                    st.markdown("`" + "`, `".join(sector_stocks) + "`")
-                    st.markdown("</div>", unsafe_allow_html=True)
+                    st.markdown(f"**Total Breakout Stocks:** {len(sector_df)}")
+                    st.dataframe(sector_df, use_container_width=True, hide_index=True)
                 else:
-                    st.info("👈 **Interactive Feature:** Click on any colored section in the Donut Chart to see the complete list of stocks belonging to that sector here.")
+                    st.info("👈 **Interactive Feature:** Click on any colored section in the Donut Chart to see the complete list of stocks belonging to that sector here in a table.")
 
 elif st.session_state.current_page == "Catalyst":
     st.markdown("<div class='page-heading'>🔥 Catalyst</div>", unsafe_allow_html=True)
