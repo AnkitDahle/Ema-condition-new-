@@ -93,12 +93,17 @@ custom_css = f"""
         border: none !important;
         box-shadow: none !important;
     }}
+    
+    /* 🔥 MOBILE FIX: Prevent Text Wrapping and Make Navbar Scrollable */
     div[data-testid="stHorizontalBlock"]:first-of-type .stButton > button p,
-    div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stButton"] button[kind="secondary"] p {{
+    div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stButton"] button[kind="secondary"] p,
+    div[data-testid="stHorizontalBlock"]:first-of-type .stButton > button span {{
         color: #7b8fa3 !important;      
         font-weight: 500 !important;    
         font-size: 19px !important;     
         letter-spacing: 0.5px;
+        white-space: nowrap !important; /* Forces text to stay in one line */
+        word-break: keep-all !important;
     }}
     div[data-testid="stHorizontalBlock"]:first-of-type .stButton > button:hover p {{ color: #cdd6e0 !important; }}
 
@@ -114,9 +119,31 @@ custom_css = f"""
         border-radius: 6px !important;
         padding: 6px 24px !important;
         border: none !important;
+        white-space: nowrap !important;
     }}
-    div[data-testid="stHorizontalBlock"]:first-of-type button[kind="primary"] p {{ color: #000000 !important; font-weight: 900 !important; }}
+    div[data-testid="stHorizontalBlock"]:first-of-type button[kind="primary"] p {{ color: #000000 !important; font-weight: 900 !important; white-space: nowrap !important;}}
     div[data-testid="stHorizontalBlock"]:first-of-type button[kind="primary"]:hover {{ background-color: #00bfff !important; }}
+
+    /* 📱 MOBILE RESPONSIVENESS RULES */
+    @media (max-width: 768px) {{
+        div[data-testid="stHorizontalBlock"]:first-of-type {{
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important; /* Swipeable Navbar */
+            overflow-y: hidden !important;
+            -webkit-overflow-scrolling: touch !important;
+            padding-bottom: 5px !important; /* Space for hidden scrollbar */
+        }}
+        div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="stColumn"] {{
+            min-width: max-content !important; /* Shrink to fit content only */
+            flex: 0 0 auto !important;
+            width: auto !important;
+        }}
+        /* Hide scrollbar for a cleaner look */
+        div[data-testid="stHorizontalBlock"]:first-of-type::-webkit-scrollbar {{
+            display: none;
+        }}
+    }}
 
     /* FORMS & MISC COMPONENTS */
     div.stForm button[kind="primaryFormSubmit"] {{ background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%) !important; border: none !important; border-radius: 8px !important; }}
@@ -138,6 +165,50 @@ st.markdown(custom_css, unsafe_allow_html=True)
 
 
 # ==========================================
+# 🔐 SECURE AUTHENTICATION LOGIC
+# ==========================================
+if not st.session_state.logged_in and st.session_state.current_page != "Home":
+    _, col_login_box, _ = st.columns([1, 1, 1])
+    with col_login_box:
+        st.markdown("<div class='login-container'>", unsafe_allow_html=True)
+        st.markdown("<h1 style='color:#00e5ff; margin-bottom: 0px;'>AlphaSwing Pro</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#94a3b8; margin-bottom: 30px;'>Secure Gateway</p>", unsafe_allow_html=True)
+        
+        with st.form("login_form"):
+            username = st.text_input("👤 Username", placeholder="Enter your username")
+            password = st.text_input("🔑 Password", type="password", placeholder="Enter your password")
+            remember_me = st.checkbox("Keep me logged in (Remember me)")
+            
+            submit_btn = st.form_submit_button("Access Dashboard", type="primary", use_container_width=True)
+            
+            if submit_btn:
+                admin_user = st.secrets.get("ADMIN_USERNAME", "ankitdahle")
+                admin_pass = st.secrets.get("ADMIN_PASSWORD", "dahleankit")
+                guest_user = st.secrets.get("GUEST_USERNAME", "guest")
+                guest_pass = st.secrets.get("GUEST_PASSWORD", "viewonly")
+                
+                if username == admin_user and password == admin_pass:
+                    st.session_state.logged_in = True
+                    st.session_state.role = "admin"
+                    st.toast("✅ Admin Access Granted!")
+                    time.sleep(1)
+                    st.rerun()
+                elif username == guest_user and password == guest_pass:
+                    st.session_state.logged_in = True
+                    st.session_state.role = "viewer"
+                    st.toast("✅ Viewer Access Granted!")
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error("❌ Invalid Credentials. Try again.")
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+    st.markdown("<div style='text-align: center; margin-top: 20px;'><a href='/' target='_self' style='color: #00e5ff; text-decoration: none;'>⬅️ Back to Home</a></div>", unsafe_allow_html=True)
+    st.stop() 
+
+is_admin = (st.session_state.role == 'admin')
+
+# ==========================================
 # 3. TOP NAVIGATION BAR RENDERING
 # ==========================================
 col_logo, nav1, nav2, nav3, nav4, nav5, space, col_login = st.columns([2.5, 1.2, 1.2, 1.2, 1.2, 1.2, 0.5, 1.5])
@@ -145,10 +216,10 @@ col_logo, nav1, nav2, nav3, nav4, nav5, space, col_login = st.columns([2.5, 1.2,
 with col_logo:
     st.markdown("""
     <div style="display: flex; align-items: center; gap: 10px; margin-top: 2px;">
-        <div style="background-color: #00bfff; width: 30px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+        <div style="background-color: #00bfff; width: 30px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center; min-width: 30px;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L22 20H2L12 2Z" fill="white"/></svg>
         </div>
-        <a href="/" target="_self" style="font-size: 22px; font-weight: 800; color: white; letter-spacing: 0.5px; text-decoration: none;">AlphaSwing</a>
+        <a href="/" target="_self" style="font-size: 22px; font-weight: 800; color: white; letter-spacing: 0.5px; text-decoration: none; white-space: nowrap;">AlphaSwing</a>
     </div>
     """, unsafe_allow_html=True)
 
@@ -172,7 +243,7 @@ with col_login:
             st.rerun()
     else:
         if st.button("Login 🔐", type="primary", use_container_width=True):
-            st.session_state.current_page = "Scanner" # Redirect to protected route
+            st.session_state.current_page = "Scanner" # Redirects to login
             st.rerun()
 
 st.markdown("<hr style='margin-top: 5px; border-color: rgba(255,255,255,0.05);'>", unsafe_allow_html=True)
@@ -209,7 +280,6 @@ master_symbol_list = sorted(list(set(master_symbol_list)))
 # 5. MAIN ROUTING & LOGIC
 # ==========================================
 
-# 🟢 IF PAGE IS HOME (Always Public)
 if st.session_state.current_page == "Home":
     components.html(
         """
@@ -233,49 +303,8 @@ if st.session_state.current_page == "Home":
         height=300,
     )
 
-# 🔴 IF PAGE IS NOT HOME & USER IS NOT LOGGED IN (Show Login Screen)
-elif not st.session_state.logged_in:
-    _, col_login_box, _ = st.columns([1, 1, 1])
-    with col_login_box:
-        st.markdown("<div class='login-container'>", unsafe_allow_html=True)
-        st.markdown("<h1 style='color:#00e5ff; margin-bottom: 0px;'>AlphaSwing Pro</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='color:#94a3b8; margin-bottom: 30px;'>Secure Gateway</p>", unsafe_allow_html=True)
-        
-        with st.form("login_form"):
-            username = st.text_input("👤 Username", placeholder="Enter your username")
-            password = st.text_input("🔑 Password", type="password", placeholder="Enter your password")
-            remember_me = st.checkbox("Keep me logged in (Remember me)")
-            
-            submit_btn = st.form_submit_button("Access Dashboard", type="primary", use_container_width=True)
-            
-            if submit_btn:
-                # Fetching SECRETS securely
-                admin_user = st.secrets.get("ADMIN_USERNAME", "ankitdahle")
-                admin_pass = st.secrets.get("ADMIN_PASSWORD", "dahleankit")
-                guest_user = st.secrets.get("GUEST_USERNAME", "guest")
-                guest_pass = st.secrets.get("GUEST_PASSWORD", "viewonly")
-                
-                if username == admin_user and password == admin_pass:
-                    st.session_state.logged_in = True
-                    st.session_state.role = "admin"
-                    st.toast("✅ Admin Access Granted!")
-                    time.sleep(1)
-                    st.rerun()
-                elif username == guest_user and password == guest_pass:
-                    st.session_state.logged_in = True
-                    st.session_state.role = "viewer"
-                    st.toast("✅ Viewer Access Granted!")
-                    time.sleep(1)
-                    st.rerun()
-                else:
-                    st.error("❌ Invalid Credentials. Try again.")
-        st.markdown("</div>", unsafe_allow_html=True)
-    st.stop() # Stops execution here so protected content isn't shown
-
-# 🟢 PROTECTED PAGES (Logged In Users Only)
 else:
-    is_admin = (st.session_state.role == 'admin')
-
+    # 🟢 PROTECTED PAGES (Admin & Viewers)
     if st.session_state.current_page == "Scanner":
         role_badge = "👑 Admin" if is_admin else "👁️ Viewer"
         st.markdown(f"<div class='page-heading'>📊 Scanner <span style='font-size:14px; color:#94a3b8; float:right; padding-top:10px;'>{role_badge}</span></div>", unsafe_allow_html=True)
