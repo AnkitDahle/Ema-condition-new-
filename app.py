@@ -25,6 +25,12 @@ cookies = EncryptedCookieManager(prefix="aswing", password=cookie_password)
 if not cookies.ready():
     st.stop()
 
+# Interactive Session States for Graphs
+if 'active_sector_ui' not in st.session_state:
+    st.session_state.active_sector_ui = None
+if 'current_chart_selection' not in st.session_state:
+    st.session_state.current_chart_selection = None
+
 if 'logged_in' not in st.session_state:
     if 'auth_role' in cookies:
         st.session_state.logged_in = True
@@ -336,7 +342,7 @@ else:
             st.dataframe(df_filtered, use_container_width=True, height=350, hide_index=True)
 
             # ==========================================
-            # 🚀 2-LEVEL SECTOR & PROXY EXPLORER
+            # 🚀 2-LEVEL SECTOR & PROXY EXPLORER (SYNCED)
             # ==========================================
             st.markdown("<hr style='border-color: rgba(255,255,255,0.05); margin-top: 30px;'>", unsafe_allow_html=True)
             st.markdown("<h3 style='color: #ffffff; margin-bottom: 20px;'>🍩 Advanced Sector & Proxy Explorer</h3>", unsafe_allow_html=True)
@@ -344,16 +350,22 @@ else:
             if not df_selected_date.empty:
                 sector_counts = df_selected_date['Sector'].value_counts().reset_index()
                 sector_counts.columns = ['Sector', 'Stock Count']
+                sector_list = sorted(list(sector_counts['Sector']))
+                
+                # Default selection logic
+                if st.session_state.active_sector_ui not in sector_list and sector_list:
+                    st.session_state.active_sector_ui = sector_list[0]
                 
                 # 1. Level 1 Chart (Sectors)
                 fig_sector = px.pie(sector_counts, values='Stock Count', names='Sector', hole=0.45, color_discrete_sequence=px.colors.qualitative.Pastel)
                 fig_sector.update_traces(textposition='inside', textinfo='percent', hovertemplate="<b>%{label}</b><br>Stocks: %{value}<extra></extra>")
-                fig_sector.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white'), margin=dict(t=40, b=10, l=0, r=0), title=dict(text="1️⃣ Sector Distribution", font=dict(color="#00e5ff", size=18)))
+                fig_sector.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white'), margin=dict(t=40, b=10, l=0, r=0), title=dict(text="1️⃣ Select a Sector (Click Graph)", font=dict(color="#00e5ff", size=16)))
 
-                c_chart1, c_chart2 = st.columns([1, 1])
+                c_chart1, c_chart2 = st.columns([1.2, 1])
                 
                 with c_chart1:
                     try:
+                        # 🚀 MAGIC CLICK LISTENER
                         chart_event = st.plotly_chart(fig_sector, use_container_width=True, on_select="rerun", selection_mode=("points",), key="sector_chart")
                         clicked_sector = None
                         if chart_event and hasattr(chart_event, 'selection') and chart_event.selection:
@@ -364,35 +376,41 @@ else:
                         st.plotly_chart(fig_sector, use_container_width=True, key="sector_chart_fallback")
                         clicked_sector = None
 
-                # Dropdown for selecting Sector (Syncs with Chart Click)
-                sector_list = sorted(list(df_selected_date['Sector'].dropna().unique()))
-                default_idx = sector_list.index(clicked_sector) if clicked_sector in sector_list else 0
-                
-                st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
-                active_sector = st.selectbox("🎯 Target Sector:", sector_list, index=default_idx)
+                # 🧠 Sync Logic: Connect Chart Click to Dropdown State
+                if clicked_sector != st.session_state.current_chart_selection:
+                    st.session_state.current_chart_selection = clicked_sector
+                    if clicked_sector in sector_list:
+                        st.session_state.active_sector_ui = clicked_sector
 
-                # 2. Level 2 Chart & Tables (Proxies inside Active Sector)
-                if active_sector:
-                    sector_df = df_selected_date[df_selected_date['Sector'] == active_sector]
+                with c_chart2:
+                    st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+                    st.markdown("<p style='color:#00e5ff; margin-bottom: 5px; font-weight: 600;'>🎯 Quick Proxy Filter:</p>", unsafe_allow_html=True)
                     
-                    proxy_counts = sector_df['Proxy / Industry'].value_counts().reset_index()
-                    proxy_counts.columns = ['Proxy', 'Stock Count']
+                    default_idx = sector_list.index(st.session_state.active_sector_ui) if st.session_state.active_sector_ui in sector_list else 0
                     
-                    fig_proxy = px.pie(proxy_counts, values='Stock Count', names='Proxy', hole=0.45, color_discrete_sequence=px.colors.qualitative.Set3)
-                    fig_proxy.update_traces(textposition='inside', textinfo='percent', hovertemplate="<b>%{label}</b><br>Stocks: %{value}<extra></extra>")
-                    fig_proxy.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white'), margin=dict(t=40, b=10, l=0, r=0), title=dict(text=f"2️⃣ Proxies in {active_sector}", font=dict(color="#10b981", size=18)))
-                    
-                    with c_chart2:
+                    # 🚀 SMALL DROPDOWN (Directly above Proxy Chart)
+                    active_sector = st.selectbox("Sector", sector_list, index=default_idx, key="sector_dropdown", label_visibility="collapsed")
+                    st.session_state.active_sector_ui = active_sector
+
+                    # 2. Level 2 Chart (Proxies inside Active Sector)
+                    if active_sector:
+                        sector_df = df_selected_date[df_selected_date['Sector'] == active_sector]
+                        proxy_counts = sector_df['Proxy / Industry'].value_counts().reset_index()
+                        proxy_counts.columns = ['Proxy', 'Stock Count']
+                        
+                        fig_proxy = px.pie(proxy_counts, values='Stock Count', names='Proxy', hole=0.45, color_discrete_sequence=px.colors.qualitative.Set3)
+                        fig_proxy.update_traces(textposition='inside', textinfo='percent', hovertemplate="<b>%{label}</b><br>Stocks: %{value}<extra></extra>")
+                        fig_proxy.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white'), margin=dict(t=30, b=10, l=0, r=0), title=dict(text=f"2️⃣ Proxies in {active_sector}", font=dict(color="#10b981", size=16)))
+                        
                         st.plotly_chart(fig_proxy, use_container_width=True, key="proxy_chart")
                         
-                    # 3. Categorized Stocks Tables
-                    st.markdown(f"<h4 style='color:#ffffff; margin-top: 30px;'>📋 Breakout Stocks in {active_sector}</h4>", unsafe_allow_html=True)
+                # 3. SINGLE UNIFIED TABLE (Proxy | Stock Symbol)
+                if active_sector:
+                    st.markdown(f"<h4 style='color:#ffffff; margin-top: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;'>📋 Selected Sector List: {active_sector}</h4>", unsafe_allow_html=True)
                     
-                    proxy_groups = sector_df.groupby('Proxy / Industry')
-                    for proxy_name, group in proxy_groups:
-                        st.markdown(f"<div style='background: rgba(0, 229, 255, 0.1); padding: 8px 15px; border-radius: 8px 8px 0px 0px; margin-top: 15px; border-bottom: 2px solid #00e5ff; color: #00e5ff; font-weight: bold;'>🔹 {proxy_name} ({len(group)} Stocks)</div>", unsafe_allow_html=True)
-                        display_df = group[['Stock Symbol', 'Close Price (₹)', 'Turnover (Cr)']]
-                        st.dataframe(display_df, use_container_width=True, hide_index=True)
+                    # Sirf do columns rakhe gaye hain
+                    display_df = sector_df[['Proxy / Industry', 'Stock Symbol']].sort_values(by=['Proxy / Industry', 'Stock Symbol'])
+                    st.dataframe(display_df, use_container_width=True, hide_index=True)
 
     elif st.session_state.current_page == "Catalyst":
         st.markdown("<div class='page-heading'>🔥 Catalyst</div>", unsafe_allow_html=True)
