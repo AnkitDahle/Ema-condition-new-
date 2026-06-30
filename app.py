@@ -25,12 +25,6 @@ cookies = EncryptedCookieManager(prefix="aswing", password=cookie_password)
 if not cookies.ready():
     st.stop()
 
-# Interactive Session States for Graphs
-if 'active_sector_ui' not in st.session_state:
-    st.session_state.active_sector_ui = None
-if 'current_chart_selection' not in st.session_state:
-    st.session_state.current_chart_selection = None
-
 if 'logged_in' not in st.session_state:
     if 'auth_role' in cookies:
         st.session_state.logged_in = True
@@ -342,7 +336,7 @@ else:
             st.dataframe(df_filtered, use_container_width=True, height=350, hide_index=True)
 
             # ==========================================
-            # 🚀 2-LEVEL SECTOR & PROXY EXPLORER (DONUT W/ LEGENDS)
+            # 🚀 2-LEVEL SECTOR & PROXY EXPLORER (CLEANED)
             # ==========================================
             st.markdown("<hr style='border-color: rgba(255,255,255,0.05); margin-top: 30px;'>", unsafe_allow_html=True)
             st.markdown("<h3 style='color: #ffffff; margin-bottom: 20px;'>🍩 Advanced Sector & Proxy Explorer</h3>", unsafe_allow_html=True)
@@ -352,48 +346,24 @@ else:
                 sector_counts.columns = ['Sector', 'Stock Count']
                 sector_list = sorted(list(sector_counts['Sector']))
                 
-                if st.session_state.active_sector_ui not in sector_list and sector_list:
-                    st.session_state.active_sector_ui = sector_list[0]
-                
-                # RESTORED PIE/DONUT CHART WITH LEGENDS
+                # 1. Premium Donut Chart (Visual Only)
                 fig_sector = px.pie(sector_counts, values='Stock Count', names='Sector', hole=0.45, color_discrete_sequence=px.colors.qualitative.Pastel)
                 fig_sector.update_traces(textposition='inside', textinfo='percent', hovertemplate="<b>%{label}</b><br>Stocks: %{value}<extra></extra>")
-                fig_sector.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white'), margin=dict(t=40, b=10, l=0, r=0), title=dict(text="1️⃣ Select a Sector (Click Graph)", font=dict(color="#00e5ff", size=16)), legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.0))
+                fig_sector.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white'), margin=dict(t=40, b=10, l=0, r=0), title=dict(text="1️⃣ Overall Sector Distribution", font=dict(color="#00e5ff", size=16)), legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.0))
 
                 c_chart1, c_chart2 = st.columns([1.5, 1])
                 
                 with c_chart1:
-                    try:
-                        # 🚀 MAGIC CLICK LISTENER
-                        chart_event = st.plotly_chart(fig_sector, use_container_width=True, on_select="rerun", selection_mode=("points",), key="sector_chart")
-                        clicked_sector = None
-                        if chart_event and 'selection' in chart_event:
-                            pts = chart_event['selection'].get('points', [])
-                            if pts:
-                                # Safe extraction depending on Streamlit version
-                                clicked_sector = pts[0].get('label') if isinstance(pts[0], dict) else getattr(pts[0], 'label', None)
-                    except TypeError:
-                        # Fallback if Streamlit version is older than 1.35
-                        st.plotly_chart(fig_sector, use_container_width=True, key="sector_chart_fallback")
-                        clicked_sector = None
-                        st.error("⚠️ App needs Streamlit version >= 1.35.0 to enable clicking. Please check your requirements.txt")
-
-                # Sync Logic
-                if clicked_sector and clicked_sector != st.session_state.current_chart_selection:
-                    st.session_state.current_chart_selection = clicked_sector
-                    if clicked_sector in sector_list:
-                        st.session_state.active_sector_ui = clicked_sector
+                    st.plotly_chart(fig_sector, use_container_width=True) # Click removed to prevent errors
 
                 with c_chart2:
                     st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
-                    st.markdown("<p style='color:#00e5ff; margin-bottom: 5px; font-weight: 600;'>🎯 Quick Proxy Filter:</p>", unsafe_allow_html=True)
+                    st.markdown("<p style='color:#00e5ff; margin-bottom: 5px; font-weight: 600;'>👇 Select Sector to Explore Proxies:</p>", unsafe_allow_html=True)
                     
-                    default_idx = sector_list.index(st.session_state.active_sector_ui) if st.session_state.active_sector_ui in sector_list else 0
-                    
-                    active_sector = st.selectbox("Sector", sector_list, index=default_idx, key="sector_dropdown", label_visibility="collapsed")
-                    st.session_state.active_sector_ui = active_sector
+                    # Reliable Dropdown controls the 2nd chart
+                    active_sector = st.selectbox("Sector", sector_list, key="sector_dropdown", label_visibility="collapsed")
 
-                    # 2. Level 2 Proxy Chart (DONUT)
+                    # 2. Proxy Chart
                     if active_sector:
                         sector_df = df_selected_date[df_selected_date['Sector'] == active_sector]
                         proxy_counts = sector_df['Proxy / Industry'].value_counts().reset_index()
@@ -403,11 +373,11 @@ else:
                         fig_proxy.update_traces(textposition='inside', textinfo='percent', hovertemplate="<b>%{label}</b><br>Stocks: %{value}<extra></extra>")
                         fig_proxy.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white'), margin=dict(t=30, b=10, l=0, r=0), title=dict(text=f"2️⃣ Proxies in {active_sector}", font=dict(color="#10b981", size=16)), legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="center", x=0.5))
                         
-                        st.plotly_chart(fig_proxy, use_container_width=True, key="proxy_chart")
+                        st.plotly_chart(fig_proxy, use_container_width=True)
                         
-                # 3. SINGLE CLEAN TABLE (Proxy | Stock Symbol)
+                # 3. Clean Proxy Table (Only 2 columns)
                 if active_sector:
-                    st.markdown(f"<h4 style='color:#ffffff; margin-top: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;'>📋 Sector Breakdown: {active_sector}</h4>", unsafe_allow_html=True)
+                    st.markdown(f"<h4 style='color:#ffffff; margin-top: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;'>📋 {active_sector} Stock List</h4>", unsafe_allow_html=True)
                     
                     display_df = sector_df[['Proxy / Industry', 'Stock Symbol']].sort_values(by=['Proxy / Industry', 'Stock Symbol'])
                     display_df.columns = ['Proxy Name', 'Stock Name'] 
