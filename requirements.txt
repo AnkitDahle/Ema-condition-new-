@@ -1,7 +1,7 @@
-streamlit
 yfinance
 pandas
 supabase
 cloudinary
 plotly
 streamlit-cookies-manager
+streamlit>=1.36.0
