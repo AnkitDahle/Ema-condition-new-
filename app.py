@@ -336,40 +336,49 @@ else:
             st.dataframe(df_filtered, use_container_width=True, height=350, hide_index=True)
 
             # ==========================================
-            # 🚀 2-LEVEL SECTOR & PROXY EXPLORER (CLEANED)
+            # 🚀 2-LEVEL SECTOR & PROXY EXPLORER (WITH PERCENTAGES)
             # ==========================================
             st.markdown("<hr style='border-color: rgba(255,255,255,0.05); margin-top: 30px;'>", unsafe_allow_html=True)
             st.markdown("<h3 style='color: #ffffff; margin-bottom: 20px;'>🍩 Advanced Sector & Proxy Explorer</h3>", unsafe_allow_html=True)
 
             if not df_selected_date.empty:
+                # ----- 1. SECTOR CALCULATION -----
                 sector_counts = df_selected_date['Sector'].value_counts().reset_index()
                 sector_counts.columns = ['Sector', 'Stock Count']
                 sector_list = sorted(list(sector_counts['Sector']))
                 
-                # 1. Premium Donut Chart (Visual Only)
-                fig_sector = px.pie(sector_counts, values='Stock Count', names='Sector', hole=0.45, color_discrete_sequence=px.colors.qualitative.Pastel)
+                # Math for Percentages (Sector)
+                total_sectors = sector_counts['Stock Count'].sum()
+                sector_counts['Legend_Label'] = sector_counts.apply(lambda row: f"{row['Sector']} ({row['Stock Count']/total_sectors*100:.1f}%)", axis=1)
+                
+                # Level 1 Donut Chart (Visual Only - with custom names)
+                fig_sector = px.pie(sector_counts, values='Stock Count', names='Legend_Label', hole=0.45, color_discrete_sequence=px.colors.qualitative.Pastel)
                 fig_sector.update_traces(textposition='inside', textinfo='percent', hovertemplate="<b>%{label}</b><br>Stocks: %{value}<extra></extra>")
                 fig_sector.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white'), margin=dict(t=40, b=10, l=0, r=0), title=dict(text="1️⃣ Overall Sector Distribution", font=dict(color="#00e5ff", size=16)), legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.0))
 
                 c_chart1, c_chart2 = st.columns([1.5, 1])
                 
                 with c_chart1:
-                    st.plotly_chart(fig_sector, use_container_width=True) # Click removed to prevent errors
+                    st.plotly_chart(fig_sector, use_container_width=True)
 
                 with c_chart2:
                     st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
                     st.markdown("<p style='color:#00e5ff; margin-bottom: 5px; font-weight: 600;'>👇 Select Sector to Explore Proxies:</p>", unsafe_allow_html=True)
                     
-                    # Reliable Dropdown controls the 2nd chart
+                    # Reliable Dropdown
                     active_sector = st.selectbox("Sector", sector_list, key="sector_dropdown", label_visibility="collapsed")
 
-                    # 2. Proxy Chart
+                    # ----- 2. PROXY CALCULATION -----
                     if active_sector:
                         sector_df = df_selected_date[df_selected_date['Sector'] == active_sector]
                         proxy_counts = sector_df['Proxy / Industry'].value_counts().reset_index()
                         proxy_counts.columns = ['Proxy', 'Stock Count']
                         
-                        fig_proxy = px.pie(proxy_counts, values='Stock Count', names='Proxy', hole=0.45, color_discrete_sequence=px.colors.qualitative.Set3)
+                        # Math for Percentages (Proxy)
+                        total_proxies = proxy_counts['Stock Count'].sum()
+                        proxy_counts['Legend_Label'] = proxy_counts.apply(lambda row: f"{row['Proxy']} ({row['Stock Count']/total_proxies*100:.1f}%)", axis=1)
+                        
+                        fig_proxy = px.pie(proxy_counts, values='Stock Count', names='Legend_Label', hole=0.45, color_discrete_sequence=px.colors.qualitative.Set3)
                         fig_proxy.update_traces(textposition='inside', textinfo='percent', hovertemplate="<b>%{label}</b><br>Stocks: %{value}<extra></extra>")
                         fig_proxy.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white'), margin=dict(t=30, b=10, l=0, r=0), title=dict(text=f"2️⃣ Proxies in {active_sector}", font=dict(color="#10b981", size=16)), legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="center", x=0.5))
                         
