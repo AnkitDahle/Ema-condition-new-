@@ -15,11 +15,15 @@ import plotly.express as px
 # ==========================================
 st.set_page_config(page_title="AlphaSwing Pro", layout="wide", page_icon="📈", initial_sidebar_state="collapsed")
 
+# Initialize Session States
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
+if 'role' not in st.session_state:
+    st.session_state.role = None
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "Home"
 
 pages = ['Home', 'Scanner', 'Catalyst', 'IPOs', 'Journal']
-# +2 because Logo takes the 1st column in our layout
 active_index = pages.index(st.session_state.current_page) + 2 
 
 # ==========================================
@@ -42,9 +46,7 @@ custom_css = f"""
     .block-container {{ padding-top: 1rem !important; }}
     header {{ visibility: hidden; }}
 
-    /* ---------------------------------------------------
-       🌟 1. GLOBAL ACTION BUTTONS (Run Scan & Watchlist)
-       --------------------------------------------------- */
+    /* GLOBAL ACTION BUTTONS */
     .stButton > button[kind="secondary"], 
     .stDownloadButton > button,
     div[data-testid="stButton"] button[kind="secondary"],
@@ -84,9 +86,7 @@ custom_css = f"""
         color: #ffffff !important;
     }}
 
-    /* ---------------------------------------------------
-       🌟 2. NAVBAR OVERRIDE (Remove Box Style from Tabs)
-       --------------------------------------------------- */
+    /* NAVBAR OVERRIDE */
     div[data-testid="stHorizontalBlock"]:first-of-type .stButton > button,
     div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stButton"] button[kind="secondary"] {{
         background: transparent !important;
@@ -102,13 +102,13 @@ custom_css = f"""
     }}
     div[data-testid="stHorizontalBlock"]:first-of-type .stButton > button:hover p {{ color: #cdd6e0 !important; }}
 
-    /* 🔥 ACTIVE TAB STYLE (Pure White & Ultra Bold) */
+    /* ACTIVE TAB STYLE */
     div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stColumn"]:nth-child({active_index}) .stButton > button p {{
         color: #ffffff !important;      
         font-weight: 900 !important;    
     }}
 
-    /* Login / Get Started Button (Cyan) */
+    /* Login / Logout Button */
     div[data-testid="stHorizontalBlock"]:first-of-type button[kind="primary"] {{
         background-color: #00e5ff !important;
         border-radius: 6px !important;
@@ -118,9 +118,7 @@ custom_css = f"""
     div[data-testid="stHorizontalBlock"]:first-of-type button[kind="primary"] p {{ color: #000000 !important; font-weight: 900 !important; }}
     div[data-testid="stHorizontalBlock"]:first-of-type button[kind="primary"]:hover {{ background-color: #00bfff !important; }}
 
-    /* ---------------------------------------------------
-       🌟 3. FORMS & MISC COMPONENTS
-       --------------------------------------------------- */
+    /* FORMS & MISC COMPONENTS */
     div.stForm button[kind="primaryFormSubmit"] {{ background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%) !important; border: none !important; border-radius: 8px !important; }}
     div.stForm button[kind="primaryFormSubmit"] p {{ font-weight: 700 !important; color: white !important; }}
 
@@ -131,9 +129,53 @@ custom_css = f"""
     
     .journal-card {{ background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; margin-bottom: 20px; backdrop-filter: blur(5px); }}
     .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {{ background-color: rgba(0,0,0,0.2) !important; color: white !important; border: 1px solid rgba(255,255,255,0.1) !important; border-radius: 8px !important; }}
+    
+    /* Login Box CSS */
+    .login-container {{ background: rgba(0,0,0,0.4); padding: 40px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); max-width: 400px; margin: auto; margin-top: 10vh; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }}
 </style>
 """
 st.markdown(custom_css, unsafe_allow_html=True)
+
+# ==========================================
+# 🔐 SECURE AUTHENTICATION LOGIC
+# ==========================================
+if not st.session_state.logged_in:
+    _, col_login_box, _ = st.columns([1, 1, 1])
+    with col_login_box:
+        st.markdown("<div class='login-container'>", unsafe_allow_html=True)
+        st.markdown("<h1 style='color:#00e5ff; margin-bottom: 0px;'>AlphaSwing Pro</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#94a3b8; margin-bottom: 30px;'>Secure Gateway</p>", unsafe_allow_html=True)
+        
+        with st.form("login_form"):
+            username = st.text_input("👤 Username", placeholder="Enter your username")
+            password = st.text_input("🔑 Password", type="password", placeholder="Enter your password")
+            submit_btn = st.form_submit_button("Access Dashboard", type="primary", use_container_width=True)
+            
+            if submit_btn:
+                # Fetching SECRETS securely (Not hardcoded in UI)
+                admin_user = st.secrets.get("ADMIN_USERNAME", "ankitdahle")
+                admin_pass = st.secrets.get("ADMIN_PASSWORD", "dahleankit")
+                guest_user = st.secrets.get("GUEST_USERNAME", "guest")
+                guest_pass = st.secrets.get("GUEST_PASSWORD", "viewonly")
+                
+                if username == admin_user and password == admin_pass:
+                    st.session_state.logged_in = True
+                    st.session_state.role = "admin"
+                    st.toast("✅ Admin Access Granted!")
+                    time.sleep(1)
+                    st.rerun()
+                elif username == guest_user and password == guest_pass:
+                    st.session_state.logged_in = True
+                    st.session_state.role = "viewer"
+                    st.toast("✅ Viewer Access Granted!")
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error("❌ Invalid Credentials. Try again.")
+        st.markdown("</div>", unsafe_allow_html=True)
+    st.stop() 
+
+is_admin = (st.session_state.role == 'admin')
 
 # ==========================================
 # 3. TOP NAVIGATION BAR RENDERING
@@ -161,7 +203,10 @@ with nav4:
 with nav5:
     if st.button("Journal", use_container_width=True): st.session_state.current_page = "Journal"; st.rerun()
 with col_login:
-    st.button("Get Started", type="primary", use_container_width=True)
+    if st.button("Logout 🚪", type="primary", use_container_width=True):
+        st.session_state.logged_in = False
+        st.session_state.role = None
+        st.rerun()
 
 st.markdown("<hr style='margin-top: 5px; border-color: rgba(255,255,255,0.05);'>", unsafe_allow_html=True)
 
@@ -221,7 +266,8 @@ if st.session_state.current_page == "Home":
     )
 
 elif st.session_state.current_page == "Scanner":
-    st.markdown("<div class='page-heading'>📊 Scanner</div>", unsafe_allow_html=True)
+    role_badge = "👑 Admin" if is_admin else "👁️ Viewer"
+    st.markdown(f"<div class='page-heading'>📊 Scanner <span style='font-size:14px; color:#94a3b8; float:right; padding-top:10px;'>{role_badge}</span></div>", unsafe_allow_html=True)
     
     if raw_data:
         df = pd.DataFrame(raw_data)
@@ -232,14 +278,12 @@ elif st.session_state.current_page == "Scanner":
         
         latest_date = df['Scan Date'].max()
         
-        # Upper Filters Row
         f_col1, f_col2, f_col3, f_col_run, f_col_dl = st.columns([1.3, 1.3, 1.4, 1.0, 1.0])
         
         with f_col1: selected_date = st.selectbox("📅 Scan Date", sorted(df['Scan Date'].unique(), reverse=True))
         df_selected_date = df[df['Scan Date'] == selected_date]
         total_stocks = len(df_selected_date)
         
-        # Metrics Display
         m1, m2, m3 = st.columns([1, 1, 3])
         with m1: st.metric("📅 Selected Scan Date", str(selected_date))
         with m2: st.metric("🎯 Total Breakouts", f"{total_stocks}")
@@ -252,19 +296,19 @@ elif st.session_state.current_page == "Scanner":
         if selected_sector != "All Sectors": df_filtered = df_filtered[df_filtered['Sector'] == selected_sector]
         if selected_stock: df_filtered = df_filtered[df_filtered['Stock Symbol'] == selected_stock] 
 
-        with f_col_run:
-            st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-            if st.button("🚀 Run Scan", use_container_width=True):
-                with st.spinner("Scanning..."):
-                    try:
-                        token = st.secrets["GITHUB_TOKEN"]
-                        repo = st.secrets["GITHUB_REPO"]
-                        requests.post(f"https://api.github.com/repos/{repo}/actions/workflows/daily_scan.yml/dispatches", headers={"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"}, json={"ref": "main"})
-                        time.sleep(2)
-                        st.success("✅ Initiated!")
-                    except Exception as e: st.error(f"❌ Error: {e}")
+        if is_admin:
+            with f_col_run:
+                st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+                if st.button("🚀 Run Scan", use_container_width=True):
+                    with st.spinner("Scanning..."):
+                        try:
+                            token = st.secrets["GITHUB_TOKEN"]
+                            repo = st.secrets["GITHUB_REPO"]
+                            requests.post(f"https://api.github.com/repos/{repo}/actions/workflows/daily_scan.yml/dispatches", headers={"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"}, json={"ref": "main"})
+                            time.sleep(2)
+                            st.success("✅ Initiated!")
+                        except Exception as e: st.error(f"❌ Error: {e}")
 
-        # Watchlist generation with Commas
         tv_text = ""
         if not df_filtered.empty:
             for (sec, proxy), group in df_filtered.sort_values(by=['Sector', 'Proxy / Industry']).groupby(['Sector', 'Proxy / Industry']):
@@ -275,12 +319,9 @@ elif st.session_state.current_page == "Scanner":
             st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
             st.download_button("📥 Watchlist (.txt)", data=tv_text, file_name=f"AlphaSwing_{selected_date}.txt", mime="text/plain", use_container_width=True)
 
-        # Main Table Display
         st.dataframe(df_filtered, use_container_width=True, height=350, hide_index=True)
 
-        # ==========================================
-        # 🚀 GRAPH & SECTOR BREAKDOWN TABLE SECTION
-        # ==========================================
+        # 🚀 GRAPH SECTION
         st.markdown("<hr style='border-color: rgba(255,255,255,0.05); margin-top: 30px;'>", unsafe_allow_html=True)
         st.markdown("<h3 style='color: #ffffff; margin-bottom: 20px;'>🍩 Sector Distribution Breakdown</h3>", unsafe_allow_html=True)
 
@@ -288,28 +329,10 @@ elif st.session_state.current_page == "Scanner":
             sector_counts = df_selected_date['Sector'].value_counts().reset_index()
             sector_counts.columns = ['Sector', 'Stock Count']
             
-            # Interactive Donut Chart Configuration
-            fig = px.pie(
-                sector_counts, 
-                values='Stock Count', 
-                names='Sector', 
-                hole=0.45, 
-                color_discrete_sequence=px.colors.qualitative.Pastel
-            )
-            fig.update_traces(
-                textposition='inside', 
-                textinfo='percent', 
-                hovertemplate="<b>%{label}</b><br>Breakout Stocks: %{value}<extra></extra>"
-            )
-            fig.update_layout(
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='white'),
-                margin=dict(t=10, b=10, l=0, r=0),
-                legend=dict(title="Sector Illustration", orientation="v", yanchor="top", y=1, xanchor="left", x=1.0)
-            )
+            fig = px.pie(sector_counts, values='Stock Count', names='Sector', hole=0.45, color_discrete_sequence=px.colors.qualitative.Pastel)
+            fig.update_traces(textposition='inside', textinfo='percent', hovertemplate="<b>%{label}</b><br>Breakout Stocks: %{value}<extra></extra>")
+            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white'), margin=dict(t=10, b=10, l=0, r=0), legend=dict(title="Sector Illustration", orientation="v", yanchor="top", y=1, xanchor="left", x=1.0))
 
-            # Columns for Chart and TABLE side-by-side
             c_chart, c_details = st.columns([2, 1.2])
             
             with c_chart:
@@ -319,12 +342,10 @@ elif st.session_state.current_page == "Scanner":
                 st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
                 st.markdown("<h4 style='color:#00e5ff; margin-bottom: 10px;'>📋 Sector Explorer</h4>", unsafe_allow_html=True)
                 
-                # ✅ 100% BULLETPROOF NATIVE SELECTOR FOR TABLE
                 sector_list = sorted(list(df_selected_date['Sector'].dropna().unique()))
                 selected_table_sector = st.selectbox("Select Sector to view stocks:", sector_list, key="sector_table_selector")
                 
                 if selected_table_sector:
-                    # Filtering columns for the side table
                     sector_df = df_selected_date[df_selected_date['Sector'] == selected_table_sector][['Stock Symbol', 'Close Price (₹)']]
                     st.markdown(f"**Total Breakout Stocks:** {len(sector_df)}")
                     st.dataframe(sector_df, use_container_width=True, hide_index=True, height=250)
@@ -332,13 +353,11 @@ elif st.session_state.current_page == "Scanner":
 elif st.session_state.current_page == "Catalyst":
     st.markdown("<div class='page-heading'>🔥 Catalyst</div>", unsafe_allow_html=True)
     
-    # Half-width search box
     cat_col1, cat_col2 = st.columns([2, 5])
     with cat_col1:
         user_ticker = st.selectbox("🔤 Search Symbol:", master_symbol_list, index=None, placeholder="Type symbol...")
     
     if user_ticker:
-        # ✅ NAYA DETAILED PROMPT
         catalyst_prompt = f"""Please analyze {user_ticker} for me and provide the following, concise and clearly organized:
 
 1. Explain what the company does in like I'm 12 years old - three short bullet points about what it does and any helpful relatable examples and analogies.
@@ -395,7 +414,6 @@ elif st.session_state.current_page == "IPOs":
             df_ipo['Month'] = df_ipo['calc_date'].dt.strftime('%B')
             today = pd.to_datetime('today').date()
             
-            # ✅ "This Year" Metric Included
             this_year_count = len(df_ipo[df_ipo['calc_date'].dt.year == today.year])
             m1, m2, m3, m4 = st.columns([1, 1, 1, 3])
             with m1: st.metric("Today Listed", len(df_ipo[df_ipo['calc_date'].dt.date == today]))
@@ -410,14 +428,12 @@ elif st.session_state.current_page == "IPOs":
         fil = df_ipo[df_ipo['listing_year'] == selected_year]
         if selected_month != "All Months": fil = fil[fil['Month'] == selected_month]
         
-        # Smart Autocomplete Search (Empty by default)
         with col_search: selected_ipo_stock = st.selectbox("🔤 Search IPO:", sorted(list(fil['stock_symbol'].dropna().unique())), index=None, placeholder="Type symbol...")
         if selected_ipo_stock: fil = fil[fil['stock_symbol'] == selected_ipo_stock]
         
         display_ipo = fil[['stock_symbol', 'company_name', 'listing_date']].sort_values(by='listing_date', ascending=False)
         display_ipo.columns = ['Symbol', 'Company Name', 'Listing Date']
         
-        # Append commas at the end of IPO ticker
         tv_ipo_text = "### IPOs,\n"
         for sym in display_ipo['Symbol']: tv_ipo_text += f"NSE:{sym},\n"
         
@@ -430,70 +446,75 @@ elif st.session_state.current_page == "IPOs":
 elif st.session_state.current_page == "Journal":
     st.markdown("<div class='page-heading'>📓 Journal</div>", unsafe_allow_html=True)
     
-    j_tab1, j_tab2, j_tab3 = st.tabs(["➕ New Trade Entry", "🔄 Update Exits", "📚 Journal Gallery"])
-    
-    with j_tab1:
-        with st.form("new_trade_form", clear_on_submit=True):
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                symbol = st.text_input("Stock Symbol").upper()
-                quantity = st.number_input("Total Quantity", min_value=1, step=1)
-            with c2:
-                buying_date = st.date_input("Buying Date", datetime.date.today())
-                buying_price = st.number_input("Buying Price (₹)", min_value=0.0, step=0.1, format="%.2f")
-            with c3:
-                initial_sl = st.number_input("Initial Stoploss (₹)", min_value=0.0, step=0.1, format="%.2f")
-            
-            trade_logic = st.text_area("Trade Logic")
-            image_file = st.file_uploader("Upload Chart (Optional)", type=['png', 'jpg', 'jpeg'])
-            
-            if st.form_submit_button("💾 Save Trade", type="primary", use_container_width=True) and symbol and quantity > 0 and buying_price > 0:
-                with st.spinner("Saving trade..."):
-                    img_url = None
-                    if image_file is not None: img_url = cloudinary.uploader.upload(image_file, folder="trading_journal").get("secure_url")
-                    try:
-                        supabase.table('trading_journal').insert({"symbol": symbol, "total_quantity": quantity, "buying_date": str(buying_date), "buying_price": float(buying_price), "initial_sl": float(initial_sl), "trade_logic": trade_logic, "image_url": img_url}).execute()
-                        st.success(f"✅ Trade {symbol} saved successfully!")
-                    except Exception as e: st.error(f"Error: {e}")
-
-    with j_tab2:
-        try:
-            active_res = supabase.table('trading_journal').select("*").is_("sold_30_date", "null").execute()
-            active_trades = active_res.data
-            if active_trades:
-                trade_options = {f"{t['symbol']} (Bought: {t['buying_date']} @ ₹{t['buying_price']})": t for t in active_trades}
-                selected_trade_label = st.selectbox("🎯 Select Active Trade", list(trade_options.keys()))
-                t = trade_options[selected_trade_label]
+    if is_admin:
+        j_tabs = st.tabs(["➕ New Trade Entry", "🔄 Update Exits", "📚 Journal Gallery"])
+        tab_entry, tab_exits, tab_gallery = j_tabs[0], j_tabs[1], j_tabs[2]
+        
+        with tab_entry:
+            with st.form("new_trade_form", clear_on_submit=True):
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    symbol = st.text_input("Stock Symbol").upper()
+                    quantity = st.number_input("Total Quantity", min_value=1, step=1)
+                with c2:
+                    buying_date = st.date_input("Buying Date", datetime.date.today())
+                    buying_price = st.number_input("Buying Price (₹)", min_value=0.0, step=0.1, format="%.2f")
+                with c3:
+                    initial_sl = st.number_input("Initial Stoploss (₹)", min_value=0.0, step=0.1, format="%.2f")
                 
-                with st.form("update_trade_form"):
-                    st.markdown("### 1️⃣ 20% Qty Booking")
-                    c1, c2, c3 = st.columns(3)
-                    with c1: s20_date = st.date_input("20% Sold Date", value=None)
-                    with c2: s20_price = st.number_input("20% Sold Price", value=float(t['sold_20_price'] or 0.0))
-                    with c3: sl_20 = st.number_input("New SL (0 for BE)", value=float(t['sl_after_20'] or 0.0))
-                        
-                    st.markdown("### 2️⃣ 50% Qty Booking")
-                    c4, c5, c6 = st.columns(3)
-                    with c4: s50_date = st.date_input("50% Sold Date", value=None)
-                    with c5: s50_price = st.number_input("50% Sold Price", value=float(t['sold_50_price'] or 0.0))
-                    with c6: sl_50 = st.number_input("New TSL", value=float(t['sl_after_50'] or 0.0))
+                trade_logic = st.text_area("Trade Logic")
+                image_file = st.file_uploader("Upload Chart (Optional)", type=['png', 'jpg', 'jpeg'])
+                
+                if st.form_submit_button("💾 Save Trade", type="primary", use_container_width=True) and symbol and quantity > 0 and buying_price > 0:
+                    with st.spinner("Saving trade..."):
+                        img_url = None
+                        if image_file is not None: img_url = cloudinary.uploader.upload(image_file, folder="trading_journal").get("secure_url")
+                        try:
+                            supabase.table('trading_journal').insert({"symbol": symbol, "total_quantity": quantity, "buying_date": str(buying_date), "buying_price": float(buying_price), "initial_sl": float(initial_sl), "trade_logic": trade_logic, "image_url": img_url}).execute()
+                            st.success(f"✅ Trade {symbol} saved successfully!")
+                        except Exception as e: st.error(f"Error: {e}")
+
+        with tab_exits:
+            try:
+                active_res = supabase.table('trading_journal').select("*").is_("sold_30_date", "null").execute()
+                active_trades = active_res.data
+                if active_trades:
+                    trade_options = {f"{t['symbol']} (Bought: {t['buying_date']} @ ₹{t['buying_price']})": t for t in active_trades}
+                    selected_trade_label = st.selectbox("🎯 Select Active Trade", list(trade_options.keys()))
+                    t = trade_options[selected_trade_label]
                     
-                    st.markdown("### 3️⃣ Final 30% Booking")
-                    c7, c8 = st.columns(2)
-                    with c7: s30_date = st.date_input("30% Sold Date", value=None)
-                    with c8: s30_price = st.number_input("30% Sold Price", value=float(t['sold_30_price'] or 0.0))
+                    with st.form("update_trade_form"):
+                        st.markdown("### 1️⃣ 20% Qty Booking")
+                        c1, c2, c3 = st.columns(3)
+                        with c1: s20_date = st.date_input("20% Sold Date", value=None)
+                        with c2: s20_price = st.number_input("20% Sold Price", value=float(t['sold_20_price'] or 0.0))
+                        with c3: sl_20 = st.number_input("New SL (0 for BE)", value=float(t['sl_after_20'] or 0.0))
+                            
+                        st.markdown("### 2️⃣ 50% Qty Booking")
+                        c4, c5, c6 = st.columns(3)
+                        with c4: s50_date = st.date_input("50% Sold Date", value=None)
+                        with c5: s50_price = st.number_input("50% Sold Price", value=float(t['sold_50_price'] or 0.0))
+                        with c6: sl_50 = st.number_input("New TSL", value=float(t['sl_after_50'] or 0.0))
+                        
+                        st.markdown("### 3️⃣ Final 30% Booking")
+                        c7, c8 = st.columns(2)
+                        with c7: s30_date = st.date_input("30% Sold Date", value=None)
+                        with c8: s30_price = st.number_input("30% Sold Price", value=float(t['sold_30_price'] or 0.0))
 
-                    if st.form_submit_button("🔄 Update Exits", type="primary"):
-                        supabase.table('trading_journal').update({
-                            "sold_20_date": str(s20_date) if s20_price > 0 else None, "sold_20_price": s20_price if s20_price > 0 else None, "sl_after_20": float(t['buying_price']) if (s20_price > 0 and sl_20 == 0) else sl_20,
-                            "sold_50_date": str(s50_date) if s50_price > 0 else None, "sold_50_price": s50_price if s50_price > 0 else None, "sl_after_50": sl_50 if sl_50 > 0 else None,
-                            "sold_30_date": str(s30_date) if s30_price > 0 else None, "sold_30_price": s30_price if s30_price > 0 else None,
-                        }).eq('id', t['id']).execute()
-                        st.success("Trade updated!"); time.sleep(1); st.rerun()
-            else: st.info("No active trades found.")
-        except Exception as e: pass
+                        if st.form_submit_button("🔄 Update Exits", type="primary"):
+                            supabase.table('trading_journal').update({
+                                "sold_20_date": str(s20_date) if s20_price > 0 else None, "sold_20_price": s20_price if s20_price > 0 else None, "sl_after_20": float(t['buying_price']) if (s20_price > 0 and sl_20 == 0) else sl_20,
+                                "sold_50_date": str(s50_date) if s50_price > 0 else None, "sold_50_price": s50_price if s50_price > 0 else None, "sl_after_50": sl_50 if sl_50 > 0 else None,
+                                "sold_30_date": str(s30_date) if s30_price > 0 else None, "sold_30_price": s30_price if s30_price > 0 else None,
+                            }).eq('id', t['id']).execute()
+                            st.success("Trade updated!"); time.sleep(1); st.rerun()
+                else: st.info("No active trades found.")
+            except Exception as e: pass
+    else:
+        j_tabs = st.tabs(["📚 Journal Gallery (View Only)"])
+        tab_gallery = j_tabs[0]
 
-    with j_tab3:
+    with tab_gallery:
         all_trades = supabase.table('trading_journal').select("*").order('buying_date', desc=True).execute().data
         if all_trades:
             for tr in all_trades:
@@ -523,9 +544,12 @@ try: saved_text = supabase.table('global_notes').select('note_text').eq('id', 1)
 except: saved_text = ""
 
 with st.form("global_scratchpad_form"):
-    user_notes = st.text_area(" ", value=saved_text, height=150, label_visibility="collapsed")
+    user_notes = st.text_area(" ", value=saved_text, height=150, label_visibility="collapsed", disabled=not is_admin)
     col_save, col_spacer = st.columns([1, 5])
     with col_save:
-        if st.form_submit_button("💾 Save Notes", type="primary", use_container_width=True):
-            supabase.table('global_notes').upsert({"id": 1, "note_text": user_notes}).execute()
-            st.toast("✅ Notes Saved!"); time.sleep(0.5); st.rerun()
+        if is_admin:
+            if st.form_submit_button("💾 Save Notes", type="primary", use_container_width=True):
+                supabase.table('global_notes').upsert({"id": 1, "note_text": user_notes}).execute()
+                st.toast("✅ Notes Saved!"); time.sleep(0.5); st.rerun()
+        else:
+            st.form_submit_button("🔒 Read Only", disabled=True, use_container_width=True)
