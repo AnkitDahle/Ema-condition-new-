@@ -4,3 +4,4 @@ pandas
 supabase
 cloudinary
 plotly
+streamlit-cookies-manager
