@@ -9,7 +9,7 @@ import cloudinary
 import cloudinary.uploader
 import json
 import plotly.express as px  
-from streamlit_cookies_manager import EncryptedCookieManager # 🚀 NAYI LIBRARY (Cookies ke liye)
+from streamlit_cookies_manager import EncryptedCookieManager 
 
 # ==========================================
 # 1. PAGE CONFIGURATION 
@@ -19,17 +19,13 @@ st.set_page_config(page_title="AlphaSwing Pro", layout="wide", page_icon="📈",
 # ==========================================
 # 🚀 2. COOKIE MANAGER INITIALIZATION
 # ==========================================
-# Yeh aapki cookie ko encrypt (hack-proof) rakhega
 cookie_password = st.secrets.get("COOKIE_PASSWORD", "alphaswing_super_secret_key_2026")
 cookies = EncryptedCookieManager(prefix="aswing", password=cookie_password)
 
 if not cookies.ready():
-    # Jab tak browser se cookie read na ho jaye, app ko wait karwayega
     st.stop()
 
-# Initialize Session States
 if 'logged_in' not in st.session_state:
-    # 🔒 REAL REMEMBER ME LOGIC: Check if valid cookie exists
     if 'auth_role' in cookies:
         st.session_state.logged_in = True
         st.session_state.role = cookies['auth_role']
@@ -48,10 +44,7 @@ active_index = pages.index(st.session_state.current_page) + 2
 # ==========================================
 custom_css = f"""
 <style>
-    /* Global Font Size */
     html, body, [class*="css"] {{ font-size: 1.05rem !important; }}
-
-    /* 🔒 LOCKED: Animated Premium Gradient Background */
     .stApp {{
         background: linear-gradient(-45deg, #09090b, #18181b, #0f172a, #171717);
         background-size: 400% 400%;
@@ -63,7 +56,6 @@ custom_css = f"""
     .block-container {{ padding-top: 1rem !important; }}
     header {{ visibility: hidden; }}
 
-    /* GLOBAL ACTION BUTTONS */
     .stButton > button[kind="secondary"], 
     .stDownloadButton > button,
     div[data-testid="stButton"] button[kind="secondary"],
@@ -82,86 +74,48 @@ custom_css = f"""
     .stDownloadButton > button p,
     div[data-testid="stButton"] button[kind="secondary"] p,
     div[data-testid="stDownloadButton"] button p {{
-        font-weight: 500 !important; 
-        color: #e2e8f0 !important;
-        font-size: 15px !important;
-        margin: 0 !important;
+        font-weight: 500 !important; color: #e2e8f0 !important; font-size: 15px !important; margin: 0 !important;
     }}
-    
-    .stButton > button[kind="secondary"]:hover, 
-    .stDownloadButton > button:hover,
-    div[data-testid="stButton"] button[kind="secondary"]:hover,
-    div[data-testid="stDownloadButton"] button:hover {{
-        border-color: #00e5ff !important;
-        background: rgba(255, 255, 255, 0.1) !important;
-        color: #ffffff !important;
+    .stButton > button[kind="secondary"]:hover, .stDownloadButton > button:hover,
+    div[data-testid="stButton"] button[kind="secondary"]:hover, div[data-testid="stDownloadButton"] button:hover {{
+        border-color: #00e5ff !important; background: rgba(255, 255, 255, 0.1) !important; color: #ffffff !important;
     }}
-    .stButton > button[kind="secondary"]:hover p, 
-    .stDownloadButton > button:hover p,
-    div[data-testid="stButton"] button[kind="secondary"]:hover p,
-    div[data-testid="stDownloadButton"] button:hover p {{
+    .stButton > button[kind="secondary"]:hover p, .stDownloadButton > button:hover p,
+    div[data-testid="stButton"] button[kind="secondary"]:hover p, div[data-testid="stDownloadButton"] button:hover p {{
         color: #ffffff !important;
     }}
 
-    /* NAVBAR OVERRIDE */
     div[data-testid="stHorizontalBlock"]:first-of-type .stButton > button,
     div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stButton"] button[kind="secondary"] {{
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
+        background: transparent !important; border: none !important; box-shadow: none !important;
     }}
-    
-    /* 🔥 MOBILE FIX: Prevent Text Wrapping and Make Navbar Scrollable */
     div[data-testid="stHorizontalBlock"]:first-of-type .stButton > button p,
     div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stButton"] button[kind="secondary"] p,
     div[data-testid="stHorizontalBlock"]:first-of-type .stButton > button span {{
-        color: #7b8fa3 !important;      
-        font-weight: 500 !important;    
-        font-size: 19px !important;     
-        letter-spacing: 0.5px;
-        white-space: nowrap !important; 
-        word-break: keep-all !important;
+        color: #7b8fa3 !important; font-weight: 500 !important; font-size: 19px !important; letter-spacing: 0.5px;
+        white-space: nowrap !important; word-break: keep-all !important;
     }}
     div[data-testid="stHorizontalBlock"]:first-of-type .stButton > button:hover p {{ color: #cdd6e0 !important; }}
-
-    /* ACTIVE TAB STYLE */
     div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stColumn"]:nth-child({active_index}) .stButton > button p {{
-        color: #ffffff !important;      
-        font-weight: 900 !important;    
+        color: #ffffff !important; font-weight: 900 !important;    
     }}
 
-    /* Login / Logout Button */
     div[data-testid="stHorizontalBlock"]:first-of-type button[kind="primary"] {{
-        background-color: #00e5ff !important;
-        border-radius: 6px !important;
-        padding: 6px 24px !important;
-        border: none !important;
-        white-space: nowrap !important;
+        background-color: #00e5ff !important; border-radius: 6px !important; padding: 6px 24px !important; border: none !important; white-space: nowrap !important;
     }}
     div[data-testid="stHorizontalBlock"]:first-of-type button[kind="primary"] p {{ color: #000000 !important; font-weight: 900 !important; white-space: nowrap !important;}}
     div[data-testid="stHorizontalBlock"]:first-of-type button[kind="primary"]:hover {{ background-color: #00bfff !important; }}
 
-    /* 📱 MOBILE RESPONSIVENESS RULES */
     @media (max-width: 768px) {{
         div[data-testid="stHorizontalBlock"]:first-of-type {{
-            display: flex !important;
-            flex-wrap: nowrap !important;
-            overflow-x: auto !important; 
-            overflow-y: hidden !important;
-            -webkit-overflow-scrolling: touch !important;
-            padding-bottom: 5px !important; 
+            display: flex !important; flex-wrap: nowrap !important; overflow-x: auto !important; overflow-y: hidden !important; -webkit-overflow-scrolling: touch !important; padding-bottom: 5px !important; 
         }}
         div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="stColumn"] {{
-            min-width: max-content !important; 
-            flex: 0 0 auto !important;
-            width: auto !important;
+            min-width: max-content !important; flex: 0 0 auto !important; width: auto !important;
         }}
-        div[data-testid="stHorizontalBlock"]:first-of-type::-webkit-scrollbar {{
-            display: none;
-        }}
+        div[data-testid="stHorizontalBlock"]:first-of-type::-webkit-scrollbar {{ display: none; }}
     }}
 
-    /* FORMS & MISC COMPONENTS */
     div.stForm button[kind="primaryFormSubmit"] {{ background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%) !important; border: none !important; border-radius: 8px !important; }}
     div.stForm button[kind="primaryFormSubmit"] p {{ font-weight: 700 !important; color: white !important; }}
 
@@ -173,12 +127,10 @@ custom_css = f"""
     .journal-card {{ background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; margin-bottom: 20px; backdrop-filter: blur(5px); }}
     .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {{ background-color: rgba(0,0,0,0.2) !important; color: white !important; border: 1px solid rgba(255,255,255,0.1) !important; border-radius: 8px !important; }}
     
-    /* Login Box CSS */
     .login-container {{ background: rgba(0,0,0,0.4); padding: 40px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); max-width: 400px; margin: auto; margin-top: 5vh; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }}
 </style>
 """
 st.markdown(custom_css, unsafe_allow_html=True)
-
 
 # ==========================================
 # 🔐 SECURE AUTHENTICATION LOGIN LOGIC
@@ -207,7 +159,7 @@ if not st.session_state.logged_in and st.session_state.current_page != "Home":
                     st.session_state.logged_in = True
                     st.session_state.role = "admin"
                     if remember_me:
-                        cookies['auth_role'] = "admin"  # Save cookie
+                        cookies['auth_role'] = "admin"
                         cookies.save()
                     st.toast("✅ Admin Access Granted!")
                     time.sleep(1)
@@ -216,7 +168,7 @@ if not st.session_state.logged_in and st.session_state.current_page != "Home":
                     st.session_state.logged_in = True
                     st.session_state.role = "viewer"
                     if remember_me:
-                        cookies['auth_role'] = "viewer" # Save cookie
+                        cookies['auth_role'] = "viewer"
                         cookies.save()
                     st.toast("✅ Viewer Access Granted!")
                     time.sleep(1)
@@ -258,19 +210,17 @@ with nav5:
     
 with col_login:
     if st.session_state.logged_in:
-        # 🔓 LOGOUT & DESTROY COOKIE LOGIC
         if st.button("Logout 🚪", type="primary", use_container_width=True):
             st.session_state.logged_in = False
             st.session_state.role = None
             st.session_state.current_page = "Home"
-            # Cookie Delete
             if 'auth_role' in cookies:
                 del cookies['auth_role']
                 cookies.save()
             st.rerun()
     else:
         if st.button("Login 🔐", type="primary", use_container_width=True):
-            st.session_state.current_page = "Scanner" # Redirects to login
+            st.session_state.current_page = "Scanner"
             st.rerun()
 
 st.markdown("<hr style='margin-top: 5px; border-color: rgba(255,255,255,0.05);'>", unsafe_allow_html=True)
@@ -302,11 +252,9 @@ if raw_data: master_symbol_list.extend([str(x).upper() for x in pd.DataFrame(raw
 if raw_ipo_data: master_symbol_list.extend([str(x).upper() for x in pd.DataFrame(raw_ipo_data)['stock_symbol'].dropna().unique()])
 master_symbol_list = sorted(list(set(master_symbol_list)))
 
-
 # ==========================================
 # 6. MAIN ROUTING & LOGIC
 # ==========================================
-
 if st.session_state.current_page == "Home":
     components.html(
         """
@@ -331,7 +279,6 @@ if st.session_state.current_page == "Home":
     )
 
 else:
-    # 🟢 PROTECTED PAGES (Admin & Viewers)
     if st.session_state.current_page == "Scanner":
         role_badge = "👑 Admin" if is_admin else "👁️ Viewer"
         st.markdown(f"<div class='page-heading'>📊 Scanner <span style='font-size:14px; color:#94a3b8; float:right; padding-top:10px;'>{role_badge}</span></div>", unsafe_allow_html=True)
@@ -356,7 +303,7 @@ else:
             with m2: st.metric("🎯 Total Breakouts", f"{total_stocks}")
             st.markdown("<br>", unsafe_allow_html=True)
 
-            with f_col2: selected_sector = st.selectbox("🎯 Sector", ["All Sectors"] + list(df_selected_date['Sector'].dropna().unique()) if 'Sector' in df_selected_date.columns else ["All Sectors"])
+            with f_col2: selected_sector = st.selectbox("🎯 Main Filter", ["All Sectors"] + list(df_selected_date['Sector'].dropna().unique()) if 'Sector' in df_selected_date.columns else ["All Sectors"])
             with f_col3: selected_stock = st.selectbox("🔤 Search Stock", sorted(list(df_selected_date['Stock Symbol'].dropna().unique())), index=None, placeholder="Type symbol...")
 
             df_filtered = df_selected_date.copy()
@@ -388,34 +335,64 @@ else:
 
             st.dataframe(df_filtered, use_container_width=True, height=350, hide_index=True)
 
-            # 🚀 GRAPH SECTION
+            # ==========================================
+            # 🚀 2-LEVEL SECTOR & PROXY EXPLORER
+            # ==========================================
             st.markdown("<hr style='border-color: rgba(255,255,255,0.05); margin-top: 30px;'>", unsafe_allow_html=True)
-            st.markdown("<h3 style='color: #ffffff; margin-bottom: 20px;'>🍩 Sector Distribution Breakdown</h3>", unsafe_allow_html=True)
+            st.markdown("<h3 style='color: #ffffff; margin-bottom: 20px;'>🍩 Advanced Sector & Proxy Explorer</h3>", unsafe_allow_html=True)
 
             if not df_selected_date.empty:
                 sector_counts = df_selected_date['Sector'].value_counts().reset_index()
                 sector_counts.columns = ['Sector', 'Stock Count']
                 
-                fig = px.pie(sector_counts, values='Stock Count', names='Sector', hole=0.45, color_discrete_sequence=px.colors.qualitative.Pastel)
-                fig.update_traces(textposition='inside', textinfo='percent', hovertemplate="<b>%{label}</b><br>Breakout Stocks: %{value}<extra></extra>")
-                fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white'), margin=dict(t=10, b=10, l=0, r=0), legend=dict(title="Sector Illustration", orientation="v", yanchor="top", y=1, xanchor="left", x=1.0))
+                # 1. Level 1 Chart (Sectors)
+                fig_sector = px.pie(sector_counts, values='Stock Count', names='Sector', hole=0.45, color_discrete_sequence=px.colors.qualitative.Pastel)
+                fig_sector.update_traces(textposition='inside', textinfo='percent', hovertemplate="<b>%{label}</b><br>Stocks: %{value}<extra></extra>")
+                fig_sector.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white'), margin=dict(t=40, b=10, l=0, r=0), title=dict(text="1️⃣ Sector Distribution", font=dict(color="#00e5ff", size=18)))
 
-                c_chart, c_details = st.columns([2, 1.2])
+                c_chart1, c_chart2 = st.columns([1, 1])
                 
-                with c_chart:
-                    st.plotly_chart(fig, use_container_width=True)
+                with c_chart1:
+                    try:
+                        chart_event = st.plotly_chart(fig_sector, use_container_width=True, on_select="rerun", selection_mode=("points",), key="sector_chart")
+                        clicked_sector = None
+                        if chart_event and hasattr(chart_event, 'selection') and chart_event.selection:
+                            points = chart_event.selection.get('points', []) if isinstance(chart_event.selection, dict) else getattr(chart_event.selection, 'points', [])
+                            if points:
+                                clicked_sector = points[0].get('label') if isinstance(points[0], dict) else getattr(points[0], 'label', None)
+                    except TypeError:
+                        st.plotly_chart(fig_sector, use_container_width=True, key="sector_chart_fallback")
+                        clicked_sector = None
 
-                with c_details:
-                    st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
-                    st.markdown("<h4 style='color:#00e5ff; margin-bottom: 10px;'>📋 Sector Explorer</h4>", unsafe_allow_html=True)
+                # Dropdown for selecting Sector (Syncs with Chart Click)
+                sector_list = sorted(list(df_selected_date['Sector'].dropna().unique()))
+                default_idx = sector_list.index(clicked_sector) if clicked_sector in sector_list else 0
+                
+                st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
+                active_sector = st.selectbox("🎯 Target Sector:", sector_list, index=default_idx)
+
+                # 2. Level 2 Chart & Tables (Proxies inside Active Sector)
+                if active_sector:
+                    sector_df = df_selected_date[df_selected_date['Sector'] == active_sector]
                     
-                    sector_list = sorted(list(df_selected_date['Sector'].dropna().unique()))
-                    selected_table_sector = st.selectbox("Select Sector to view stocks:", sector_list, key="sector_table_selector")
+                    proxy_counts = sector_df['Proxy / Industry'].value_counts().reset_index()
+                    proxy_counts.columns = ['Proxy', 'Stock Count']
                     
-                    if selected_table_sector:
-                        sector_df = df_selected_date[df_selected_date['Sector'] == selected_table_sector][['Stock Symbol', 'Close Price (₹)']]
-                        st.markdown(f"**Total Breakout Stocks:** {len(sector_df)}")
-                        st.dataframe(sector_df, use_container_width=True, hide_index=True, height=250)
+                    fig_proxy = px.pie(proxy_counts, values='Stock Count', names='Proxy', hole=0.45, color_discrete_sequence=px.colors.qualitative.Set3)
+                    fig_proxy.update_traces(textposition='inside', textinfo='percent', hovertemplate="<b>%{label}</b><br>Stocks: %{value}<extra></extra>")
+                    fig_proxy.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white'), margin=dict(t=40, b=10, l=0, r=0), title=dict(text=f"2️⃣ Proxies in {active_sector}", font=dict(color="#10b981", size=18)))
+                    
+                    with c_chart2:
+                        st.plotly_chart(fig_proxy, use_container_width=True, key="proxy_chart")
+                        
+                    # 3. Categorized Stocks Tables
+                    st.markdown(f"<h4 style='color:#ffffff; margin-top: 30px;'>📋 Breakout Stocks in {active_sector}</h4>", unsafe_allow_html=True)
+                    
+                    proxy_groups = sector_df.groupby('Proxy / Industry')
+                    for proxy_name, group in proxy_groups:
+                        st.markdown(f"<div style='background: rgba(0, 229, 255, 0.1); padding: 8px 15px; border-radius: 8px 8px 0px 0px; margin-top: 15px; border-bottom: 2px solid #00e5ff; color: #00e5ff; font-weight: bold;'>🔹 {proxy_name} ({len(group)} Stocks)</div>", unsafe_allow_html=True)
+                        display_df = group[['Stock Symbol', 'Close Price (₹)', 'Turnover (Cr)']]
+                        st.dataframe(display_df, use_container_width=True, hide_index=True)
 
     elif st.session_state.current_page == "Catalyst":
         st.markdown("<div class='page-heading'>🔥 Catalyst</div>", unsafe_allow_html=True)
