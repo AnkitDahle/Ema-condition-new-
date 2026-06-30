@@ -9,17 +9,34 @@ import cloudinary
 import cloudinary.uploader
 import json
 import plotly.express as px  
+from streamlit_cookies_manager import EncryptedCookieManager # 🚀 NAYI LIBRARY (Cookies ke liye)
 
 # ==========================================
-# 1. PAGE CONFIGURATION & SESSION STATE
+# 1. PAGE CONFIGURATION 
 # ==========================================
 st.set_page_config(page_title="AlphaSwing Pro", layout="wide", page_icon="📈", initial_sidebar_state="collapsed")
 
+# ==========================================
+# 🚀 2. COOKIE MANAGER INITIALIZATION
+# ==========================================
+# Yeh aapki cookie ko encrypt (hack-proof) rakhega
+cookie_password = st.secrets.get("COOKIE_PASSWORD", "alphaswing_super_secret_key_2026")
+cookies = EncryptedCookieManager(prefix="aswing", password=cookie_password)
+
+if not cookies.ready():
+    # Jab tak browser se cookie read na ho jaye, app ko wait karwayega
+    st.stop()
+
 # Initialize Session States
 if 'logged_in' not in st.session_state:
-    st.session_state.logged_in = False
-if 'role' not in st.session_state:
-    st.session_state.role = None
+    # 🔒 REAL REMEMBER ME LOGIC: Check if valid cookie exists
+    if 'auth_role' in cookies:
+        st.session_state.logged_in = True
+        st.session_state.role = cookies['auth_role']
+    else:
+        st.session_state.logged_in = False
+        st.session_state.role = None
+
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "Home"
 
@@ -27,7 +44,7 @@ pages = ['Home', 'Scanner', 'Catalyst', 'IPOs', 'Journal']
 active_index = pages.index(st.session_state.current_page) + 2 
 
 # ==========================================
-# 2. 🎨 UI ENGINE & CUSTOM CSS (BULLETPROOF)
+# 3. 🎨 UI ENGINE & CUSTOM CSS (BULLETPROOF)
 # ==========================================
 custom_css = f"""
 <style>
@@ -102,7 +119,7 @@ custom_css = f"""
         font-weight: 500 !important;    
         font-size: 19px !important;     
         letter-spacing: 0.5px;
-        white-space: nowrap !important; /* Forces text to stay in one line */
+        white-space: nowrap !important; 
         word-break: keep-all !important;
     }}
     div[data-testid="stHorizontalBlock"]:first-of-type .stButton > button:hover p {{ color: #cdd6e0 !important; }}
@@ -129,17 +146,16 @@ custom_css = f"""
         div[data-testid="stHorizontalBlock"]:first-of-type {{
             display: flex !important;
             flex-wrap: nowrap !important;
-            overflow-x: auto !important; /* Swipeable Navbar */
+            overflow-x: auto !important; 
             overflow-y: hidden !important;
             -webkit-overflow-scrolling: touch !important;
-            padding-bottom: 5px !important; /* Space for hidden scrollbar */
+            padding-bottom: 5px !important; 
         }}
         div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="stColumn"] {{
-            min-width: max-content !important; /* Shrink to fit content only */
+            min-width: max-content !important; 
             flex: 0 0 auto !important;
             width: auto !important;
         }}
-        /* Hide scrollbar for a cleaner look */
         div[data-testid="stHorizontalBlock"]:first-of-type::-webkit-scrollbar {{
             display: none;
         }}
@@ -165,7 +181,7 @@ st.markdown(custom_css, unsafe_allow_html=True)
 
 
 # ==========================================
-# 🔐 SECURE AUTHENTICATION LOGIC
+# 🔐 SECURE AUTHENTICATION LOGIN LOGIC
 # ==========================================
 if not st.session_state.logged_in and st.session_state.current_page != "Home":
     _, col_login_box, _ = st.columns([1, 1, 1])
@@ -190,12 +206,18 @@ if not st.session_state.logged_in and st.session_state.current_page != "Home":
                 if username == admin_user and password == admin_pass:
                     st.session_state.logged_in = True
                     st.session_state.role = "admin"
+                    if remember_me:
+                        cookies['auth_role'] = "admin"  # Save cookie
+                        cookies.save()
                     st.toast("✅ Admin Access Granted!")
                     time.sleep(1)
                     st.rerun()
                 elif username == guest_user and password == guest_pass:
                     st.session_state.logged_in = True
                     st.session_state.role = "viewer"
+                    if remember_me:
+                        cookies['auth_role'] = "viewer" # Save cookie
+                        cookies.save()
                     st.toast("✅ Viewer Access Granted!")
                     time.sleep(1)
                     st.rerun()
@@ -209,7 +231,7 @@ if not st.session_state.logged_in and st.session_state.current_page != "Home":
 is_admin = (st.session_state.role == 'admin')
 
 # ==========================================
-# 3. TOP NAVIGATION BAR RENDERING
+# 4. TOP NAVIGATION BAR RENDERING
 # ==========================================
 col_logo, nav1, nav2, nav3, nav4, nav5, space, col_login = st.columns([2.5, 1.2, 1.2, 1.2, 1.2, 1.2, 0.5, 1.5])
 
@@ -236,10 +258,15 @@ with nav5:
     
 with col_login:
     if st.session_state.logged_in:
+        # 🔓 LOGOUT & DESTROY COOKIE LOGIC
         if st.button("Logout 🚪", type="primary", use_container_width=True):
             st.session_state.logged_in = False
             st.session_state.role = None
             st.session_state.current_page = "Home"
+            # Cookie Delete
+            if 'auth_role' in cookies:
+                del cookies['auth_role']
+                cookies.save()
             st.rerun()
     else:
         if st.button("Login 🔐", type="primary", use_container_width=True):
@@ -249,7 +276,7 @@ with col_login:
 st.markdown("<hr style='margin-top: 5px; border-color: rgba(255,255,255,0.05);'>", unsafe_allow_html=True)
 
 # ==========================================
-# 4. DATABASES & GLOBAL FETCH
+# 5. DATABASES & GLOBAL FETCH
 # ==========================================
 @st.cache_resource
 def init_supabase():
@@ -277,7 +304,7 @@ master_symbol_list = sorted(list(set(master_symbol_list)))
 
 
 # ==========================================
-# 5. MAIN ROUTING & LOGIC
+# 6. MAIN ROUTING & LOGIC
 # ==========================================
 
 if st.session_state.current_page == "Home":
@@ -575,7 +602,7 @@ else:
                 st.info("Journal is empty.")
 
     # ==========================================
-    # 6. GLOBAL NOTES (Sticky Footer)
+    # 7. GLOBAL NOTES (Sticky Footer)
     # ==========================================
     st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown("### 📝 Sticky Notes")
