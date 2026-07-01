@@ -25,8 +25,6 @@ cookies = EncryptedCookieManager(prefix="aswing", password=cookie_password)
 if not cookies.ready():
     st.stop()
 
-if 'active_sector_ui' not in st.session_state:
-    st.session_state.active_sector_ui = None
 if 'logged_in' not in st.session_state:
     if 'auth_role' in cookies:
         st.session_state.logged_in = True
@@ -38,7 +36,6 @@ if 'logged_in' not in st.session_state:
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "Home"
 
-# 🟢 UPDATE: Calculator is now an official page
 pages = ['Home', 'Scanner', 'Catalyst', 'IPOs', 'Journal', 'Calculator']
 active_index = pages.index(st.session_state.current_page) + 2 
 
@@ -154,7 +151,7 @@ if not st.session_state.logged_in and st.session_state.current_page != "Home":
 is_admin = (st.session_state.role == 'admin')
 
 # ==========================================
-# 5. TOP NAVIGATION BAR RENDERING (UPDATE)
+# 5. TOP NAVIGATION BAR RENDERING
 # ==========================================
 col_logo, nav1, nav2, nav3, nav4, nav5, nav6, space, col_login = st.columns([2.5, 1.1, 1.1, 1.1, 1.1, 1.1, 1.3, 0.2, 1.5])
 with col_logo:
@@ -182,7 +179,7 @@ with col_login:
 
 st.markdown("<hr style='margin-top: 5px; margin-bottom: 0px; border-color: rgba(255,255,255,0.05);'>", unsafe_allow_html=True)
 
-# 📈 6. LIVE MARKET TICKER (FIXED SYMBOLS FOR INDIA)
+# 📈 6. LIVE MARKET TICKER
 if st.session_state.current_page in ["Home", "Scanner"]:
     ticker_html = """
     <div class="tradingview-widget-container">
@@ -291,7 +288,9 @@ elif st.session_state.current_page == "Scanner":
             display_df['TV Chart'] = "https://in.tradingview.com/chart/?symbol=NSE:" + display_df['Stock Symbol']
             st.markdown(render_html_table(display_df, max_height="350px"), unsafe_allow_html=True)
 
-        # 🔥 FIXED OVERLAPPING: Advanced Sector Explorer
+        # ==========================================
+        # 🔥 DONUT CHARTS (WITH % AND COUNTS)
+        # ==========================================
         st.markdown("<hr style='border-color: rgba(255,255,255,0.05); margin-top: 30px;'>", unsafe_allow_html=True)
         st.markdown("<h3 style='color: #ffffff; margin-bottom: 20px;'>🍩 Advanced Sector Explorer</h3>", unsafe_allow_html=True)
 
@@ -300,11 +299,15 @@ elif st.session_state.current_page == "Scanner":
             sector_counts.columns = ['Sector', 'Stock Count']
             sector_list = sorted(list(sector_counts['Sector']))
             total_sectors = sector_counts['Stock Count'].sum()
-            sector_counts['Legend_Label'] = sector_counts.apply(lambda row: f"{row['Sector']} ({row['Stock Count']/total_sectors*100:.1f}%)", axis=1)
             
-            fig_sector = px.pie(sector_counts, values='Stock Count', names='Legend_Label', hole=0.45, color_discrete_sequence=px.colors.qualitative.Pastel)
+            # 🔥 Format: Name (Percentage%) (Count)
+            sector_counts['Legend_Label'] = sector_counts.apply(lambda row: f"{row['Sector']} ({row['Stock Count']/total_sectors*100:.1f}%) ({row['Stock Count']})", axis=1)
+
+            fig_sector = px.pie(
+                sector_counts, values='Stock Count', names='Legend_Label', 
+                hole=0.45, color_discrete_sequence=px.colors.qualitative.Pastel
+            )
             fig_sector.update_traces(textposition='inside', textinfo='percent', hovertemplate="<b>%{label}</b><br>Stocks: %{value}<extra></extra>")
-            # Pushed legend to the bottom and added margins
             fig_sector.update_layout(
                 paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white'),
                 margin=dict(t=40, b=40, l=0, r=0), 
@@ -312,24 +315,29 @@ elif st.session_state.current_page == "Scanner":
                 title=dict(text="1️⃣ Overall Sector Distribution", font=dict(color="#00e5ff", size=16))
             )
 
-            # Equal columns to prevent crunching
             c_chart1, c_chart2 = st.columns([1, 1])
-            with c_chart1: st.plotly_chart(fig_sector, use_container_width=True)
+            
+            with c_chart1: 
+                # Pure visualization - NO CLICKS to keep it robust
+                st.plotly_chart(fig_sector, use_container_width=True)
 
             with c_chart2:
                 st.markdown("<div style='margin-top: 10px;'></div><p style='color:#00e5ff; font-weight: 600;'>👇 Select Sector to Explore:</p>", unsafe_allow_html=True)
-                active_sector = st.selectbox("Sector", sector_list, key="explorer_sec_box", label_visibility="collapsed")
+                
+                # Reliable Dropdown
+                active_sector = st.selectbox("Sector", sector_list, label_visibility="collapsed")
 
                 if active_sector:
                     sector_df = df_selected_date[df_selected_date['Sector'] == active_sector]
                     proxy_counts = sector_df['Proxy / Industry'].value_counts().reset_index()
                     proxy_counts.columns = ['Proxy', 'Stock Count']
                     total_proxies = proxy_counts['Stock Count'].sum()
-                    proxy_counts['Legend_Label'] = proxy_counts.apply(lambda row: f"{row['Proxy']} ({row['Stock Count']/total_proxies*100:.1f}%)", axis=1)
+                    
+                    # 🔥 Format: Name (Percentage%) (Count)
+                    proxy_counts['Legend_Label'] = proxy_counts.apply(lambda row: f"{row['Proxy']} ({row['Stock Count']/total_proxies*100:.1f}%) ({row['Stock Count']})", axis=1)
                     
                     fig_proxy = px.pie(proxy_counts, values='Stock Count', names='Legend_Label', hole=0.45, color_discrete_sequence=px.colors.qualitative.Set3)
                     fig_proxy.update_traces(textposition='inside', textinfo='percent', hovertemplate="<b>%{label}</b><br>Stocks: %{value}<extra></extra>")
-                    # Pushed legend to the bottom and added margins
                     fig_proxy.update_layout(
                         paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white'),
                         margin=dict(t=30, b=40, l=0, r=0), 
