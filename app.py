@@ -55,14 +55,14 @@ def render_html_table(df, max_height="350px"):
         for col in df.columns:
             val = row[col]
             if str(val).startswith("http"):
-                html += f"<td style='padding: 10px;'><a href='{val}' target='_blank' style='background: #10b981; color: white; padding: 6px 12px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 12px; display: inline-block; white-space: nowrap;'>📈 Open Chart</a></td>"
+                html += f"<td style='padding: 10px;'><a href='{val}' target='_blank' style='background: #10b981; color: white; padding: 6px 12px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 12px; display: inline-block; white-space: nowrap;'>📈 Chart</a></td>"
             else:
                 html += f"<td style='padding: 10px; color: #e2e8f0; white-space: nowrap;'>{val}</td>"
         html += "</tr>"
     html += "</tbody></table></div>"
     return html
 
-# 🟢 UPDATE: EXACT CNX PATTERN MAPPING (AS PER YOUR FINDING)
+# 🟢 CNX FORMAT MAPPING (Aapke logic ke hisaab se)
 SECTOR_INDEX_MAP = {
     "Financial Services": "NSE:CNXFIN",
     "Technology": "NSE:CNXIT",
@@ -197,7 +197,7 @@ with col_login:
 
 st.markdown("<hr style='margin-top: 5px; margin-bottom: 0px; border-color: rgba(255,255,255,0.05);'>", unsafe_allow_html=True)
 
-# 📈 6. LIVE MARKET TICKER
+# 📈 6. LIVE MARKET TICKER (CNX LOGIC)
 if st.session_state.current_page in ["Home", "Scanner", "Indices"]:
     ticker_html = """
     <div class="tradingview-widget-container">
@@ -262,7 +262,7 @@ elif st.session_state.current_page == "Indices":
     st.markdown("<div class='page-heading'>📊 Sectoral Indices</div>", unsafe_allow_html=True)
     st.markdown("<p style='color: #94a3b8; font-size: 14px;'>Tip: Table ke <b>Chg %</b> column title par click karke aap Top Gainers/Losers sort kar sakte hain.</p>", unsafe_allow_html=True)
     
-    # 🔥 CNX FORMAT INDICES
+    # 🔥 CNX LOGIC FOR INDICES TABLE
     indices_html = """
     <div class="tradingview-widget-container">
       <div class="tradingview-widget-container__widget"></div>
@@ -349,7 +349,7 @@ elif st.session_state.current_page == "Scanner":
             st.markdown(render_html_table(display_df, max_height="350px"), unsafe_allow_html=True)
 
         # ==========================================
-        # 🔥 CUSTOM HTML LEGENDS ENGINE (DONUTS)
+        # 🔥 CUSTOM HTML LEGENDS ENGINE
         # ==========================================
         def create_custom_legend(counts_df, is_sector=True):
             colors = px.colors.qualitative.Pastel if is_sector else px.colors.qualitative.Set3
