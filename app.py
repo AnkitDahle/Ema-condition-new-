@@ -17,7 +17,7 @@ from streamlit_cookies_manager import EncryptedCookieManager
 st.set_page_config(page_title="AlphaSwing Pro", layout="wide", page_icon="📈", initial_sidebar_state="collapsed")
 
 # ==========================================
-# 🚀 2. COOKIE MANAGER INITIALIZATION
+# 🚀 2. COOKIE MANAGER & HTML TABLE ENGINE
 # ==========================================
 cookie_password = st.secrets.get("COOKIE_PASSWORD", "alphaswing_super_secret_key_2026")
 cookies = EncryptedCookieManager(prefix="aswing", password=cookie_password)
@@ -41,6 +41,27 @@ if 'current_page' not in st.session_state:
 pages = ['Home', 'Scanner', 'Catalyst', 'IPOs', 'Journal']
 active_index = pages.index(st.session_state.current_page) + 2 
 
+# 🔥 MOBILE-SAFE HTML TABLE GENERATOR (Guaranteed to open links)
+def render_html_table(df):
+    html = "<div style='overflow-x:auto; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px;'>"
+    html += "<table style='width:100%; text-align:left; border-collapse: collapse; font-size: 14px;'>"
+    html += "<thead><tr style='background: rgba(255,255,255,0.05);'>"
+    for col in df.columns:
+        html += f"<th style='padding: 12px; color:#00e5ff; border-bottom: 1px solid rgba(255,255,255,0.1); white-space: nowrap;'>{col}</th>"
+    html += "</tr></thead><tbody>"
+    for i, row in df.iterrows():
+        bg = "background: rgba(0,0,0,0.2);" if i%2==0 else "background: rgba(255,255,255,0.02);"
+        html += f"<tr style='{bg} border-bottom: 1px solid rgba(255,255,255,0.05);'>"
+        for col in df.columns:
+            val = row[col]
+            if str(val).startswith("http"):
+                html += f"<td style='padding: 10px;'><a href='{val}' target='_blank' style='background: #10b981; color: white; padding: 6px 12px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 12px; display: inline-block; white-space: nowrap;'>📈 Open Chart</a></td>"
+            else:
+                html += f"<td style='padding: 10px; color: #e2e8f0; white-space: nowrap;'>{val}</td>"
+        html += "</tr>"
+    html += "</tbody></table></div>"
+    return html
+
 # ==========================================
 # 3. 🎨 UI ENGINE & CUSTOM CSS
 # ==========================================
@@ -54,7 +75,6 @@ custom_css = f"""
         color: #f8fafc;
     }}
     @keyframes gradientBG {{ 0% {{ background-position: 0% 50%; }} 50% {{ background-position: 100% 50%; }} 100% {{ background-position: 0% 50%; }} }}
-
     .block-container {{ padding-top: 1rem !important; }}
     header {{ visibility: hidden; }}
 
@@ -104,30 +124,7 @@ custom_css = f"""
 st.markdown(custom_css, unsafe_allow_html=True)
 
 # ==========================================
-# 🧮 4. SIDEBAR RISK CALCULATOR
-# ==========================================
-if st.session_state.logged_in:
-    with st.sidebar:
-        st.markdown("<h3 style='text-align: center; color: #00e5ff;'>🧮 Risk Calculator</h3>", unsafe_allow_html=True)
-        st.markdown("<hr style='margin:0px; margin-bottom:10px;'>", unsafe_allow_html=True)
-        calc_cap = st.number_input("Capital (₹)", value=100000, step=10000)
-        calc_risk = st.number_input("Risk Per Trade (%)", value=1.0, step=0.5)
-        calc_entry = st.number_input("Entry Price (₹)", value=0.0, step=1.0)
-        calc_sl = st.number_input("Stoploss Price (₹)", value=0.0, step=1.0)
-        
-        if calc_entry > 0 and calc_sl > 0:
-            if calc_entry > calc_sl:
-                risk_per_share = calc_entry - calc_sl
-                total_risk = calc_cap * (calc_risk / 100)
-                qty = int(total_risk / risk_per_share)
-                st.success(f"🎯 **Quantity:** {qty} shares")
-                st.info(f"💸 **Max Loss:** ₹{int(total_risk)}")
-                st.write(f"*Position Value: ₹{int(qty * calc_entry)}*")
-            else:
-                st.error("SL must be lower than Entry!")
-
-# ==========================================
-# 🔐 5. SECURE AUTHENTICATION
+# 🔐 4. SECURE AUTHENTICATION
 # ==========================================
 if not st.session_state.logged_in and st.session_state.current_page != "Home":
     _, col_login_box, _ = st.columns([1, 1, 1])
@@ -156,7 +153,7 @@ if not st.session_state.logged_in and st.session_state.current_page != "Home":
 is_admin = (st.session_state.role == 'admin')
 
 # ==========================================
-# 6. TOP NAVIGATION BAR RENDERING
+# 5. TOP NAVIGATION BAR RENDERING
 # ==========================================
 col_logo, nav1, nav2, nav3, nav4, nav5, space, col_login = st.columns([2.5, 1.2, 1.2, 1.2, 1.2, 1.2, 0.5, 1.5])
 with col_logo:
@@ -182,7 +179,7 @@ with col_login:
 
 st.markdown("<hr style='margin-top: 5px; margin-bottom: 0px; border-color: rgba(255,255,255,0.05);'>", unsafe_allow_html=True)
 
-# 📈 LIVE MARKET TICKER WITH THE 4 MAJOR TICKERS SPECIFIED
+# 📈 LIVE MARKET TICKER
 if st.session_state.current_page in ["Home", "Scanner"]:
     ticker_html = """
     <div class="tradingview-widget-container">
@@ -192,7 +189,7 @@ if st.session_state.current_page in ["Home", "Scanner"]:
       "symbols": [
         { "proName": "NSE:NIFTY", "title": "NIFTY 50" },
         { "proName": "NSE:BANKNIFTY", "title": "BANK NIFTY" },
-        { "proName": "NSE:NIFTY_MID_100", "title": "MIDCAP 100" },
+        { "proName": "NSE:CNXMIDCAP", "title": "MIDCAP 100" },
         { "proName": "NSE:CNXSMALLCAP", "title": "SMALLCAP 100" }
       ],
       "showSymbolLogo": true, "isTransparent": true, "displayMode": "adaptive", "colorTheme": "dark", "locale": "in"
@@ -203,7 +200,7 @@ if st.session_state.current_page in ["Home", "Scanner"]:
     components.html(ticker_html, height=50)
 
 # ==========================================
-# 7. DATABASES & GLOBAL FETCH
+# 6. DATABASES & GLOBAL FETCH
 # ==========================================
 @st.cache_resource
 def init_supabase():
@@ -221,7 +218,7 @@ if raw_data: master_symbol_list.extend([str(x).upper() for x in pd.DataFrame(raw
 master_symbol_list = sorted(list(set(master_symbol_list)))
 
 # ==========================================
-# 8. MAIN ROUTING
+# 7. MAIN ROUTING
 # ==========================================
 if st.session_state.current_page == "Home":
     components.html(
@@ -246,89 +243,128 @@ if st.session_state.current_page == "Home":
 else:
     if st.session_state.current_page == "Scanner":
         role_badge = "👑 Admin" if is_admin else "👁️ Viewer"
-        st.markdown(f"<div class='page-heading'>📊 Scanner <span style='font-size:14px; color:#94a3b8; float:right; padding-top:10px;'>{role_badge}</span></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='page-heading'>📊 Scanner Engine <span style='font-size:14px; color:#94a3b8; float:right; padding-top:10px;'>{role_badge}</span></div>", unsafe_allow_html=True)
         
-        if raw_data:
-            df = pd.DataFrame(raw_data)
-            cols_to_keep = ['scan_date', 'stock_symbol', 'close_price', 'turnover_cr', 'sector', 'industry_proxy']
-            df = df[[c for c in cols_to_keep if c in df.columns]]
-            df.rename(columns={'scan_date': 'Scan Date', 'stock_symbol': 'Stock Symbol', 'close_price': 'Close Price (₹)', 'turnover_cr': 'Turnover (Cr)', 'sector': 'Sector', 'industry_proxy': 'Proxy / Industry'}, inplace=True)
-            df = df.drop_duplicates(subset=['Scan Date', 'Stock Symbol'], keep='first')
-            
-            f_col1, f_col2, f_col3, f_col_run, f_col_dl = st.columns([1.3, 1.3, 1.4, 1.0, 1.0])
-            with f_col1: selected_date = st.selectbox("📅 Scan Date", sorted(df['Scan Date'].unique(), reverse=True))
-            df_selected_date = df[df['Scan Date'] == selected_date]
-            
-            m1, m2, m3 = st.columns([1, 1, 3])
-            with m1: st.metric("📅 Selected Scan Date", str(selected_date))
-            with m2: st.metric("🎯 Total Breakouts", len(df_selected_date))
-            st.markdown("<br>", unsafe_allow_html=True)
-
-            with f_col2: selected_sector = st.selectbox("🎯 Main Filter", ["All Sectors"] + list(df_selected_date['Sector'].dropna().unique()) if 'Sector' in df_selected_date.columns else ["All Sectors"])
-            with f_col3: selected_stock = st.selectbox("🔤 Search Stock", sorted(list(df_selected_date['Stock Symbol'].dropna().unique())), index=None, placeholder="Type symbol...")
-
-            df_filtered = df_selected_date.copy()
-            if selected_sector != "All Sectors": df_filtered = df_filtered[df_filtered['Sector'] == selected_sector]
-            if selected_stock: df_filtered = df_filtered[df_filtered['Stock Symbol'] == selected_stock] 
-
-            if is_admin:
-                with f_col_run:
-                    st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-                    if st.button("🚀 Run Scan", use_container_width=True):
-                        with st.spinner("Scanning..."):
-                            requests.post(f"https://api.github.com/repos/{st.secrets['GITHUB_REPO']}/actions/workflows/daily_scan.yml/dispatches", headers={"Authorization": f"token {st.secrets['GITHUB_TOKEN']}", "Accept": "application/vnd.github.v3+json"}, json={"ref": "main"})
-                            st.success("✅ Initiated!")
-
-            with f_col_dl:
-                st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-                tv_text = "".join([f"### {sec} / {proxy},\n" + "".join([f"NSE:{sym},\n" for sym in group['Stock Symbol']]) for (sec, proxy), group in df_filtered.groupby(['Sector', 'Proxy / Industry'])]) if not df_filtered.empty else ""
-                st.download_button("📥 Watchlist (.txt)", data=tv_text, file_name=f"AlphaSwing_{selected_date}.txt", mime="text/plain", use_container_width=True)
-
-            if not df_filtered.empty:
-                display_df = df_filtered.copy()
-                display_df['TV Chart'] = "https://in.tradingview.com/chart/?symbol=NSE:" + display_df['Stock Symbol']
-                st.dataframe(display_df, column_config={"TV Chart": st.column_config.LinkColumn("📈 Chart Link", display_text="Open Chart")}, use_container_width=True, hide_index=True)
-
-            # Advanced Sector & Proxy Explorer Donut Charts
-            st.markdown("<hr style='border-color: rgba(255,255,255,0.05); margin-top: 30px;'>", unsafe_allow_html=True)
-            st.markdown("<h3 style='color: #ffffff; margin-bottom: 20px;'>🍩 Advanced Sector Explorer</h3>", unsafe_allow_html=True)
-
-            if not df_selected_date.empty:
-                sector_counts = df_selected_date['Sector'].value_counts().reset_index()
-                sector_counts.columns = ['Sector', 'Stock Count']
-                sector_list = sorted(list(sector_counts['Sector']))
-                total_sectors = sector_counts['Stock Count'].sum()
-                sector_counts['Legend_Label'] = sector_counts.apply(lambda row: f"{row['Sector']} ({row['Stock Count']/total_sectors*100:.1f}%)", axis=1)
+        # 🔥 MAIN TABS (SCANNER & CALCULATOR)
+        scan_tabs = st.tabs(["📊 Market Scanner", "🧮 Risk Calculator"])
+        
+        # TAB 1: SCANNER
+        with scan_tabs[0]:
+            if raw_data:
+                df = pd.DataFrame(raw_data)
+                cols_to_keep = ['scan_date', 'stock_symbol', 'close_price', 'turnover_cr', 'sector', 'industry_proxy']
+                df = df[[c for c in cols_to_keep if c in df.columns]]
+                df.rename(columns={'scan_date': 'Scan Date', 'stock_symbol': 'Stock Symbol', 'close_price': 'Close Price (₹)', 'turnover_cr': 'Turnover (Cr)', 'sector': 'Sector', 'industry_proxy': 'Proxy / Industry'}, inplace=True)
+                df = df.drop_duplicates(subset=['Scan Date', 'Stock Symbol'], keep='first')
                 
-                fig_sector = px.pie(sector_counts, values='Stock Count', names='Legend_Label', hole=0.45, color_discrete_sequence=px.colors.qualitative.Pastel)
-                fig_sector.update_traces(textposition='inside', textinfo='percent', hovertemplate="<b>%{label}</b><br>Stocks: %{value}<extra></extra>")
-                fig_sector.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white'), margin=dict(t=40, b=10, l=0, r=0), legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.0))
+                f_col1, f_col2, f_col3, f_col_run, f_col_dl = st.columns([1.3, 1.3, 1.4, 1.0, 1.0])
+                with f_col1: selected_date = st.selectbox("📅 Scan Date", sorted(df['Scan Date'].unique(), reverse=True))
+                df_selected_date = df[df['Scan Date'] == selected_date]
+                
+                m1, m2, m3 = st.columns([1, 1, 3])
+                with m1: st.metric("📅 Selected Scan Date", str(selected_date))
+                with m2: st.metric("🎯 Total Breakouts", len(df_selected_date))
+                st.markdown("<br>", unsafe_allow_html=True)
 
-                c_chart1, c_chart2 = st.columns([1.5, 1])
-                with c_chart1: st.plotly_chart(fig_sector, use_container_width=True)
+                with f_col2: selected_sector = st.selectbox("🎯 Main Filter", ["All Sectors"] + list(df_selected_date['Sector'].dropna().unique()) if 'Sector' in df_selected_date.columns else ["All Sectors"])
+                with f_col3: selected_stock = st.selectbox("🔤 Search Stock", sorted(list(df_selected_date['Stock Symbol'].dropna().unique())), index=None, placeholder="Type symbol...")
 
-                with c_chart2:
-                    st.markdown("<div style='margin-top: 10px;'></div><p style='color:#00e5ff; font-weight: 600;'>👇 Select Sector to Explore:</p>", unsafe_allow_html=True)
-                    active_sector = st.selectbox("Sector", sector_list, key="explorer_sec_box", label_visibility="collapsed")
+                df_filtered = df_selected_date.copy()
+                if selected_sector != "All Sectors": df_filtered = df_filtered[df_filtered['Sector'] == selected_sector]
+                if selected_stock: df_filtered = df_filtered[df_filtered['Stock Symbol'] == selected_stock] 
+                
+                # Sort by Turnover if available so highly traded stocks show top
+                if 'Turnover (Cr)' in df_filtered.columns:
+                    df_filtered = df_filtered.sort_values(by='Turnover (Cr)', ascending=False)
 
+                if is_admin:
+                    with f_col_run:
+                        st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+                        if st.button("🚀 Run Scan", use_container_width=True):
+                            with st.spinner("Scanning..."):
+                                requests.post(f"https://api.github.com/repos/{st.secrets['GITHUB_REPO']}/actions/workflows/daily_scan.yml/dispatches", headers={"Authorization": f"token {st.secrets['GITHUB_TOKEN']}", "Accept": "application/vnd.github.v3+json"}, json={"ref": "main"})
+                                st.success("✅ Initiated!")
+
+                with f_col_dl:
+                    st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+                    tv_text = "".join([f"### {sec} / {proxy},\n" + "".join([f"NSE:{sym},\n" for sym in group['Stock Symbol']]) for (sec, proxy), group in df_filtered.groupby(['Sector', 'Proxy / Industry'])]) if not df_filtered.empty else ""
+                    st.download_button("📥 Watchlist (.txt)", data=tv_text, file_name=f"AlphaSwing_{selected_date}.txt", mime="text/plain", use_container_width=True)
+
+                # 🔥 DISPLAY CUSTOM HTML TABLE INSTEAD OF DATAFRAME
+                if not df_filtered.empty:
+                    display_df = df_filtered.copy()
+                    display_df['TV Chart'] = "https://in.tradingview.com/chart/?symbol=NSE:" + display_df['Stock Symbol']
+                    st.markdown(render_html_table(display_df), unsafe_allow_html=True)
+
+                # Advanced Sector Explorer
+                st.markdown("<hr style='border-color: rgba(255,255,255,0.05); margin-top: 30px;'>", unsafe_allow_html=True)
+                st.markdown("<h3 style='color: #ffffff; margin-bottom: 20px;'>🍩 Advanced Sector Explorer</h3>", unsafe_allow_html=True)
+
+                if not df_selected_date.empty:
+                    sector_counts = df_selected_date['Sector'].value_counts().reset_index()
+                    sector_counts.columns = ['Sector', 'Stock Count']
+                    sector_list = sorted(list(sector_counts['Sector']))
+                    total_sectors = sector_counts['Stock Count'].sum()
+                    sector_counts['Legend_Label'] = sector_counts.apply(lambda row: f"{row['Sector']} ({row['Stock Count']/total_sectors*100:.1f}%)", axis=1)
+                    
+                    fig_sector = px.pie(sector_counts, values='Stock Count', names='Legend_Label', hole=0.45, color_discrete_sequence=px.colors.qualitative.Pastel)
+                    fig_sector.update_traces(textposition='inside', textinfo='percent', hovertemplate="<b>%{label}</b><br>Stocks: %{value}<extra></extra>")
+                    fig_sector.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white'), margin=dict(t=40, b=10, l=0, r=0), legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.0))
+
+                    c_chart1, c_chart2 = st.columns([1.5, 1])
+                    with c_chart1: st.plotly_chart(fig_sector, use_container_width=True)
+
+                    with c_chart2:
+                        st.markdown("<div style='margin-top: 10px;'></div><p style='color:#00e5ff; font-weight: 600;'>👇 Select Sector to Explore:</p>", unsafe_allow_html=True)
+                        active_sector = st.selectbox("Sector", sector_list, key="explorer_sec_box", label_visibility="collapsed")
+
+                        if active_sector:
+                            sector_df = df_selected_date[df_selected_date['Sector'] == active_sector]
+                            proxy_counts = sector_df['Proxy / Industry'].value_counts().reset_index()
+                            proxy_counts.columns = ['Proxy', 'Stock Count']
+                            total_proxies = proxy_counts['Stock Count'].sum()
+                            proxy_counts['Legend_Label'] = proxy_counts.apply(lambda row: f"{row['Proxy']} ({row['Stock Count']/total_proxies*100:.1f}%)", axis=1)
+                            
+                            fig_proxy = px.pie(proxy_counts, values='Stock Count', names='Legend_Label', hole=0.45, color_discrete_sequence=px.colors.qualitative.Set3)
+                            fig_proxy.update_traces(textposition='inside', textinfo='percent', hovertemplate="<b>%{label}</b><br>Stocks: %{value}<extra></extra>")
+                            fig_proxy.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white'), margin=dict(t=30, b=10, l=0, r=0), legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="center", x=0.5))
+                            st.plotly_chart(fig_proxy, use_container_width=True)
+                            
                     if active_sector:
-                        sector_df = df_selected_date[df_selected_date['Sector'] == active_sector]
-                        proxy_counts = sector_df['Proxy / Industry'].value_counts().reset_index()
-                        proxy_counts.columns = ['Proxy', 'Stock Count']
-                        total_proxies = proxy_counts['Stock Count'].sum()
-                        proxy_counts['Legend_Label'] = proxy_counts.apply(lambda row: f"{row['Proxy']} ({row['Stock Count']/total_proxies*100:.1f}%)", axis=1)
-                        
-                        fig_proxy = px.pie(proxy_counts, values='Stock Count', names='Legend_Label', hole=0.45, color_discrete_sequence=px.colors.qualitative.Set3)
-                        fig_proxy.update_traces(textposition='inside', textinfo='percent', hovertemplate="<b>%{label}</b><br>Stocks: %{value}<extra></extra>")
-                        fig_proxy.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white'), margin=dict(t=30, b=10, l=0, r=0), legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="center", x=0.5))
-                        st.plotly_chart(fig_proxy, use_container_width=True)
-                        
-                if active_sector:
-                    st.markdown(f"<h4 style='color:#ffffff; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;'>📋 {active_sector} Breakout List</h4>", unsafe_allow_html=True)
-                    display_proxy_df = sector_df[['Proxy / Industry', 'Stock Symbol']].sort_values(by=['Proxy / Industry', 'Stock Symbol'])
-                    display_proxy_df.columns = ['Proxy Name', 'Stock Name'] 
-                    display_proxy_df['TV Chart'] = "https://in.tradingview.com/chart/?symbol=NSE:" + display_proxy_df['Stock Name']
-                    st.dataframe(display_proxy_df, column_config={"TV Chart": st.column_config.LinkColumn("📈 Chart Link", display_text="Open Chart")}, use_container_width=True, hide_index=True)
+                        st.markdown(f"<h4 style='color:#ffffff; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;'>📋 {active_sector} Breakout List</h4>", unsafe_allow_html=True)
+                        display_proxy_df = sector_df[['Proxy / Industry', 'Stock Symbol']].sort_values(by=['Proxy / Industry', 'Stock Symbol'])
+                        display_proxy_df.columns = ['Proxy Name', 'Stock Name'] 
+                        display_proxy_df['TV Chart'] = "https://in.tradingview.com/chart/?symbol=NSE:" + display_proxy_df['Stock Name']
+                        st.markdown(render_html_table(display_proxy_df), unsafe_allow_html=True)
+
+        # TAB 2: RISK CALCULATOR (Previously in Sidebar)
+        with scan_tabs[1]:
+            st.markdown("<h3 style='color: #00e5ff; margin-top: 10px;'>🧮 Position Size & Risk Calculator</h3>", unsafe_allow_html=True)
+            st.markdown("<p style='color: #94a3b8; margin-bottom: 20px;'>Apne capital aur risk ke hisab se exact quantity calculate karein.</p>", unsafe_allow_html=True)
+            
+            r_col1, r_col2 = st.columns(2)
+            with r_col1:
+                calc_cap = st.number_input("Total Trading Capital (₹)", value=100000, step=10000)
+                calc_risk = st.number_input("Risk Per Trade (%)", value=1.0, step=0.5)
+            with r_col2:
+                calc_entry = st.number_input("Entry Price (₹)", value=0.0, step=1.0)
+                calc_sl = st.number_input("Stoploss Price (₹)", value=0.0, step=1.0)
+            
+            if calc_entry > 0 and calc_sl > 0:
+                if calc_entry > calc_sl:
+                    risk_per_share = calc_entry - calc_sl
+                    total_risk = calc_cap * (calc_risk / 100)
+                    qty = int(total_risk / risk_per_share)
+                    
+                    st.markdown(f"""
+                    <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; padding: 20px; border-radius: 10px; margin-top: 20px;">
+                        <h2 style="color: #10b981; margin-top: 0px;">🎯 Target Quantity: {qty} Shares</h2>
+                        <p style="color: #e2e8f0; font-size: 16px; margin: 0px;">💸 <b>Maximum Allowed Loss:</b> ₹{int(total_risk)}</p>
+                        <p style="color: #94a3b8; font-size: 14px; margin-top: 5px; margin-bottom: 0px;"><i>Total Position Size Required: ₹{int(qty * calc_entry):,}</i></p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.error("⚠️ Stoploss must be strictly lower than Entry Price for a Swing Trade!")
 
     elif st.session_state.current_page == "Catalyst":
         st.markdown("<div class='page-heading'>🔥 Catalyst</div>", unsafe_allow_html=True)
@@ -345,17 +381,25 @@ else:
             display_ipo = df_ipo[['stock_symbol', 'company_name', 'listing_date']].sort_values(by='listing_date', ascending=False)
             display_ipo.columns = ['Symbol', 'Company Name', 'Listing Date']
             display_ipo['TV Chart'] = "https://in.tradingview.com/chart/?symbol=NSE:" + display_ipo['Symbol']
-            st.dataframe(display_ipo, column_config={"TV Chart": st.column_config.LinkColumn("📈 Chart", display_text="Open Chart")}, use_container_width=True, hide_index=True)
+            st.markdown(render_html_table(display_ipo), unsafe_allow_html=True)
 
     elif st.session_state.current_page == "Journal":
         st.markdown("<div class='page-heading'>📓 Trading Journal</div>", unsafe_allow_html=True)
-        all_trades = supabase.table('trading_journal').select("*").order('buying_date', desc=True).execute().data
-        if all_trades:
-            m1, m2, m3 = st.columns(3)
-            with m1: st.metric("🎯 Total Trades Logged", len(all_trades))
-            with m2: st.metric("⏳ Active Positions", len([t for t in all_trades if not t.get('sold_30_date')]))
-            with m3: st.metric("✅ Closed Positions", len([t for t in all_trades if t.get('sold_30_date')]))
-            st.markdown("<hr style='border-color: rgba(255,255,255,0.05); margin-bottom:20px;'>", unsafe_allow_html=True)
+        
+        # 🔥 FIXED JOURNAL ANALYTICS: Always shows up now!
+        try:
+            all_trades = supabase.table('trading_journal').select("*").order('buying_date', desc=True).execute().data
+        except Exception:
+            all_trades = []
+            
+        if all_trades is None:
+            all_trades = []
+            
+        m1, m2, m3 = st.columns(3)
+        with m1: st.metric("🎯 Total Trades Logged", len(all_trades))
+        with m2: st.metric("⏳ Active Positions", len([t for t in all_trades if not t.get('sold_30_date')]))
+        with m3: st.metric("✅ Closed Positions", len([t for t in all_trades if t.get('sold_30_date')]))
+        st.markdown("<hr style='border-color: rgba(255,255,255,0.05); margin-bottom:20px;'>", unsafe_allow_html=True)
         
         if is_admin:
             j_tabs = st.tabs(["➕ New Trade", "🔄 Update Exits", "📚 Journal Gallery"])
@@ -370,8 +414,41 @@ else:
                         img_url = cloudinary.uploader.upload(image_file, folder="trading_journal").get("secure_url") if image_file else None
                         supabase.table('trading_journal').insert({"symbol": symbol, "total_quantity": quantity, "buying_date": str(buying_date), "buying_price": float(buying_price), "initial_sl": float(initial_sl), "trade_logic": trade_logic, "image_url": img_url}).execute()
                         st.success("Saved!"); time.sleep(1); st.rerun()
+            
+            with j_tabs[1]:
+                active_trades_data = [t for t in all_trades if not t.get('sold_30_date')] if all_trades else []
+                if active_trades_data:
+                    trade_options = {f"{t['symbol']} (Bought @ ₹{t['buying_price']})": t for t in active_trades_data}
+                    t = trade_options[st.selectbox("🎯 Select Active Trade", list(trade_options.keys()))]
+                    with st.form("update_trade_form"):
+                        st.markdown("### 1️⃣ 20% Booking")
+                        c1, c2, c3 = st.columns(3)
+                        with c1: s20_date = st.date_input("Date", value=None)
+                        with c2: s20_price = st.number_input("Price", value=float(t['sold_20_price'] or 0.0))
+                        with c3: sl_20 = st.number_input("New SL", value=float(t['sl_after_20'] or 0.0))
+                        if st.form_submit_button("🔄 Update Exits", type="primary"):
+                            supabase.table('trading_journal').update({"sold_20_price": s20_price if s20_price>0 else None, "sl_after_20": sl_20}).eq('id', t['id']).execute()
+                            st.success("Updated!"); time.sleep(1); st.rerun()
+                else:
+                    st.info("No active trades found.")
         else:
-            st.tabs(["📚 Journal Gallery"])
+            j_tabs = st.tabs(["📚 Journal Gallery"])
+
+        with j_tabs[-1]: 
+            if all_trades:
+                for tr in all_trades:
+                    st.markdown("<div class='journal-card'>", unsafe_allow_html=True)
+                    g1, g2 = st.columns([1, 2])
+                    with g1:
+                        if tr.get('image_url'): st.image(tr['image_url'], use_container_width=True)
+                    with g2:
+                        st.subheader(f"🚀 {tr['symbol']}")
+                        st.write(f"**Date:** {tr['buying_date']} | **Buy Price:** ₹{tr['buying_price']} | **Qty:** {tr['total_quantity']}")
+                        st.write(f"**Logic:** {tr['trade_logic']}")
+                        if tr.get('sold_20_price'): st.success(f"**20% Booked @ ₹{tr['sold_20_price']}**")
+                    st.markdown("</div>", unsafe_allow_html=True)
+            else:
+                st.info("Journal is empty.")
 
     # Sticky Notes
     st.markdown("<br><br>### 📝 Sticky Notes", unsafe_allow_html=True)
