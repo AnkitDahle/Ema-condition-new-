@@ -62,18 +62,18 @@ def render_html_table(df, max_height="350px"):
     html += "</tbody></table></div>"
     return html
 
-# 🟢 ACCURATE NSE SECTOR TO INDEX MAPPING
+# 🟢 UPDATE: 100% WORKING BSE SYMBOLS FOR TRADINGVIEW WIDGETS
 SECTOR_INDEX_MAP = {
-    "Financial Services": "NSE:CNXFIN",
-    "Technology": "NSE:CNXIT",
-    "Healthcare": "NSE:CNXPHARMA",
-    "Consumer Defensive": "NSE:CNXFMCG",
-    "Consumer Cyclical": "NSE:CNXAUTO",
-    "Basic Materials": "NSE:CNXMETAL",
-    "Energy": "NSE:CNXENERGY",
-    "Real Estate": "NSE:CNXREALTY",
-    "Industrials": "NSE:CNXINFRA",
-    "Utilities": "NSE:CNXPSE"
+    "Financial Services": "BSE:BSE_FIN",
+    "Technology": "BSE:BSE_IT",
+    "Healthcare": "BSE:BSE_HC",
+    "Consumer Defensive": "BSE:BSE_FMCG",
+    "Consumer Cyclical": "BSE:BSE_AUTO",
+    "Basic Materials": "BSE:BSE_METAL",
+    "Energy": "BSE:BSE_ENRGY",
+    "Real Estate": "BSE:BSE_REALTY",
+    "Industrials": "BSE:BSE_INDSTR",
+    "Utilities": "BSE:BSE_UTIL"
 }
 
 # ==========================================
@@ -197,7 +197,7 @@ with col_login:
 
 st.markdown("<hr style='margin-top: 5px; margin-bottom: 0px; border-color: rgba(255,255,255,0.05);'>", unsafe_allow_html=True)
 
-# 📈 6. LIVE MARKET TICKER
+# 📈 6. LIVE MARKET TICKER (FIXED BSE SYMBOLS)
 if st.session_state.current_page in ["Home", "Scanner", "Indices"]:
     ticker_html = """
     <div class="tradingview-widget-container">
@@ -205,10 +205,10 @@ if st.session_state.current_page in ["Home", "Scanner", "Indices"]:
       <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
       {
       "symbols": [
-        { "proName": "BSE:NIFTY50", "title": "NIFTY 50" },
-        { "proName": "BSE:NIFTYBANK", "title": "BANK NIFTY" },
-        { "proName": "BSE:BSE_MIDCAP", "title": "MIDCAP" },
-        { "proName": "BSE:BSE_SMLCAP", "title": "SMALLCAP" }
+        { "proName": "BSE:SENSEX", "title": "SENSEX" },
+        { "proName": "BSE:BANKEX", "title": "BANKEX" },
+        { "proName": "BSE:MIDCAP", "title": "MIDCAP" },
+        { "proName": "BSE:SMALLCAP", "title": "SMALLCAP" }
       ],
       "showSymbolLogo": true, "isTransparent": true, "displayMode": "adaptive", "colorTheme": "dark", "locale": "in"
     }
@@ -262,7 +262,7 @@ elif st.session_state.current_page == "Indices":
     st.markdown("<div class='page-heading'>📊 Sectoral Indices</div>", unsafe_allow_html=True)
     st.markdown("<p style='color: #94a3b8; font-size: 14px;'>Tip: Table ke <b>Chg %</b> column title par click karke aap Top Gainers/Losers sort kar sakte hain.</p>", unsafe_allow_html=True)
     
-    # EXACT NSE SYMBOLS FOR TRADINGVIEW
+    # 🔥 FIXED: WORKING BSE INDICES FOR REAL-TIME FREE WIDGET
     indices_html = """
     <div class="tradingview-widget-container">
       <div class="tradingview-widget-container__widget"></div>
@@ -275,17 +275,17 @@ elif st.session_state.current_page == "Indices":
           "name": "Indian Sector Indices",
           "originalName": "Indices",
           "symbols": [
-            { "name": "NSE:NIFTY", "displayName": "Nifty 50" },
-            { "name": "NSE:BANKNIFTY", "displayName": "Nifty Bank" },
-            { "name": "NSE:CNXIT", "displayName": "Nifty IT" },
-            { "name": "NSE:CNXPHARMA", "displayName": "Nifty Pharma" },
-            { "name": "NSE:CNXFMCG", "displayName": "Nifty FMCG" },
-            { "name": "NSE:CNXAUTO", "displayName": "Nifty Auto" },
-            { "name": "NSE:CNXMETAL", "displayName": "Nifty Metal" },
-            { "name": "NSE:CNXENERGY", "displayName": "Nifty Energy" },
-            { "name": "NSE:CNXREALTY", "displayName": "Nifty Realty" },
-            { "name": "NSE:CNXINFRA", "displayName": "Nifty Infra" },
-            { "name": "NSE:CNXPSE", "displayName": "Nifty PSE" }
+            { "name": "BSE:SENSEX", "displayName": "BSE Sensex" },
+            { "name": "BSE:BANKEX", "displayName": "BSE Bankex" },
+            { "name": "BSE:BSE_IT", "displayName": "BSE IT" },
+            { "name": "BSE:BSE_HC", "displayName": "BSE Pharma/HC" },
+            { "name": "BSE:BSE_FMCG", "displayName": "BSE FMCG" },
+            { "name": "BSE:BSE_AUTO", "displayName": "BSE Auto" },
+            { "name": "BSE:BSE_METAL", "displayName": "BSE Metal" },
+            { "name": "BSE:BSE_ENRGY", "displayName": "BSE Energy" },
+            { "name": "BSE:BSE_REALTY", "displayName": "BSE Realty" },
+            { "name": "BSE:BSE_INDSTR", "displayName": "BSE Infra/Ind" },
+            { "name": "BSE:BSE_UTIL", "displayName": "BSE PSE/Util" }
           ]
         }
       ],
@@ -412,11 +412,9 @@ elif st.session_state.current_page == "Scanner":
             if active_sector:
                 st.markdown(f"<h4 style='color:#ffffff; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-top: 30px;'>📋 {active_sector} Breakout List</h4>", unsafe_allow_html=True)
                 
-                # COLUMN SWAP
                 display_proxy_df = sector_df[['Stock Symbol', 'Proxy / Industry']].copy()
                 display_proxy_df.columns = ['Stock Name', 'Proxy Name']
                 
-                # SEARCH & SORT ENGINE
                 filter_c1, filter_c2 = st.columns([2, 1])
                 with filter_c1:
                     proxy_search = st.text_input("🔍 Search Stock or Proxy...", "")
@@ -475,7 +473,6 @@ elif st.session_state.current_page == "Catalyst":
         st.code(catalyst_prompt, language="text")
 
 elif st.session_state.current_page == "IPOs":
-    # 🔥 100% RESTORED IPO LOGIC
     st.markdown("<div class='page-heading'>🏢 IPOs</div>", unsafe_allow_html=True)
     if raw_ipo_data:
         df_ipo = pd.DataFrame(raw_ipo_data)
