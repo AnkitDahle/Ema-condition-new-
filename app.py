@@ -25,6 +25,8 @@ cookies = EncryptedCookieManager(prefix="aswing", password=cookie_password)
 if not cookies.ready():
     st.stop()
 
+if 'active_sector_ui' not in st.session_state:
+    st.session_state.active_sector_ui = None
 if 'logged_in' not in st.session_state:
     if 'auth_role' in cookies:
         st.session_state.logged_in = True
@@ -36,7 +38,8 @@ if 'logged_in' not in st.session_state:
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "Home"
 
-pages = ['Home', 'Scanner', 'Catalyst', 'IPOs', 'Journal', 'Calculator']
+# 🟢 UPDATE: Naya 'Indices' Page Add Kiya Gaya Hai
+pages = ['Home', 'Scanner', 'Indices', 'Catalyst', 'IPOs', 'Journal', 'Calculator']
 active_index = pages.index(st.session_state.current_page) + 2 
 
 # 🔥 SCROLLABLE HTML TABLE ENGINE
@@ -59,6 +62,20 @@ def render_html_table(df, max_height="350px"):
         html += "</tr>"
     html += "</tbody></table></div>"
     return html
+
+# Sector to Index Mapping Dictionary
+SECTOR_INDEX_MAP = {
+    "Financial Services": "BSE:NIFTYBANK",
+    "Technology": "BSE:NIFTYIT",
+    "Healthcare": "BSE:NIFTYPHARMA",
+    "Consumer Defensive": "BSE:NIFTYFMCG",
+    "Consumer Cyclical": "BSE:NIFTYAUTO",
+    "Basic Materials": "BSE:NIFTYMETAL",
+    "Energy": "BSE:NIFTYENERGY",
+    "Real Estate": "BSE:NIFTYREALTY",
+    "Industrials": "BSE:NIFTYINFRA",
+    "Utilities": "BSE:BSE_POWER"
+}
 
 # ==========================================
 # 3. 🎨 UI ENGINE & CUSTOM CSS
@@ -89,7 +106,7 @@ custom_css = f"""
         background: transparent !important; border: none !important; box-shadow: none !important;
     }}
     div[data-testid="stHorizontalBlock"]:first-of-type .stButton > button p {{
-        color: #7b8fa3 !important; font-weight: 500 !important; font-size: 19px !important; letter-spacing: 0.5px;
+        color: #7b8fa3 !important; font-weight: 500 !important; font-size: 17px !important; letter-spacing: 0.5px;
         white-space: nowrap !important;
     }}
     div[data-testid="stHorizontalBlock"]:first-of-type .stButton > button:hover p {{ color: #cdd6e0 !important; }}
@@ -151,9 +168,9 @@ if not st.session_state.logged_in and st.session_state.current_page != "Home":
 is_admin = (st.session_state.role == 'admin')
 
 # ==========================================
-# 5. TOP NAVIGATION BAR RENDERING
+# 5. TOP NAVIGATION BAR RENDERING 
 # ==========================================
-col_logo, nav1, nav2, nav3, nav4, nav5, nav6, space, col_login = st.columns([2.5, 1.1, 1.1, 1.1, 1.1, 1.1, 1.3, 0.2, 1.5])
+col_logo, nav1, nav2, nav3, nav4, nav5, nav6, nav7, space, col_login = st.columns([2.5, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 1.0, 0.2, 1.2])
 with col_logo:
     st.markdown("""<div style="display: flex; align-items: center; gap: 10px; margin-top: 2px;"><div style="background-color: #00bfff; width: 30px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L22 20H2L12 2Z" fill="white"/></svg></div><a href="/" target="_self" style="font-size: 22px; font-weight: 800; color: white; text-decoration: none;">AlphaSwing</a></div>""", unsafe_allow_html=True)
 with nav1:
@@ -161,12 +178,14 @@ with nav1:
 with nav2:
     if st.button("Scanner", use_container_width=True): st.session_state.current_page = "Scanner"; st.rerun()
 with nav3:
-    if st.button("Catalyst", use_container_width=True): st.session_state.current_page = "Catalyst"; st.rerun()
+    if st.button("Indices", use_container_width=True): st.session_state.current_page = "Indices"; st.rerun()
 with nav4:
-    if st.button("IPOs", use_container_width=True): st.session_state.current_page = "IPOs"; st.rerun()
+    if st.button("Catalyst", use_container_width=True): st.session_state.current_page = "Catalyst"; st.rerun()
 with nav5:
-    if st.button("Journal", use_container_width=True): st.session_state.current_page = "Journal"; st.rerun()
+    if st.button("IPOs", use_container_width=True): st.session_state.current_page = "IPOs"; st.rerun()
 with nav6:
+    if st.button("Journal", use_container_width=True): st.session_state.current_page = "Journal"; st.rerun()
+with nav7:
     if st.button("Calculator", use_container_width=True): st.session_state.current_page = "Calculator"; st.rerun()
 with col_login:
     if st.session_state.logged_in:
@@ -180,7 +199,7 @@ with col_login:
 st.markdown("<hr style='margin-top: 5px; margin-bottom: 0px; border-color: rgba(255,255,255,0.05);'>", unsafe_allow_html=True)
 
 # 📈 6. LIVE MARKET TICKER
-if st.session_state.current_page in ["Home", "Scanner"]:
+if st.session_state.current_page in ["Home", "Scanner", "Indices"]:
     ticker_html = """
     <div class="tradingview-widget-container">
       <div class="tradingview-widget-container__widget"></div>
@@ -240,6 +259,43 @@ if st.session_state.current_page == "Home":
         height=300,
     )
 
+elif st.session_state.current_page == "Indices":
+    st.markdown("<div class='page-heading'>📊 Sectoral Indices</div>", unsafe_allow_html=True)
+    indices_html = """
+    <div class="tradingview-widget-container">
+      <div class="tradingview-widget-container__widget"></div>
+      <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-market-quotes.js" async>
+      {
+      "width": "100%",
+      "height": 550,
+      "symbolsGroups": [
+        {
+          "name": "Indian Sector Indices",
+          "originalName": "Indices",
+          "symbols": [
+            { "name": "BSE:NIFTYBANK", "displayName": "Nifty Bank" },
+            { "name": "BSE:NIFTYIT", "displayName": "Nifty IT" },
+            { "name": "BSE:NIFTYPHARMA", "displayName": "Nifty Pharma" },
+            { "name": "BSE:NIFTYFMCG", "displayName": "Nifty FMCG" },
+            { "name": "BSE:NIFTYAUTO", "displayName": "Nifty Auto" },
+            { "name": "BSE:NIFTYMETAL", "displayName": "Nifty Metal" },
+            { "name": "BSE:NIFTYENERGY", "displayName": "Nifty Energy" },
+            { "name": "BSE:NIFTYREALTY", "displayName": "Nifty Realty" },
+            { "name": "BSE:NIFTYINFRA", "displayName": "Nifty Infra" },
+            { "name": "BSE:NIFTYPSE", "displayName": "Nifty PSE" }
+          ]
+        }
+      ],
+      "showSymbolLogo": true,
+      "isTransparent": true,
+      "colorTheme": "dark",
+      "locale": "in"
+    }
+      </script>
+    </div>
+    """
+    components.html(indices_html, height=550)
+
 elif st.session_state.current_page == "Scanner":
     role_badge = "👑 Admin" if is_admin else "👁️ Viewer"
     st.markdown(f"<div class='page-heading'>📊 Market Scanner <span style='font-size:14px; color:#94a3b8; float:right; padding-top:10px;'>{role_badge}</span></div>", unsafe_allow_html=True)
@@ -289,8 +345,26 @@ elif st.session_state.current_page == "Scanner":
             st.markdown(render_html_table(display_df, max_height="350px"), unsafe_allow_html=True)
 
         # ==========================================
-        # 🔥 DONUT CHARTS (WITH % AND COUNTS)
+        # 🔥 CUSTOM HTML LEGENDS ENGINE
         # ==========================================
+        def create_custom_legend(counts_df, is_sector=True):
+            colors = px.colors.qualitative.Pastel if is_sector else px.colors.qualitative.Set3
+            html = "<div style='display: flex; flex-wrap: wrap; gap: 15px; margin-top: 15px; justify-content: center;'>"
+            for i, row in counts_df.iterrows():
+                color = colors[i % len(colors)]
+                name = row['Sector'] if is_sector else row['Proxy']
+                label = row['Legend_Label']
+                
+                link_html = ""
+                # Add link only if it's a sector and exists in our map
+                if is_sector and name in SECTOR_INDEX_MAP:
+                    idx_sym = SECTOR_INDEX_MAP[name]
+                    link_html = f" <a href='https://in.tradingview.com/chart/?symbol={idx_sym}' target='_blank' style='text-decoration:none; margin-left: 5px;' title='Open Index Chart'>↗️</a>"
+                
+                html += f"<div style='display: flex; align-items: center; font-size: 13px; color: #e2e8f0;'><div style='width: 14px; height: 14px; background-color: {color}; border-radius: 3px; margin-right: 8px;'></div>{label}{link_html}</div>"
+            html += "</div>"
+            return html
+
         st.markdown("<hr style='border-color: rgba(255,255,255,0.05); margin-top: 30px;'>", unsafe_allow_html=True)
         st.markdown("<h3 style='color: #ffffff; margin-bottom: 20px;'>🍩 Advanced Sector Explorer</h3>", unsafe_allow_html=True)
 
@@ -299,32 +373,24 @@ elif st.session_state.current_page == "Scanner":
             sector_counts.columns = ['Sector', 'Stock Count']
             sector_list = sorted(list(sector_counts['Sector']))
             total_sectors = sector_counts['Stock Count'].sum()
-            
-            # 🔥 Format: Name (Percentage%) (Count)
             sector_counts['Legend_Label'] = sector_counts.apply(lambda row: f"{row['Sector']} ({row['Stock Count']/total_sectors*100:.1f}%) ({row['Stock Count']})", axis=1)
 
-            fig_sector = px.pie(
-                sector_counts, values='Stock Count', names='Legend_Label', 
-                hole=0.45, color_discrete_sequence=px.colors.qualitative.Pastel
-            )
+            # Chart without Native Legend
+            fig_sector = px.pie(sector_counts, values='Stock Count', names='Legend_Label', hole=0.45, color_discrete_sequence=px.colors.qualitative.Pastel)
             fig_sector.update_traces(textposition='inside', textinfo='percent', hovertemplate="<b>%{label}</b><br>Stocks: %{value}<extra></extra>")
             fig_sector.update_layout(
-                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white'),
-                margin=dict(t=40, b=40, l=0, r=0), 
-                legend=dict(orientation="h", yanchor="top", y=-0.1, xanchor="center", x=0.5),
-                title=dict(text="1️⃣ Overall Sector Distribution", font=dict(color="#00e5ff", size=16))
+                showlegend=False, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white'),
+                margin=dict(t=40, b=10, l=0, r=0), title=dict(text="1️⃣ Overall Sector Distribution", font=dict(color="#00e5ff", size=16))
             )
 
             c_chart1, c_chart2 = st.columns([1, 1])
-            
             with c_chart1: 
-                # Pure visualization - NO CLICKS to keep it robust
                 st.plotly_chart(fig_sector, use_container_width=True)
+                # Inject Custom HTML Legend below chart
+                st.markdown(create_custom_legend(sector_counts, is_sector=True), unsafe_allow_html=True)
 
             with c_chart2:
                 st.markdown("<div style='margin-top: 10px;'></div><p style='color:#00e5ff; font-weight: 600;'>👇 Select Sector to Explore:</p>", unsafe_allow_html=True)
-                
-                # Reliable Dropdown
                 active_sector = st.selectbox("Sector", sector_list, label_visibility="collapsed")
 
                 if active_sector:
@@ -332,26 +398,42 @@ elif st.session_state.current_page == "Scanner":
                     proxy_counts = sector_df['Proxy / Industry'].value_counts().reset_index()
                     proxy_counts.columns = ['Proxy', 'Stock Count']
                     total_proxies = proxy_counts['Stock Count'].sum()
-                    
-                    # 🔥 Format: Name (Percentage%) (Count)
                     proxy_counts['Legend_Label'] = proxy_counts.apply(lambda row: f"{row['Proxy']} ({row['Stock Count']/total_proxies*100:.1f}%) ({row['Stock Count']})", axis=1)
                     
                     fig_proxy = px.pie(proxy_counts, values='Stock Count', names='Legend_Label', hole=0.45, color_discrete_sequence=px.colors.qualitative.Set3)
                     fig_proxy.update_traces(textposition='inside', textinfo='percent', hovertemplate="<b>%{label}</b><br>Stocks: %{value}<extra></extra>")
                     fig_proxy.update_layout(
-                        paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white'),
-                        margin=dict(t=30, b=40, l=0, r=0), 
-                        legend=dict(orientation="h", yanchor="top", y=-0.1, xanchor="center", x=0.5),
-                        title=dict(text=f"2️⃣ Proxies in {active_sector}", font=dict(color="#10b981", size=16))
+                        showlegend=False, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white'),
+                        margin=dict(t=30, b=10, l=0, r=0), title=dict(text=f"2️⃣ Proxies in {active_sector}", font=dict(color="#10b981", size=16))
                     )
                     st.plotly_chart(fig_proxy, use_container_width=True)
+                    # Inject Custom HTML Legend below chart
+                    st.markdown(create_custom_legend(proxy_counts, is_sector=False), unsafe_allow_html=True)
                     
             if active_sector:
-                st.markdown(f"<h4 style='color:#ffffff; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-top: 20px;'>📋 {active_sector} Breakout List</h4>", unsafe_allow_html=True)
-                display_proxy_df = sector_df[['Proxy / Industry', 'Stock Symbol']].sort_values(by=['Proxy / Industry', 'Stock Symbol'])
-                display_proxy_df.columns = ['Proxy Name', 'Stock Name'] 
+                st.markdown(f"<h4 style='color:#ffffff; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-top: 30px;'>📋 {active_sector} Breakout List</h4>", unsafe_allow_html=True)
+                
+                # Column Swap
+                display_proxy_df = sector_df[['Stock Symbol', 'Proxy / Industry']].copy()
+                display_proxy_df.columns = ['Stock Name', 'Proxy Name']
+                
+                # Search and Sort Engine
+                filter_c1, filter_c2 = st.columns([2, 1])
+                with filter_c1:
+                    proxy_search = st.text_input("🔍 Search Stock or Proxy...", "")
+                with filter_c2:
+                    proxy_sort = st.selectbox("↕️ Sort By", ["Stock Name (A-Z)", "Proxy Name (A-Z)"])
+                
+                if proxy_search:
+                    display_proxy_df = display_proxy_df[display_proxy_df['Stock Name'].str.contains(proxy_search, case=False, na=False) | display_proxy_df['Proxy Name'].str.contains(proxy_search, case=False, na=False)]
+                
+                if proxy_sort == "Stock Name (A-Z)":
+                    display_proxy_df = display_proxy_df.sort_values(by='Stock Name')
+                else:
+                    display_proxy_df = display_proxy_df.sort_values(by='Proxy Name')
+                
                 display_proxy_df['TV Chart'] = "https://in.tradingview.com/chart/?symbol=NSE:" + display_proxy_df['Stock Name']
-                st.markdown(render_html_table(display_proxy_df, max_height="300px"), unsafe_allow_html=True)
+                st.markdown(render_html_table(display_proxy_df, max_height="350px"), unsafe_allow_html=True)
 
 elif st.session_state.current_page == "Calculator":
     st.markdown("<div class='page-heading'>🧮 Risk & Position Sizing Calculator</div>", unsafe_allow_html=True)
