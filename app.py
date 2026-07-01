@@ -62,18 +62,18 @@ def render_html_table(df, max_height="350px"):
     html += "</tbody></table></div>"
     return html
 
-# 🟢 UPDATE: 100% WORKING BSE SYMBOLS FOR TRADINGVIEW WIDGETS
+# 🟢 100% VERIFIED NSE SYMBOLS FOR TRADINGVIEW
 SECTOR_INDEX_MAP = {
-    "Financial Services": "BSE:BSE_FIN",
-    "Technology": "BSE:BSE_IT",
-    "Healthcare": "BSE:BSE_HC",
-    "Consumer Defensive": "BSE:BSE_FMCG",
-    "Consumer Cyclical": "BSE:BSE_AUTO",
-    "Basic Materials": "BSE:BSE_METAL",
-    "Energy": "BSE:BSE_ENRGY",
-    "Real Estate": "BSE:BSE_REALTY",
-    "Industrials": "BSE:BSE_INDSTR",
-    "Utilities": "BSE:BSE_UTIL"
+    "Financial Services": "NSE:FINNIFTY",
+    "Technology": "NSE:CNXIT",
+    "Healthcare": "NSE:CNXPHARMA",
+    "Consumer Defensive": "NSE:CNXFMCG",
+    "Consumer Cyclical": "NSE:CNXAUTO",
+    "Basic Materials": "NSE:CNXMETAL",
+    "Energy": "NSE:CNXENERGY",
+    "Real Estate": "NSE:CNXREALTY",
+    "Industrials": "NSE:CNXINFRA",
+    "Utilities": "NSE:CNXPSE"
 }
 
 # ==========================================
@@ -197,7 +197,7 @@ with col_login:
 
 st.markdown("<hr style='margin-top: 5px; margin-bottom: 0px; border-color: rgba(255,255,255,0.05);'>", unsafe_allow_html=True)
 
-# 📈 6. LIVE MARKET TICKER (FIXED BSE SYMBOLS)
+# 📈 6. LIVE MARKET TICKER (VERIFIED NSE SYMBOLS)
 if st.session_state.current_page in ["Home", "Scanner", "Indices"]:
     ticker_html = """
     <div class="tradingview-widget-container">
@@ -205,10 +205,10 @@ if st.session_state.current_page in ["Home", "Scanner", "Indices"]:
       <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
       {
       "symbols": [
-        { "proName": "BSE:SENSEX", "title": "SENSEX" },
-        { "proName": "BSE:BANKEX", "title": "BANKEX" },
-        { "proName": "BSE:MIDCAP", "title": "MIDCAP" },
-        { "proName": "BSE:SMALLCAP", "title": "SMALLCAP" }
+        { "proName": "NSE:NIFTY", "title": "NIFTY 50" },
+        { "proName": "NSE:BANKNIFTY", "title": "BANK NIFTY" },
+        { "proName": "NSE:CNXMIDCAP", "title": "MIDCAP 100" },
+        { "proName": "NSE:CNXSMALLCAP", "title": "SMALLCAP 100" }
       ],
       "showSymbolLogo": true, "isTransparent": true, "displayMode": "adaptive", "colorTheme": "dark", "locale": "in"
     }
@@ -262,30 +262,31 @@ elif st.session_state.current_page == "Indices":
     st.markdown("<div class='page-heading'>📊 Sectoral Indices</div>", unsafe_allow_html=True)
     st.markdown("<p style='color: #94a3b8; font-size: 14px;'>Tip: Table ke <b>Chg %</b> column title par click karke aap Top Gainers/Losers sort kar sakte hain.</p>", unsafe_allow_html=True)
     
-    # 🔥 FIXED: WORKING BSE INDICES FOR REAL-TIME FREE WIDGET
+    # 🔥 100% WORKING NSE SECTORAL INDICES
     indices_html = """
     <div class="tradingview-widget-container">
       <div class="tradingview-widget-container__widget"></div>
       <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-market-quotes.js" async>
       {
       "width": "100%",
-      "height": 550,
+      "height": 600,
       "symbolsGroups": [
         {
           "name": "Indian Sector Indices",
           "originalName": "Indices",
           "symbols": [
-            { "name": "BSE:SENSEX", "displayName": "BSE Sensex" },
-            { "name": "BSE:BANKEX", "displayName": "BSE Bankex" },
-            { "name": "BSE:BSE_IT", "displayName": "BSE IT" },
-            { "name": "BSE:BSE_HC", "displayName": "BSE Pharma/HC" },
-            { "name": "BSE:BSE_FMCG", "displayName": "BSE FMCG" },
-            { "name": "BSE:BSE_AUTO", "displayName": "BSE Auto" },
-            { "name": "BSE:BSE_METAL", "displayName": "BSE Metal" },
-            { "name": "BSE:BSE_ENRGY", "displayName": "BSE Energy" },
-            { "name": "BSE:BSE_REALTY", "displayName": "BSE Realty" },
-            { "name": "BSE:BSE_INDSTR", "displayName": "BSE Infra/Ind" },
-            { "name": "BSE:BSE_UTIL", "displayName": "BSE PSE/Util" }
+            { "name": "NSE:NIFTY", "displayName": "Nifty 50" },
+            { "name": "NSE:BANKNIFTY", "displayName": "Nifty Bank" },
+            { "name": "NSE:FINNIFTY", "displayName": "Nifty Fin Service" },
+            { "name": "NSE:CNXIT", "displayName": "Nifty IT" },
+            { "name": "NSE:CNXPHARMA", "displayName": "Nifty Pharma" },
+            { "name": "NSE:CNXFMCG", "displayName": "Nifty FMCG" },
+            { "name": "NSE:CNXAUTO", "displayName": "Nifty Auto" },
+            { "name": "NSE:CNXMETAL", "displayName": "Nifty Metal" },
+            { "name": "NSE:CNXENERGY", "displayName": "Nifty Energy" },
+            { "name": "NSE:CNXREALTY", "displayName": "Nifty Realty" },
+            { "name": "NSE:CNXINFRA", "displayName": "Nifty Infra" },
+            { "name": "NSE:CNXPSE", "displayName": "Nifty PSE" }
           ]
         }
       ],
@@ -297,7 +298,7 @@ elif st.session_state.current_page == "Indices":
       </script>
     </div>
     """
-    components.html(indices_html, height=550)
+    components.html(indices_html, height=600)
 
 elif st.session_state.current_page == "Scanner":
     role_badge = "👑 Admin" if is_admin else "👁️ Viewer"
@@ -348,7 +349,7 @@ elif st.session_state.current_page == "Scanner":
             st.markdown(render_html_table(display_df, max_height="350px"), unsafe_allow_html=True)
 
         # ==========================================
-        # 🔥 CUSTOM HTML LEGENDS ENGINE (DONUTS)
+        # 🔥 CUSTOM HTML LEGENDS ENGINE
         # ==========================================
         def create_custom_legend(counts_df, is_sector=True):
             colors = px.colors.qualitative.Pastel if is_sector else px.colors.qualitative.Set3
