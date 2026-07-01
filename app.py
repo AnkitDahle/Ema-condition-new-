@@ -38,7 +38,6 @@ if 'logged_in' not in st.session_state:
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "Home"
 
-# 🟢 'Results' Tab
 pages = ['Home', 'Scanner', 'Results', 'Catalyst', 'IPOs', 'Journal', 'Calculator']
 active_index = pages.index(st.session_state.current_page) + 2 
 
@@ -402,7 +401,7 @@ elif st.session_state.current_page == "Scanner":
                 display_proxy_df['TV Chart'] = "https://in.tradingview.com/chart/?symbol=NSE:" + display_proxy_df['Stock Name']
                 st.markdown(render_html_table(display_proxy_df, max_height="350px"), unsafe_allow_html=True)
 
-# 🟢 FIX: STABLE GEMINI-PRO MODEL APPLIED
+# 🟢 UPDATE: FAIL-PROOF AUTO-DETECT GEMINI AI
 elif st.session_state.current_page == "Catalyst":
     st.markdown("<div class='page-heading'>🤖 AI Catalyst Research</div>", unsafe_allow_html=True)
     st.markdown("<p style='color: #94a3b8; margin-bottom: 20px;'>Gemini AI ka use karke kisi bhi stock ka instant news aur sentiment analysis karein.</p>", unsafe_allow_html=True)
@@ -426,24 +425,46 @@ elif st.session_state.current_page == "Catalyst":
                         st.error("⚠️ GEMINI_API_KEY nahi mili! Kripya Streamlit ke Secrets mein apni free API key daalein.")
                     else:
                         genai.configure(api_key=api_key)
-                        # Changed from gemini-1.5-flash to gemini-pro which is 100% stable globally
-                        model = genai.GenerativeModel('gemini-pro')
                         
-                        prompt = f"""
-                        You are a professional swing trading research analyst. Analyze the Indian stock '{user_ticker}' (NSE/BSE).
-                        Provide a highly concise, structured report suitable for quick reading. 
-                        Do not use generic disclaimers. Focus on facts. Include:
-                        1. **🔥 Recent Key News/Developments:** (Bullet points of major news in the last 2-4 weeks).
-                        2. **🎯 Potential Catalysts:** (Any upcoming earnings, order wins, fundamental shifts).
-                        3. **🧭 Overall Sentiment Meter:** (State clearly if current sentiment is Bullish, Bearish, or Neutral based on news).
-                        """
-                        
-                        response = model.generate_content(prompt)
-                        st.markdown("<div style='background: rgba(0,0,0,0.3); padding: 25px; border-radius: 12px; border: 1px solid rgba(0, 229, 255, 0.3); box-shadow: 0 4px 15px rgba(0,229,255,0.05);'>", unsafe_allow_html=True)
-                        st.markdown(response.text)
-                        st.markdown("</div>", unsafe_allow_html=True)
+                        # STEP 1: Auto-Detect Active Models
+                        valid_models = []
+                        for m in genai.list_models():
+                            if 'generateContent' in m.supported_generation_methods:
+                                valid_models.append(m.name)
+                                
+                        if not valid_models:
+                            st.error("⚠️ Aapki API key par koi bhi model active nahi hai. Kripya naya API key generate karein.")
+                        else:
+                            # STEP 2: Pick the best available model automatically
+                            selected_model = valid_models[0] 
+                            for m_name in valid_models:
+                                if '1.5-flash' in m_name:
+                                    selected_model = m_name
+                                    break
+                                elif '1.5-pro' in m_name:
+                                    selected_model = m_name
+                            
+                            # Clean name (remove 'models/' prefix)
+                            clean_model_name = selected_model.replace("models/", "")
+                            
+                            # STEP 3: Generate Content
+                            model = genai.GenerativeModel(clean_model_name)
+                            
+                            prompt = f"""
+                            You are a professional swing trading research analyst. Analyze the Indian stock '{user_ticker}' (NSE/BSE).
+                            Provide a highly concise, structured report suitable for quick reading. 
+                            Do not use generic disclaimers. Focus on facts. Include:
+                            1. **🔥 Recent Key News/Developments:** (Bullet points of major news in the last 2-4 weeks).
+                            2. **🎯 Potential Catalysts:** (Any upcoming earnings, order wins, fundamental shifts).
+                            3. **🧭 Overall Sentiment Meter:** (State clearly if current sentiment is Bullish, Bearish, or Neutral based on news).
+                            """
+                            
+                            response = model.generate_content(prompt)
+                            st.markdown("<div style='background: rgba(0,0,0,0.3); padding: 25px; border-radius: 12px; border: 1px solid rgba(0, 229, 255, 0.3); box-shadow: 0 4px 15px rgba(0,229,255,0.05);'>", unsafe_allow_html=True)
+                            st.markdown(response.text)
+                            st.markdown("</div>", unsafe_allow_html=True)
                 except Exception as e:
-                    st.error(f"⚠️ Error in AI Generation: Make sure 'google-generativeai' is in requirements.txt. Details: {e}")
+                    st.error(f"⚠️ API Error: {e}")
 
 elif st.session_state.current_page == "Calculator":
     st.markdown("<div class='page-heading'>🧮 Risk & Position Sizing Calculator</div>", unsafe_allow_html=True)
