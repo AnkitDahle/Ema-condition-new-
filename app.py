@@ -38,7 +38,6 @@ if 'logged_in' not in st.session_state:
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "Home"
 
-# 🟢 UPDATE: Naya 'Indices' Page Add Kiya Gaya Hai
 pages = ['Home', 'Scanner', 'Indices', 'Catalyst', 'IPOs', 'Journal', 'Calculator']
 active_index = pages.index(st.session_state.current_page) + 2 
 
@@ -63,18 +62,18 @@ def render_html_table(df, max_height="350px"):
     html += "</tbody></table></div>"
     return html
 
-# Sector to Index Mapping Dictionary
+# 🟢 ACCURATE NSE SECTOR TO INDEX MAPPING
 SECTOR_INDEX_MAP = {
-    "Financial Services": "BSE:NIFTYBANK",
-    "Technology": "BSE:NIFTYIT",
-    "Healthcare": "BSE:NIFTYPHARMA",
-    "Consumer Defensive": "BSE:NIFTYFMCG",
-    "Consumer Cyclical": "BSE:NIFTYAUTO",
-    "Basic Materials": "BSE:NIFTYMETAL",
-    "Energy": "BSE:NIFTYENERGY",
-    "Real Estate": "BSE:NIFTYREALTY",
-    "Industrials": "BSE:NIFTYINFRA",
-    "Utilities": "BSE:BSE_POWER"
+    "Financial Services": "NSE:CNXFIN",
+    "Technology": "NSE:CNXIT",
+    "Healthcare": "NSE:CNXPHARMA",
+    "Consumer Defensive": "NSE:CNXFMCG",
+    "Consumer Cyclical": "NSE:CNXAUTO",
+    "Basic Materials": "NSE:CNXMETAL",
+    "Energy": "NSE:CNXENERGY",
+    "Real Estate": "NSE:CNXREALTY",
+    "Industrials": "NSE:CNXINFRA",
+    "Utilities": "NSE:CNXPSE"
 }
 
 # ==========================================
@@ -261,6 +260,9 @@ if st.session_state.current_page == "Home":
 
 elif st.session_state.current_page == "Indices":
     st.markdown("<div class='page-heading'>📊 Sectoral Indices</div>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #94a3b8; font-size: 14px;'>Tip: Table ke <b>Chg %</b> column title par click karke aap Top Gainers/Losers sort kar sakte hain.</p>", unsafe_allow_html=True)
+    
+    # EXACT NSE SYMBOLS FOR TRADINGVIEW
     indices_html = """
     <div class="tradingview-widget-container">
       <div class="tradingview-widget-container__widget"></div>
@@ -273,16 +275,17 @@ elif st.session_state.current_page == "Indices":
           "name": "Indian Sector Indices",
           "originalName": "Indices",
           "symbols": [
-            { "name": "BSE:NIFTYBANK", "displayName": "Nifty Bank" },
-            { "name": "BSE:NIFTYIT", "displayName": "Nifty IT" },
-            { "name": "BSE:NIFTYPHARMA", "displayName": "Nifty Pharma" },
-            { "name": "BSE:NIFTYFMCG", "displayName": "Nifty FMCG" },
-            { "name": "BSE:NIFTYAUTO", "displayName": "Nifty Auto" },
-            { "name": "BSE:NIFTYMETAL", "displayName": "Nifty Metal" },
-            { "name": "BSE:NIFTYENERGY", "displayName": "Nifty Energy" },
-            { "name": "BSE:NIFTYREALTY", "displayName": "Nifty Realty" },
-            { "name": "BSE:NIFTYINFRA", "displayName": "Nifty Infra" },
-            { "name": "BSE:NIFTYPSE", "displayName": "Nifty PSE" }
+            { "name": "NSE:NIFTY", "displayName": "Nifty 50" },
+            { "name": "NSE:BANKNIFTY", "displayName": "Nifty Bank" },
+            { "name": "NSE:CNXIT", "displayName": "Nifty IT" },
+            { "name": "NSE:CNXPHARMA", "displayName": "Nifty Pharma" },
+            { "name": "NSE:CNXFMCG", "displayName": "Nifty FMCG" },
+            { "name": "NSE:CNXAUTO", "displayName": "Nifty Auto" },
+            { "name": "NSE:CNXMETAL", "displayName": "Nifty Metal" },
+            { "name": "NSE:CNXENERGY", "displayName": "Nifty Energy" },
+            { "name": "NSE:CNXREALTY", "displayName": "Nifty Realty" },
+            { "name": "NSE:CNXINFRA", "displayName": "Nifty Infra" },
+            { "name": "NSE:CNXPSE", "displayName": "Nifty PSE" }
           ]
         }
       ],
@@ -345,7 +348,7 @@ elif st.session_state.current_page == "Scanner":
             st.markdown(render_html_table(display_df, max_height="350px"), unsafe_allow_html=True)
 
         # ==========================================
-        # 🔥 CUSTOM HTML LEGENDS ENGINE
+        # 🔥 CUSTOM HTML LEGENDS ENGINE (DONUTS)
         # ==========================================
         def create_custom_legend(counts_df, is_sector=True):
             colors = px.colors.qualitative.Pastel if is_sector else px.colors.qualitative.Set3
@@ -356,7 +359,6 @@ elif st.session_state.current_page == "Scanner":
                 label = row['Legend_Label']
                 
                 link_html = ""
-                # Add link only if it's a sector and exists in our map
                 if is_sector and name in SECTOR_INDEX_MAP:
                     idx_sym = SECTOR_INDEX_MAP[name]
                     link_html = f" <a href='https://in.tradingview.com/chart/?symbol={idx_sym}' target='_blank' style='text-decoration:none; margin-left: 5px;' title='Open Index Chart'>↗️</a>"
@@ -375,7 +377,6 @@ elif st.session_state.current_page == "Scanner":
             total_sectors = sector_counts['Stock Count'].sum()
             sector_counts['Legend_Label'] = sector_counts.apply(lambda row: f"{row['Sector']} ({row['Stock Count']/total_sectors*100:.1f}%) ({row['Stock Count']})", axis=1)
 
-            # Chart without Native Legend
             fig_sector = px.pie(sector_counts, values='Stock Count', names='Legend_Label', hole=0.45, color_discrete_sequence=px.colors.qualitative.Pastel)
             fig_sector.update_traces(textposition='inside', textinfo='percent', hovertemplate="<b>%{label}</b><br>Stocks: %{value}<extra></extra>")
             fig_sector.update_layout(
@@ -386,7 +387,6 @@ elif st.session_state.current_page == "Scanner":
             c_chart1, c_chart2 = st.columns([1, 1])
             with c_chart1: 
                 st.plotly_chart(fig_sector, use_container_width=True)
-                # Inject Custom HTML Legend below chart
                 st.markdown(create_custom_legend(sector_counts, is_sector=True), unsafe_allow_html=True)
 
             with c_chart2:
@@ -407,17 +407,16 @@ elif st.session_state.current_page == "Scanner":
                         margin=dict(t=30, b=10, l=0, r=0), title=dict(text=f"2️⃣ Proxies in {active_sector}", font=dict(color="#10b981", size=16))
                     )
                     st.plotly_chart(fig_proxy, use_container_width=True)
-                    # Inject Custom HTML Legend below chart
                     st.markdown(create_custom_legend(proxy_counts, is_sector=False), unsafe_allow_html=True)
                     
             if active_sector:
                 st.markdown(f"<h4 style='color:#ffffff; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-top: 30px;'>📋 {active_sector} Breakout List</h4>", unsafe_allow_html=True)
                 
-                # Column Swap
+                # COLUMN SWAP
                 display_proxy_df = sector_df[['Stock Symbol', 'Proxy / Industry']].copy()
                 display_proxy_df.columns = ['Stock Name', 'Proxy Name']
                 
-                # Search and Sort Engine
+                # SEARCH & SORT ENGINE
                 filter_c1, filter_c2 = st.columns([2, 1])
                 with filter_c1:
                     proxy_search = st.text_input("🔍 Search Stock or Proxy...", "")
@@ -476,12 +475,36 @@ elif st.session_state.current_page == "Catalyst":
         st.code(catalyst_prompt, language="text")
 
 elif st.session_state.current_page == "IPOs":
+    # 🔥 100% RESTORED IPO LOGIC
     st.markdown("<div class='page-heading'>🏢 IPOs</div>", unsafe_allow_html=True)
     if raw_ipo_data:
         df_ipo = pd.DataFrame(raw_ipo_data)
-        display_ipo = df_ipo[['stock_symbol', 'company_name', 'listing_date']].sort_values(by='listing_date', ascending=False)
+        if 'listing_date' in df_ipo.columns:
+            df_ipo['calc_date'] = pd.to_datetime(df_ipo['listing_date'], errors='coerce')
+            df_ipo['Month'] = df_ipo['calc_date'].dt.strftime('%B')
+            today = pd.to_datetime('today').date()
+            
+            this_year_count = len(df_ipo[df_ipo['calc_date'].dt.year == today.year])
+            m1, m2, m3, m4 = st.columns([1, 1, 1, 3])
+            with m1: st.metric("Today Listed", len(df_ipo[df_ipo['calc_date'].dt.date == today]))
+            with m2: st.metric("This Month", len(df_ipo[(df_ipo['calc_date'].dt.month == today.month) & (df_ipo['calc_date'].dt.year == today.year)]))
+            with m3: st.metric("This Year", this_year_count)
+            st.markdown("<br>", unsafe_allow_html=True)
+
+        col_y1, col_m1, col_search, col_dl = st.columns([1.2, 1.2, 1.5, 1.2])
+        with col_y1: selected_year = st.selectbox("📅 IPO Year:", sorted(df_ipo['listing_year'].dropna().unique(), reverse=True))
+        with col_m1: selected_month = st.selectbox("🗓️ Month:", ["All Months", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"])
+        
+        fil = df_ipo[df_ipo['listing_year'] == selected_year]
+        if selected_month != "All Months": fil = fil[fil['Month'] == selected_month]
+        
+        with col_search: selected_ipo_stock = st.selectbox("🔤 Search IPO:", sorted(list(fil['stock_symbol'].dropna().unique())), index=None, placeholder="Type symbol...")
+        if selected_ipo_stock: fil = fil[fil['stock_symbol'] == selected_ipo_stock]
+        
+        display_ipo = fil[['stock_symbol', 'company_name', 'listing_date']].sort_values(by='listing_date', ascending=False)
         display_ipo.columns = ['Symbol', 'Company Name', 'Listing Date']
         display_ipo['TV Chart'] = "https://in.tradingview.com/chart/?symbol=NSE:" + display_ipo['Symbol']
+        
         st.markdown(render_html_table(display_ipo, max_height="500px"), unsafe_allow_html=True)
 
 elif st.session_state.current_page == "Journal":
