@@ -236,7 +236,7 @@ if st.session_state.current_page == "Home":
         <div class="main-text">AlphaSwing Pro: Best tool for <br><span id="typed" class="highlight"></span></div>
         <script>
             var typed = new Typed('#typed', {
-                strings: ['Swing Trading.', 'Live Market Scans.', 'AI Catalyst Research.', 'Pro Trading Journal.'],
+                strings: ['Swing Trading.', 'Live Market Scans.', 'Technical Analysis.', 'Pro Trading Journal.'],
                 typeSpeed: 60, backSpeed: 40, backDelay: 1500, loop: true, showCursor: true, cursorChar: '|'
             });
         </script>
@@ -248,10 +248,8 @@ elif st.session_state.current_page == "Results":
     st.markdown("<div class='page-heading'>📅 Upcoming Earnings (Next 30 Days)</div>", unsafe_allow_html=True)
     st.markdown("<p style='color: #94a3b8;'>In stocks ke results aane wale hain, inpar khaas nazar rakhein momentum ke liye!</p>", unsafe_allow_html=True)
     
-    try:
-        raw_res_data = supabase.table('earnings_calendar').select("*").execute().data
-    except:
-        raw_res_data = None
+    try: raw_res_data = supabase.table('earnings_calendar').select("*").execute().data
+    except: raw_res_data = None
         
     if raw_res_data:
         df_res = pd.DataFrame(raw_res_data)
@@ -266,11 +264,9 @@ elif st.session_state.current_page == "Results":
             display_res = df_res[['stock_symbol', 'result_date']].copy()
             display_res.columns = ['Stock Symbol', 'Result Date']
             display_res['TV Chart'] = "https://in.tradingview.com/chart/?symbol=NSE:" + display_res['Stock Symbol']
-            
             st.markdown(render_html_table(display_res, max_height="500px"), unsafe_allow_html=True)
     else:
-        st.info("💡 **Database Alert:** Supabase mein `earnings_calendar` (columns: `stock_symbol`, `result_date`) table nahi mili. Jab aap table banayenge toh data yahan live dikhega.")
-        st.write("👀 **Preview Simulation View:**")
+        st.info("💡 **Database Alert:** Supabase mein `earnings_calendar` table nahi mili. Niche simulation preview live hai:")
         dummy_data = pd.DataFrame({
             "Stock Symbol": ["ZOMATO", "TATASTEEL", "HAL", "RAILTEL", "BHEL"],
             "Result Date": ["15-Jul-2026", "18-Jul-2026", "22-Jul-2026", "25-Jul-2026", "28-Jul-2026"]
@@ -385,86 +381,72 @@ elif st.session_state.current_page == "Scanner":
                 display_proxy_df.columns = ['Stock Name', 'Proxy Name']
                 
                 filter_c1, filter_c2 = st.columns([2, 1])
-                with filter_c1:
-                    proxy_search = st.text_input("🔍 Search Stock or Proxy...", "")
-                with filter_c2:
-                    proxy_sort = st.selectbox("↕️ Sort By", ["Stock Name (A-Z)", "Proxy Name (A-Z)"])
+                with filter_c1: proxy_search = st.text_input("🔍 Search Stock or Proxy...", "")
+                with filter_c2: proxy_sort = st.selectbox("↕️ Sort By", ["Stock Name (A-Z)", "Proxy Name (A-Z)"])
                 
                 if proxy_search:
                     display_proxy_df = display_proxy_df[display_proxy_df['Stock Name'].str.contains(proxy_search, case=False, na=False) | display_proxy_df['Proxy Name'].str.contains(proxy_search, case=False, na=False)]
                 
-                if proxy_sort == "Stock Name (A-Z)":
-                    display_proxy_df = display_proxy_df.sort_values(by='Stock Name')
-                else:
-                    display_proxy_df = display_proxy_df.sort_values(by='Proxy Name')
+                if proxy_sort == "Stock Name (A-Z)": display_proxy_df = display_proxy_df.sort_values(by='Stock Name')
+                else: display_proxy_df = display_proxy_df.sort_values(by='Proxy Name')
                 
                 display_proxy_df['TV Chart'] = "https://in.tradingview.com/chart/?symbol=NSE:" + display_proxy_df['Stock Name']
                 st.markdown(render_html_table(display_proxy_df, max_height="350px"), unsafe_allow_html=True)
 
-# 🟢 UPDATE: FAIL-PROOF AUTO-DETECT GEMINI AI
+# 🟢 REVERTED: 100% INTACT OLD PROMPT GENERATOR FOR CATALYST
 elif st.session_state.current_page == "Catalyst":
-    st.markdown("<div class='page-heading'>🤖 AI Catalyst Research</div>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #94a3b8; margin-bottom: 20px;'>Gemini AI ka use karke kisi bhi stock ka instant news aur sentiment analysis karein.</p>", unsafe_allow_html=True)
+    st.markdown("<div class='page-heading'>🔥 Catalyst Master Prompt Generator</div>", unsafe_allow_html=True)
     
-    cat_col1, cat_col2 = st.columns([1.5, 4])
-    with cat_col1: 
-        user_ticker = st.selectbox("🔤 Search Stock:", master_symbol_list, index=None, placeholder="Type symbol...")
-        if user_ticker:
-            analyze_btn = st.button("⚡ Analyze with AI", type="primary", use_container_width=True)
-        else:
-            analyze_btn = False
+    cat_col1, cat_col2 = st.columns([2, 5])
+    with cat_col1:
+        user_ticker = st.selectbox("🔤 Search Ticker Symbol:", master_symbol_list, index=None, placeholder="Type symbol...")
+    
+    if user_ticker:
+        catalyst_prompt = f"""Please analyze {user_ticker} for me and provide the following, concise and clearly organized:
 
-    with cat_col2:
-        if analyze_btn and user_ticker:
-            with st.spinner(f"AI is researching latest data for {user_ticker}..."):
-                try:
-                    import google.generativeai as genai
-                    api_key = st.secrets.get("GEMINI_API_KEY", None)
-                    
-                    if not api_key:
-                        st.error("⚠️ GEMINI_API_KEY nahi mili! Kripya Streamlit ke Secrets mein apni free API key daalein.")
-                    else:
-                        genai.configure(api_key=api_key)
-                        
-                        # STEP 1: Auto-Detect Active Models
-                        valid_models = []
-                        for m in genai.list_models():
-                            if 'generateContent' in m.supported_generation_methods:
-                                valid_models.append(m.name)
-                                
-                        if not valid_models:
-                            st.error("⚠️ Aapki API key par koi bhi model active nahi hai. Kripya naya API key generate karein.")
-                        else:
-                            # STEP 2: Pick the best available model automatically
-                            selected_model = valid_models[0] 
-                            for m_name in valid_models:
-                                if '1.5-flash' in m_name:
-                                    selected_model = m_name
-                                    break
-                                elif '1.5-pro' in m_name:
-                                    selected_model = m_name
-                            
-                            # Clean name (remove 'models/' prefix)
-                            clean_model_name = selected_model.replace("models/", "")
-                            
-                            # STEP 3: Generate Content
-                            model = genai.GenerativeModel(clean_model_name)
-                            
-                            prompt = f"""
-                            You are a professional swing trading research analyst. Analyze the Indian stock '{user_ticker}' (NSE/BSE).
-                            Provide a highly concise, structured report suitable for quick reading. 
-                            Do not use generic disclaimers. Focus on facts. Include:
-                            1. **🔥 Recent Key News/Developments:** (Bullet points of major news in the last 2-4 weeks).
-                            2. **🎯 Potential Catalysts:** (Any upcoming earnings, order wins, fundamental shifts).
-                            3. **🧭 Overall Sentiment Meter:** (State clearly if current sentiment is Bullish, Bearish, or Neutral based on news).
-                            """
-                            
-                            response = model.generate_content(prompt)
-                            st.markdown("<div style='background: rgba(0,0,0,0.3); padding: 25px; border-radius: 12px; border: 1px solid rgba(0, 229, 255, 0.3); box-shadow: 0 4px 15px rgba(0,229,255,0.05);'>", unsafe_allow_html=True)
-                            st.markdown(response.text)
-                            st.markdown("</div>", unsafe_allow_html=True)
-                except Exception as e:
-                    st.error(f"⚠️ API Error: {e}")
+1. Explain what the company does in like I'm 12 years old - three short bullet points about what it does and any helpful relatable examples and analogies.
+
+2. Professional summary (max 10 sentences) - industry, main products/services, primary competitors (list tickers), notable metrics or achievements, competitive advantage/moat, why they are unique and if they are a biotech provide if they have a commercial product or in clinical stages. 
+
+3. In a table, provide the follwoing:
+
+* Any hot theme, narrative or story of the stock
+* Any catalysts (earnings, news, macro)
+* Any significant fundamentals (huge growth in earnings or revenues, moat, unique product or service, superior management, patents etc)
+
+4. Show all the main news/events for the last 3 months: - Use a bullet-point table for: - Date (YYYY-MM-DD) - Event type (Earnings, Product Launch, Analyst Upgrade/Downgrade, etc.) - Short summary (max 1-2 sentences) - Direct source link - Mark any major price-moving events (surprise earnings, large guidance shift, top-tier analyst actions).
+
+5. Mention any recent insider buys/sells or institutional filings if visible.
+
+6. Summarize how the stock is moving vs. main competitors and overall sector trend in past month (up/down).
+
+7. Flag upcoming catalysts (earnings, product launches, regulatory events) in the next 30 days.
+
+8. Note any changes in analyst price targets for this ticker during the period above. - Format for easy review. If possible, use tables for events and peer moves. - Respond in clear, concise, easily readable style for use in trading decisions. 
+
+Overall, Focus on the reasons why the stock can make a big move in the future - earnings, sales, guidance, product launches, analyst upgrades/downgrades, insider buying especially from CEO/Founder and executive team, partnerships, and sector/news catalysts. I want to focus on stocks with catalysts and themes as catalysts are the cause of big moves in the stock market."""
+
+        st.code(catalyst_prompt, language="text")
+        escaped_prompt_json = json.dumps(catalyst_prompt)
+        
+        components.html(f"""
+            <button id="copyPromptBtn" style="background-color: #00e5ff; color: #000000; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 800; cursor: pointer; width: 100%; font-family: sans-serif;">📋 Copy Full Prompt</button>
+            <script>
+            document.getElementById('copyPromptBtn').addEventListener('click', function() {{
+                navigator.clipboard.writeText({escaped_prompt_json}).then(function() {{
+                    const btn = document.getElementById('copyPromptBtn');
+                    btn.style.backgroundColor = '#10b981'; btn.style.color = 'white';
+                    btn.innerText = '✅ Prompt Copied!';
+                    setTimeout(() => {{
+                        btn.style.backgroundColor = '#00e5ff'; btn.style.color = '#000000';
+                        btn.innerText = '📋 Copy Full Prompt';
+                    }}, 2000);
+                }});
+            }});
+            </script>
+        """, height=50)
+    else:
+        st.info("👆 Please type and select a stock symbol above to generate the prompt.")
 
 elif st.session_state.current_page == "Calculator":
     st.markdown("<div class='page-heading'>🧮 Risk & Position Sizing Calculator</div>", unsafe_allow_html=True)
@@ -486,16 +468,8 @@ elif st.session_state.current_page == "Calculator":
                 risk_per_share = calc_entry - calc_sl
                 total_risk = calc_cap * (calc_risk / 100)
                 qty = int(total_risk / risk_per_share)
-                
-                st.markdown(f"""
-                <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; padding: 20px; border-radius: 10px; margin-top: 20px; text-align: center;">
-                    <h2 style="color: #10b981; margin-top: 0px; font-size: 28px;">🎯 Target Quantity: {qty} Shares</h2>
-                    <p style="color: #e2e8f0; font-size: 16px; margin: 0px;">💸 <b>Maximum Allowed Loss:</b> ₹{int(total_risk)}</p>
-                    <p style="color: #94a3b8; font-size: 14px; margin-top: 5px; margin-bottom: 0px;"><i>Total Position Size Required: ₹{int(qty * calc_entry):,}</i></p>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.error("⚠️ Stoploss must be strictly lower than Entry Price for a Swing Trade!")
+                st.markdown(f"""<div style='background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; padding: 20px; border-radius: 10px; margin-top: 20px; text-align: center;'><h2 style='color: #10b981; margin-top: 0px; font-size: 28px;'>🎯 Target Quantity: {qty} Shares</h2><p style='color: #e2e8f0; font-size: 16px; margin: 0px;'>💸 <b>Maximum Allowed Loss:</b> ₹{int(total_risk)}</p><p style='color: #94a3b8; font-size: 14px; margin-top: 5px; margin-bottom: 0px;'><i>Total Position Size Required: ₹{int(qty * calc_entry):,}</i></p></div>""", unsafe_allow_html=True)
+            else: st.error("⚠️ Stoploss must be strictly lower than Entry Price for a Swing Trade!")
         st.markdown("</div>", unsafe_allow_html=True)
 
 elif st.session_state.current_page == "IPOs":
@@ -527,19 +501,13 @@ elif st.session_state.current_page == "IPOs":
         display_ipo = fil[['stock_symbol', 'company_name', 'listing_date']].sort_values(by='listing_date', ascending=False)
         display_ipo.columns = ['Symbol', 'Company Name', 'Listing Date']
         display_ipo['TV Chart'] = "https://in.tradingview.com/chart/?symbol=NSE:" + display_ipo['Symbol']
-        
         st.markdown(render_html_table(display_ipo, max_height="500px"), unsafe_allow_html=True)
 
 elif st.session_state.current_page == "Journal":
     st.markdown("<div class='page-heading'>📓 Trading Journal</div>", unsafe_allow_html=True)
-    
-    try:
-        all_trades = supabase.table('trading_journal').select("*").order('buying_date', desc=True).execute().data
-    except Exception:
-        all_trades = []
-        
-    if all_trades is None:
-        all_trades = []
+    try: all_trades = supabase.table('trading_journal').select("*").order('buying_date', desc=True).execute().data
+    except Exception: all_trades = []
+    if all_trades is None: all_trades = []
         
     m1, m2, m3 = st.columns(3)
     with m1: st.metric("🎯 Total Trades Logged", len(all_trades))
@@ -575,10 +543,8 @@ elif st.session_state.current_page == "Journal":
                     if st.form_submit_button("🔄 Update Exits", type="primary"):
                         supabase.table('trading_journal').update({"sold_20_price": s20_price if s20_price>0 else None, "sl_after_20": sl_20}).eq('id', t['id']).execute()
                         st.success("Updated!"); time.sleep(1); st.rerun()
-            else:
-                st.info("No active trades found.")
-    else:
-        j_tabs = st.tabs(["📚 Journal Gallery"])
+            else: st.info("No active trades found.")
+    else: j_tabs = st.tabs(["📚 Journal Gallery"])
 
     with j_tabs[-1]: 
         if all_trades:
@@ -593,8 +559,7 @@ elif st.session_state.current_page == "Journal":
                     st.write(f"**Logic:** {tr['trade_logic']}")
                     if tr.get('sold_20_price'): st.success(f"**20% Booked @ ₹{tr['sold_20_price']}**")
                 st.markdown("</div>", unsafe_allow_html=True)
-        else:
-            st.info("Journal is empty.")
+        else: st.info("Journal is empty.")
 
 # Sticky Notes
 if st.session_state.current_page != "Home":
