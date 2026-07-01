@@ -38,7 +38,7 @@ if 'logged_in' not in st.session_state:
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "Home"
 
-# 🟢 UPDATE: 'Indices' Hata Kar 'Results' Add Kiya Gaya
+# 🟢 'Results' Tab
 pages = ['Home', 'Scanner', 'Results', 'Catalyst', 'IPOs', 'Journal', 'Calculator']
 active_index = pages.index(st.session_state.current_page) + 2 
 
@@ -245,7 +245,6 @@ if st.session_state.current_page == "Home":
         height=300,
     )
 
-# 🟢 NAYA 'RESULTS' TAB 
 elif st.session_state.current_page == "Results":
     st.markdown("<div class='page-heading'>📅 Upcoming Earnings (Next 30 Days)</div>", unsafe_allow_html=True)
     st.markdown("<p style='color: #94a3b8;'>In stocks ke results aane wale hain, inpar khaas nazar rakhein momentum ke liye!</p>", unsafe_allow_html=True)
@@ -262,7 +261,6 @@ elif st.session_state.current_page == "Results":
             today = pd.to_datetime('today').date()
             next_30 = today + datetime.timedelta(days=30)
             
-            # Filter only next 30 days
             df_res = df_res[(df_res['calc_date'] >= today) & (df_res['calc_date'] <= next_30)]
             df_res = df_res.sort_values(by='calc_date', ascending=True)
             
@@ -329,7 +327,6 @@ elif st.session_state.current_page == "Scanner":
             display_df['TV Chart'] = "https://in.tradingview.com/chart/?symbol=NSE:" + display_df['Stock Symbol']
             st.markdown(render_html_table(display_df, max_height="350px"), unsafe_allow_html=True)
 
-        # 🔥 PURE TEXT LEGENDS (No Links) to avoid TV overlap bugs
         def create_custom_legend(counts_df, is_sector=True):
             colors = px.colors.qualitative.Pastel if is_sector else px.colors.qualitative.Set3
             html = "<div style='display: flex; flex-wrap: wrap; gap: 15px; margin-top: 15px; justify-content: center;'>"
@@ -405,7 +402,7 @@ elif st.session_state.current_page == "Scanner":
                 display_proxy_df['TV Chart'] = "https://in.tradingview.com/chart/?symbol=NSE:" + display_proxy_df['Stock Name']
                 st.markdown(render_html_table(display_proxy_df, max_height="350px"), unsafe_allow_html=True)
 
-# 🟢 UPDATE: CATALYST PAGE WITH GOOGLE GEMINI AI
+# 🟢 FIX: STABLE GEMINI-PRO MODEL APPLIED
 elif st.session_state.current_page == "Catalyst":
     st.markdown("<div class='page-heading'>🤖 AI Catalyst Research</div>", unsafe_allow_html=True)
     st.markdown("<p style='color: #94a3b8; margin-bottom: 20px;'>Gemini AI ka use karke kisi bhi stock ka instant news aur sentiment analysis karein.</p>", unsafe_allow_html=True)
@@ -429,7 +426,8 @@ elif st.session_state.current_page == "Catalyst":
                         st.error("⚠️ GEMINI_API_KEY nahi mili! Kripya Streamlit ke Secrets mein apni free API key daalein.")
                     else:
                         genai.configure(api_key=api_key)
-                        model = genai.GenerativeModel('gemini-1.5-flash')
+                        # Changed from gemini-1.5-flash to gemini-pro which is 100% stable globally
+                        model = genai.GenerativeModel('gemini-pro')
                         
                         prompt = f"""
                         You are a professional swing trading research analyst. Analyze the Indian stock '{user_ticker}' (NSE/BSE).
