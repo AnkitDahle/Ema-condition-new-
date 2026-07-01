@@ -55,16 +55,16 @@ def render_html_table(df, max_height="350px"):
         for col in df.columns:
             val = row[col]
             if str(val).startswith("http"):
-                html += f"<td style='padding: 10px;'><a href='{val}' target='_blank' style='background: #10b981; color: white; padding: 6px 12px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 12px; display: inline-block; white-space: nowrap;'>📈 Chart</a></td>"
+                html += f"<td style='padding: 10px;'><a href='{val}' target='_blank' style='background: #10b981; color: white; padding: 6px 12px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 12px; display: inline-block; white-space: nowrap;'>📈 Open Chart</a></td>"
             else:
                 html += f"<td style='padding: 10px; color: #e2e8f0; white-space: nowrap;'>{val}</td>"
         html += "</tr>"
     html += "</tbody></table></div>"
     return html
 
-# 🟢 CNX FORMAT MAPPING (Aapke logic ke hisaab se)
+# 🟢 FIXED: EXACT VERIFIED NSE SYMBOLS 
 SECTOR_INDEX_MAP = {
-    "Financial Services": "NSE:CNXFIN",
+    "Financial Services": "NSE:FINNIFTY",
     "Technology": "NSE:CNXIT",
     "Healthcare": "NSE:CNXPHARMA",
     "Consumer Defensive": "NSE:CNXFMCG",
@@ -197,7 +197,7 @@ with col_login:
 
 st.markdown("<hr style='margin-top: 5px; margin-bottom: 0px; border-color: rgba(255,255,255,0.05);'>", unsafe_allow_html=True)
 
-# 📈 6. LIVE MARKET TICKER (CNX LOGIC)
+# 📈 6. LIVE MARKET TICKER 
 if st.session_state.current_page in ["Home", "Scanner", "Indices"]:
     ticker_html = """
     <div class="tradingview-widget-container">
@@ -262,14 +262,14 @@ elif st.session_state.current_page == "Indices":
     st.markdown("<div class='page-heading'>📊 Sectoral Indices</div>", unsafe_allow_html=True)
     st.markdown("<p style='color: #94a3b8; font-size: 14px;'>Tip: Table ke <b>Chg %</b> column title par click karke aap Top Gainers/Losers sort kar sakte hain.</p>", unsafe_allow_html=True)
     
-    # 🔥 CNX LOGIC FOR INDICES TABLE
+    # 🔥 CACHE-BUSTING HEIGHT (605px) AND VERIFIED SYMBOLS
     indices_html = """
     <div class="tradingview-widget-container">
       <div class="tradingview-widget-container__widget"></div>
       <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-market-quotes.js" async>
       {
       "width": "100%",
-      "height": 600,
+      "height": 605,
       "symbolsGroups": [
         {
           "name": "Indian Sector Indices",
@@ -277,7 +277,7 @@ elif st.session_state.current_page == "Indices":
           "symbols": [
             { "name": "NSE:NIFTY", "displayName": "Nifty 50" },
             { "name": "NSE:BANKNIFTY", "displayName": "Nifty Bank" },
-            { "name": "NSE:CNXFIN", "displayName": "Nifty Fin Service" },
+            { "name": "NSE:FINNIFTY", "displayName": "Nifty Fin Service" },
             { "name": "NSE:CNXIT", "displayName": "Nifty IT" },
             { "name": "NSE:CNXPHARMA", "displayName": "Nifty Pharma" },
             { "name": "NSE:CNXFMCG", "displayName": "Nifty FMCG" },
@@ -298,7 +298,7 @@ elif st.session_state.current_page == "Indices":
       </script>
     </div>
     """
-    components.html(indices_html, height=600)
+    components.html(indices_html, height=605)
 
 elif st.session_state.current_page == "Scanner":
     role_badge = "👑 Admin" if is_admin else "👁️ Viewer"
