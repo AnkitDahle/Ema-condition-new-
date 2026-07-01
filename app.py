@@ -38,7 +38,8 @@ if 'logged_in' not in st.session_state:
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "Home"
 
-pages = ['Home', 'Scanner', 'Indices', 'Catalyst', 'IPOs', 'Journal', 'Calculator']
+# 🟢 UPDATE: 'Indices' Hata Kar 'Results' Add Kiya Gaya
+pages = ['Home', 'Scanner', 'Results', 'Catalyst', 'IPOs', 'Journal', 'Calculator']
 active_index = pages.index(st.session_state.current_page) + 2 
 
 # 🔥 SCROLLABLE HTML TABLE ENGINE
@@ -61,20 +62,6 @@ def render_html_table(df, max_height="350px"):
         html += "</tr>"
     html += "</tbody></table></div>"
     return html
-
-# 🟢 FIXED: EXACT VERIFIED NSE SYMBOLS 
-SECTOR_INDEX_MAP = {
-    "Financial Services": "NSE:FINNIFTY",
-    "Technology": "NSE:CNXIT",
-    "Healthcare": "NSE:CNXPHARMA",
-    "Consumer Defensive": "NSE:CNXFMCG",
-    "Consumer Cyclical": "NSE:CNXAUTO",
-    "Basic Materials": "NSE:CNXMETAL",
-    "Energy": "NSE:CNXENERGY",
-    "Real Estate": "NSE:CNXREALTY",
-    "Industrials": "NSE:CNXINFRA",
-    "Utilities": "NSE:CNXPSE"
-}
 
 # ==========================================
 # 3. 🎨 UI ENGINE & CUSTOM CSS
@@ -177,7 +164,7 @@ with nav1:
 with nav2:
     if st.button("Scanner", use_container_width=True): st.session_state.current_page = "Scanner"; st.rerun()
 with nav3:
-    if st.button("Indices", use_container_width=True): st.session_state.current_page = "Indices"; st.rerun()
+    if st.button("Results", use_container_width=True): st.session_state.current_page = "Results"; st.rerun()
 with nav4:
     if st.button("Catalyst", use_container_width=True): st.session_state.current_page = "Catalyst"; st.rerun()
 with nav5:
@@ -197,8 +184,8 @@ with col_login:
 
 st.markdown("<hr style='margin-top: 5px; margin-bottom: 0px; border-color: rgba(255,255,255,0.05);'>", unsafe_allow_html=True)
 
-# 📈 6. LIVE MARKET TICKER 
-if st.session_state.current_page in ["Home", "Scanner", "Indices"]:
+# 📈 6. LIVE MARKET TICKER
+if st.session_state.current_page in ["Home", "Scanner", "Results"]:
     ticker_html = """
     <div class="tradingview-widget-container">
       <div class="tradingview-widget-container__widget"></div>
@@ -250,7 +237,7 @@ if st.session_state.current_page == "Home":
         <div class="main-text">AlphaSwing Pro: Best tool for <br><span id="typed" class="highlight"></span></div>
         <script>
             var typed = new Typed('#typed', {
-                strings: ['Swing Trading.', 'Live Market Scans.', 'Technical Analysis.', 'Pro Trading Journal.'],
+                strings: ['Swing Trading.', 'Live Market Scans.', 'AI Catalyst Research.', 'Pro Trading Journal.'],
                 typeSpeed: 60, backSpeed: 40, backDelay: 1500, loop: true, showCursor: true, cursorChar: '|'
             });
         </script>
@@ -258,47 +245,41 @@ if st.session_state.current_page == "Home":
         height=300,
     )
 
-elif st.session_state.current_page == "Indices":
-    st.markdown("<div class='page-heading'>📊 Sectoral Indices</div>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #94a3b8; font-size: 14px;'>Tip: Table ke <b>Chg %</b> column title par click karke aap Top Gainers/Losers sort kar sakte hain.</p>", unsafe_allow_html=True)
+# 🟢 NAYA 'RESULTS' TAB 
+elif st.session_state.current_page == "Results":
+    st.markdown("<div class='page-heading'>📅 Upcoming Earnings (Next 30 Days)</div>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #94a3b8;'>In stocks ke results aane wale hain, inpar khaas nazar rakhein momentum ke liye!</p>", unsafe_allow_html=True)
     
-    # 🔥 CACHE-BUSTING HEIGHT (605px) AND VERIFIED SYMBOLS
-    indices_html = """
-    <div class="tradingview-widget-container">
-      <div class="tradingview-widget-container__widget"></div>
-      <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-market-quotes.js" async>
-      {
-      "width": "100%",
-      "height": 605,
-      "symbolsGroups": [
-        {
-          "name": "Indian Sector Indices",
-          "originalName": "Indices",
-          "symbols": [
-            { "name": "NSE:NIFTY", "displayName": "Nifty 50" },
-            { "name": "NSE:BANKNIFTY", "displayName": "Nifty Bank" },
-            { "name": "NSE:FINNIFTY", "displayName": "Nifty Fin Service" },
-            { "name": "NSE:CNXIT", "displayName": "Nifty IT" },
-            { "name": "NSE:CNXPHARMA", "displayName": "Nifty Pharma" },
-            { "name": "NSE:CNXFMCG", "displayName": "Nifty FMCG" },
-            { "name": "NSE:CNXAUTO", "displayName": "Nifty Auto" },
-            { "name": "NSE:CNXMETAL", "displayName": "Nifty Metal" },
-            { "name": "NSE:CNXENERGY", "displayName": "Nifty Energy" },
-            { "name": "NSE:CNXREALTY", "displayName": "Nifty Realty" },
-            { "name": "NSE:CNXINFRA", "displayName": "Nifty Infra" },
-            { "name": "NSE:CNXPSE", "displayName": "Nifty PSE" }
-          ]
-        }
-      ],
-      "showSymbolLogo": true,
-      "isTransparent": true,
-      "colorTheme": "dark",
-      "locale": "in"
-    }
-      </script>
-    </div>
-    """
-    components.html(indices_html, height=605)
+    try:
+        raw_res_data = supabase.table('earnings_calendar').select("*").execute().data
+    except:
+        raw_res_data = None
+        
+    if raw_res_data:
+        df_res = pd.DataFrame(raw_res_data)
+        if 'result_date' in df_res.columns:
+            df_res['calc_date'] = pd.to_datetime(df_res['result_date'], errors='coerce').dt.date
+            today = pd.to_datetime('today').date()
+            next_30 = today + datetime.timedelta(days=30)
+            
+            # Filter only next 30 days
+            df_res = df_res[(df_res['calc_date'] >= today) & (df_res['calc_date'] <= next_30)]
+            df_res = df_res.sort_values(by='calc_date', ascending=True)
+            
+            display_res = df_res[['stock_symbol', 'result_date']].copy()
+            display_res.columns = ['Stock Symbol', 'Result Date']
+            display_res['TV Chart'] = "https://in.tradingview.com/chart/?symbol=NSE:" + display_res['Stock Symbol']
+            
+            st.markdown(render_html_table(display_res, max_height="500px"), unsafe_allow_html=True)
+    else:
+        st.info("💡 **Database Alert:** Supabase mein `earnings_calendar` (columns: `stock_symbol`, `result_date`) table nahi mili. Jab aap table banayenge toh data yahan live dikhega.")
+        st.write("👀 **Preview Simulation View:**")
+        dummy_data = pd.DataFrame({
+            "Stock Symbol": ["ZOMATO", "TATASTEEL", "HAL", "RAILTEL", "BHEL"],
+            "Result Date": ["15-Jul-2026", "18-Jul-2026", "22-Jul-2026", "25-Jul-2026", "28-Jul-2026"]
+        })
+        dummy_data['TV Chart'] = "https://in.tradingview.com/chart/?symbol=NSE:" + dummy_data['Stock Symbol']
+        st.markdown(render_html_table(dummy_data, max_height="350px"), unsafe_allow_html=True)
 
 elif st.session_state.current_page == "Scanner":
     role_badge = "👑 Admin" if is_admin else "👁️ Viewer"
@@ -348,23 +329,14 @@ elif st.session_state.current_page == "Scanner":
             display_df['TV Chart'] = "https://in.tradingview.com/chart/?symbol=NSE:" + display_df['Stock Symbol']
             st.markdown(render_html_table(display_df, max_height="350px"), unsafe_allow_html=True)
 
-        # ==========================================
-        # 🔥 CUSTOM HTML LEGENDS ENGINE
-        # ==========================================
+        # 🔥 PURE TEXT LEGENDS (No Links) to avoid TV overlap bugs
         def create_custom_legend(counts_df, is_sector=True):
             colors = px.colors.qualitative.Pastel if is_sector else px.colors.qualitative.Set3
             html = "<div style='display: flex; flex-wrap: wrap; gap: 15px; margin-top: 15px; justify-content: center;'>"
             for i, row in counts_df.iterrows():
                 color = colors[i % len(colors)]
-                name = row['Sector'] if is_sector else row['Proxy']
                 label = row['Legend_Label']
-                
-                link_html = ""
-                if is_sector and name in SECTOR_INDEX_MAP:
-                    idx_sym = SECTOR_INDEX_MAP[name]
-                    link_html = f" <a href='https://in.tradingview.com/chart/?symbol={idx_sym}' target='_blank' style='text-decoration:none; margin-left: 5px;' title='Open Index Chart'>↗️</a>"
-                
-                html += f"<div style='display: flex; align-items: center; font-size: 13px; color: #e2e8f0;'><div style='width: 14px; height: 14px; background-color: {color}; border-radius: 3px; margin-right: 8px;'></div>{label}{link_html}</div>"
+                html += f"<div style='display: flex; align-items: center; font-size: 13px; color: #e2e8f0;'><div style='width: 14px; height: 14px; background-color: {color}; border-radius: 3px; margin-right: 8px;'></div>{label}</div>"
             html += "</div>"
             return html
 
@@ -433,6 +405,48 @@ elif st.session_state.current_page == "Scanner":
                 display_proxy_df['TV Chart'] = "https://in.tradingview.com/chart/?symbol=NSE:" + display_proxy_df['Stock Name']
                 st.markdown(render_html_table(display_proxy_df, max_height="350px"), unsafe_allow_html=True)
 
+# 🟢 UPDATE: CATALYST PAGE WITH GOOGLE GEMINI AI
+elif st.session_state.current_page == "Catalyst":
+    st.markdown("<div class='page-heading'>🤖 AI Catalyst Research</div>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #94a3b8; margin-bottom: 20px;'>Gemini AI ka use karke kisi bhi stock ka instant news aur sentiment analysis karein.</p>", unsafe_allow_html=True)
+    
+    cat_col1, cat_col2 = st.columns([1.5, 4])
+    with cat_col1: 
+        user_ticker = st.selectbox("🔤 Search Stock:", master_symbol_list, index=None, placeholder="Type symbol...")
+        if user_ticker:
+            analyze_btn = st.button("⚡ Analyze with AI", type="primary", use_container_width=True)
+        else:
+            analyze_btn = False
+
+    with cat_col2:
+        if analyze_btn and user_ticker:
+            with st.spinner(f"AI is researching latest data for {user_ticker}..."):
+                try:
+                    import google.generativeai as genai
+                    api_key = st.secrets.get("GEMINI_API_KEY", None)
+                    
+                    if not api_key:
+                        st.error("⚠️ GEMINI_API_KEY nahi mili! Kripya Streamlit ke Secrets mein apni free API key daalein.")
+                    else:
+                        genai.configure(api_key=api_key)
+                        model = genai.GenerativeModel('gemini-1.5-flash')
+                        
+                        prompt = f"""
+                        You are a professional swing trading research analyst. Analyze the Indian stock '{user_ticker}' (NSE/BSE).
+                        Provide a highly concise, structured report suitable for quick reading. 
+                        Do not use generic disclaimers. Focus on facts. Include:
+                        1. **🔥 Recent Key News/Developments:** (Bullet points of major news in the last 2-4 weeks).
+                        2. **🎯 Potential Catalysts:** (Any upcoming earnings, order wins, fundamental shifts).
+                        3. **🧭 Overall Sentiment Meter:** (State clearly if current sentiment is Bullish, Bearish, or Neutral based on news).
+                        """
+                        
+                        response = model.generate_content(prompt)
+                        st.markdown("<div style='background: rgba(0,0,0,0.3); padding: 25px; border-radius: 12px; border: 1px solid rgba(0, 229, 255, 0.3); box-shadow: 0 4px 15px rgba(0,229,255,0.05);'>", unsafe_allow_html=True)
+                        st.markdown(response.text)
+                        st.markdown("</div>", unsafe_allow_html=True)
+                except Exception as e:
+                    st.error(f"⚠️ Error in AI Generation: Make sure 'google-generativeai' is in requirements.txt. Details: {e}")
+
 elif st.session_state.current_page == "Calculator":
     st.markdown("<div class='page-heading'>🧮 Risk & Position Sizing Calculator</div>", unsafe_allow_html=True)
     st.markdown("<p style='color: #94a3b8; margin-bottom: 30px;'>Apne capital aur risk ke hisab se exact quantity calculate karein.</p>", unsafe_allow_html=True)
@@ -464,14 +478,6 @@ elif st.session_state.current_page == "Calculator":
             else:
                 st.error("⚠️ Stoploss must be strictly lower than Entry Price for a Swing Trade!")
         st.markdown("</div>", unsafe_allow_html=True)
-
-elif st.session_state.current_page == "Catalyst":
-    st.markdown("<div class='page-heading'>🔥 Catalyst</div>", unsafe_allow_html=True)
-    cat_col1, cat_col2 = st.columns([2, 5])
-    with cat_col1: user_ticker = st.selectbox("🔤 Search Symbol:", master_symbol_list, index=None, placeholder="Type symbol...")
-    if user_ticker:
-        catalyst_prompt = f"Please analyze {user_ticker} for me and provide the following, concise and clearly organized... [PROMPT]"
-        st.code(catalyst_prompt, language="text")
 
 elif st.session_state.current_page == "IPOs":
     st.markdown("<div class='page-heading'>🏢 IPOs</div>", unsafe_allow_html=True)
