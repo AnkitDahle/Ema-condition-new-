@@ -62,9 +62,9 @@ def render_html_table(df, max_height="350px"):
     html += "</tbody></table></div>"
     return html
 
-# 🟢 100% VERIFIED NSE SYMBOLS FOR TRADINGVIEW
+# 🟢 UPDATE: EXACT CNX PATTERN MAPPING (AS PER YOUR FINDING)
 SECTOR_INDEX_MAP = {
-    "Financial Services": "NSE:FINNIFTY",
+    "Financial Services": "NSE:CNXFIN",
     "Technology": "NSE:CNXIT",
     "Healthcare": "NSE:CNXPHARMA",
     "Consumer Defensive": "NSE:CNXFMCG",
@@ -197,7 +197,7 @@ with col_login:
 
 st.markdown("<hr style='margin-top: 5px; margin-bottom: 0px; border-color: rgba(255,255,255,0.05);'>", unsafe_allow_html=True)
 
-# 📈 6. LIVE MARKET TICKER (VERIFIED NSE SYMBOLS)
+# 📈 6. LIVE MARKET TICKER
 if st.session_state.current_page in ["Home", "Scanner", "Indices"]:
     ticker_html = """
     <div class="tradingview-widget-container">
@@ -262,7 +262,7 @@ elif st.session_state.current_page == "Indices":
     st.markdown("<div class='page-heading'>📊 Sectoral Indices</div>", unsafe_allow_html=True)
     st.markdown("<p style='color: #94a3b8; font-size: 14px;'>Tip: Table ke <b>Chg %</b> column title par click karke aap Top Gainers/Losers sort kar sakte hain.</p>", unsafe_allow_html=True)
     
-    # 🔥 100% WORKING NSE SECTORAL INDICES
+    # 🔥 CNX FORMAT INDICES
     indices_html = """
     <div class="tradingview-widget-container">
       <div class="tradingview-widget-container__widget"></div>
@@ -277,7 +277,7 @@ elif st.session_state.current_page == "Indices":
           "symbols": [
             { "name": "NSE:NIFTY", "displayName": "Nifty 50" },
             { "name": "NSE:BANKNIFTY", "displayName": "Nifty Bank" },
-            { "name": "NSE:FINNIFTY", "displayName": "Nifty Fin Service" },
+            { "name": "NSE:CNXFIN", "displayName": "Nifty Fin Service" },
             { "name": "NSE:CNXIT", "displayName": "Nifty IT" },
             { "name": "NSE:CNXPHARMA", "displayName": "Nifty Pharma" },
             { "name": "NSE:CNXFMCG", "displayName": "Nifty FMCG" },
@@ -349,7 +349,7 @@ elif st.session_state.current_page == "Scanner":
             st.markdown(render_html_table(display_df, max_height="350px"), unsafe_allow_html=True)
 
         # ==========================================
-        # 🔥 CUSTOM HTML LEGENDS ENGINE
+        # 🔥 CUSTOM HTML LEGENDS ENGINE (DONUTS)
         # ==========================================
         def create_custom_legend(counts_df, is_sector=True):
             colors = px.colors.qualitative.Pastel if is_sector else px.colors.qualitative.Set3
