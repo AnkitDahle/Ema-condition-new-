@@ -558,4 +558,5 @@ elif st.session_state.current_page == "IPOs":
             today = pd.to_datetime('today').date()
             
             this_year_count = len(df_ipo[df_ipo['calc_date'].dt.year == today.year])
-            m1, m2, m3, m4 = st.columns([1, 1,
+            m1, m2, m3, m4 = st.columns([1, 1, 1, 3])
+
