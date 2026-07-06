@@ -3,7 +3,7 @@ name: Weekly Earnings Updater
 on:
   schedule:
     - cron: '0 2 * * 0' # Har Sunday subah 7:30 AM (IST) automatically run hoga
-  workflow_dispatch: # Aap chahein toh button dabakar manual bhi run kar sakte hain
+  workflow_dispatch: # Manual run button aapke liye
 
 jobs:
   update-earnings:
