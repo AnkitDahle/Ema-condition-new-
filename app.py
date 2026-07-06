@@ -38,10 +38,10 @@ if 'logged_in' not in st.session_state:
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "Home"
 
-pages = ['Home', 'Scanner', 'Results', 'Catalyst', 'IPOs', 'Journal', 'Calculator']
+# 🟢 'Fresh' page added to navigation
+pages = ['Home', 'Scanner', 'Fresh', 'Results', 'Catalyst', 'IPOs', 'Journal', 'Calculator']
 active_index = pages.index(st.session_state.current_page) + 2 
 
-# 🔥 SCROLLABLE HTML TABLE ENGINE
 def render_html_table(df, max_height="350px"):
     html = f"<div style='overflow-x:auto; overflow-y:auto; max-height: {max_height}; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px;'>"
     html += "<table style='width:100%; text-align:left; border-collapse: collapse; font-size: 14px;'>"
@@ -91,7 +91,7 @@ custom_css = f"""
         background: transparent !important; border: none !important; box-shadow: none !important;
     }}
     div[data-testid="stHorizontalBlock"]:first-of-type .stButton > button p {{
-        color: #7b8fa3 !important; font-weight: 500 !important; font-size: 17px !important; letter-spacing: 0.5px;
+        color: #7b8fa3 !important; font-weight: 500 !important; font-size: 16px !important; letter-spacing: 0.5px;
         white-space: nowrap !important;
     }}
     div[data-testid="stHorizontalBlock"]:first-of-type .stButton > button:hover p {{ color: #cdd6e0 !important; }}
@@ -155,7 +155,7 @@ is_admin = (st.session_state.role == 'admin')
 # ==========================================
 # 5. TOP NAVIGATION BAR RENDERING 
 # ==========================================
-col_logo, nav1, nav2, nav3, nav4, nav5, nav6, nav7, space, col_login = st.columns([2.5, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 1.0, 0.2, 1.2])
+col_logo, nav1, nav2, nav3, nav4, nav5, nav6, nav7, nav8, space, col_login = st.columns([2.5, 0.8, 0.9, 0.8, 0.9, 0.9, 0.8, 0.9, 1.0, 0.2, 1.2])
 with col_logo:
     st.markdown("""<div style="display: flex; align-items: center; gap: 10px; margin-top: 2px;"><div style="background-color: #00bfff; width: 30px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L22 20H2L12 2Z" fill="white"/></svg></div><a href="/" target="_self" style="font-size: 22px; font-weight: 800; color: white; text-decoration: none;">AlphaSwing</a></div>""", unsafe_allow_html=True)
 with nav1:
@@ -163,14 +163,16 @@ with nav1:
 with nav2:
     if st.button("Scanner", use_container_width=True): st.session_state.current_page = "Scanner"; st.rerun()
 with nav3:
-    if st.button("Results", use_container_width=True): st.session_state.current_page = "Results"; st.rerun()
+    if st.button("Fresh", use_container_width=True): st.session_state.current_page = "Fresh"; st.rerun()
 with nav4:
-    if st.button("Catalyst", use_container_width=True): st.session_state.current_page = "Catalyst"; st.rerun()
+    if st.button("Results", use_container_width=True): st.session_state.current_page = "Results"; st.rerun()
 with nav5:
-    if st.button("IPOs", use_container_width=True): st.session_state.current_page = "IPOs"; st.rerun()
+    if st.button("Catalyst", use_container_width=True): st.session_state.current_page = "Catalyst"; st.rerun()
 with nav6:
-    if st.button("Journal", use_container_width=True): st.session_state.current_page = "Journal"; st.rerun()
+    if st.button("IPOs", use_container_width=True): st.session_state.current_page = "IPOs"; st.rerun()
 with nav7:
+    if st.button("Journal", use_container_width=True): st.session_state.current_page = "Journal"; st.rerun()
+with nav8:
     if st.button("Calculator", use_container_width=True): st.session_state.current_page = "Calculator"; st.rerun()
 with col_login:
     if st.session_state.logged_in:
@@ -184,7 +186,7 @@ with col_login:
 st.markdown("<hr style='margin-top: 5px; margin-bottom: 0px; border-color: rgba(255,255,255,0.05);'>", unsafe_allow_html=True)
 
 # 📈 6. LIVE MARKET TICKER
-if st.session_state.current_page in ["Home", "Scanner", "Results"]:
+if st.session_state.current_page in ["Home", "Scanner", "Fresh", "Results"]:
     ticker_html = """
     <div class="tradingview-widget-container">
       <div class="tradingview-widget-container__widget"></div>
@@ -244,9 +246,67 @@ if st.session_state.current_page == "Home":
         height=300,
     )
 
+# 🟢 NEW TAB: FRESH BREAKOUTS (DELTA LOGIC)
+elif st.session_state.current_page == "Fresh":
+    st.markdown("<div class='page-heading'>🆕 Fresh Breakouts</div>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #94a3b8; margin-bottom: 25px;'>Filter and compare dates to find new stock entries that were NOT in the previous list.</p>", unsafe_allow_html=True)
+    
+    if raw_data:
+        df = pd.DataFrame(raw_data)
+        if 'scan_date' in df.columns:
+            all_dates = sorted(df['scan_date'].unique(), reverse=True)
+            
+            if len(all_dates) < 2:
+                st.warning("⚠️ Kam se kam 2 din ka scan data chahiye compare karne ke liye!")
+            else:
+                available_dates = all_dates[:7]
+                
+                col1, col2, col3 = st.columns([1.5, 1.5, 2])
+                with col1:
+                    base_date = st.selectbox("📅 Base Date (Target):", available_dates, index=0)
+                with col2:
+                    default_compare_index = available_dates.index(base_date) + 1 if available_dates.index(base_date) + 1 < len(available_dates) else 0
+                    if default_compare_index == 0 and len(available_dates) > 1:
+                        default_compare_index = 1
+                        
+                    compare_date = st.selectbox("🗓️ Compare Date (Past):", available_dates, index=default_compare_index)
+                
+                if base_date == compare_date:
+                    st.error("⚠️ Dono dates same hain! Kripya alag-alag dates select karein.")
+                else:
+                    base_stocks = set(df[df['scan_date'] == base_date]['stock_symbol'].unique())
+                    compare_stocks = set(df[df['scan_date'] == compare_date]['stock_symbol'].unique())
+                    
+                    new_stocks = base_stocks - compare_stocks
+                    
+                    st.markdown(f"""
+                        <div style="background: rgba(16, 185, 129, 0.1); border-left: 4px solid #10b981; padding: 15px; border-radius: 4px; margin-top: 10px; margin-bottom: 25px;">
+                            <h3 style="color: #10b981; margin: 0px;">🚀 {len(new_stocks)} New Stocks Found!</h3>
+                            <p style="color: #e2e8f0; margin: 5px 0px 0px 0px; font-size: 15px;">
+                                Total <b>{len(base_stocks)}</b> stocks from {base_date} vs <b>{len(compare_stocks)}</b> stocks from {compare_date}.
+                            </p>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    if new_stocks:
+                        new_df = pd.DataFrame({'Stock Symbol': sorted(list(new_stocks))})
+                        new_df['TV Chart'] = "https://in.tradingview.com/chart/?symbol=NSE:" + new_df['Stock Symbol']
+                        
+                        tb_col, dl_col = st.columns([4, 1])
+                        with dl_col:
+                            tv_text = "".join([f"NSE:{sym},\n" for sym in new_df['Stock Symbol']])
+                            st.download_button("📥 Watchlist (.txt)", data=tv_text, file_name=f"Fresh_Breakouts_{base_date}.txt", mime="text/plain", use_container_width=True)
+                        
+                        st.markdown(render_html_table(new_df, max_height="400px"), unsafe_allow_html=True)
+                    else:
+                        st.info("Koyi naya stock nahi aaya. Purani list ke hi stocks continue kar rahe hain.")
+        else:
+            st.info("Invalid scan data format.")
+    else:
+        st.info("No scan data available.")
+
 elif st.session_state.current_page == "Results":
     st.markdown("<div class='page-heading'>📅 Upcoming Earnings (Next 30 Days)</div>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #94a3b8;'>In stocks ke results aane wale hain, inpar khaas nazar rakhein momentum ke liye!</p>", unsafe_allow_html=True)
     
     try: raw_res_data = supabase.table('earnings_calendar').select("*").execute().data
     except: raw_res_data = None
@@ -264,14 +324,31 @@ elif st.session_state.current_page == "Results":
             display_res = df_res[['stock_symbol', 'result_date']].copy()
             display_res.columns = ['Stock Symbol', 'Result Date']
             display_res['TV Chart'] = "https://in.tradingview.com/chart/?symbol=NSE:" + display_res['Stock Symbol']
+            
+            res_col_text, res_col_dl = st.columns([4, 1])
+            with res_col_text:
+                st.markdown("<p style='color: #94a3b8; margin-top:10px;'>In stocks ke results aane wale hain, inpar khaas nazar rakhein momentum ke liye!</p>", unsafe_allow_html=True)
+            with res_col_dl:
+                tv_res_txt = "".join([f"NSE:{sym},\n" for sym in display_res['Stock Symbol']])
+                st.download_button("📥 Watchlist (.txt)", data=tv_res_txt, file_name=f"Earnings_Watchlist.txt", mime="text/plain", use_container_width=True)
+                
             st.markdown(render_html_table(display_res, max_height="500px"), unsafe_allow_html=True)
     else:
         st.info("💡 **Database Alert:** Supabase mein `earnings_calendar` table nahi mili. Niche simulation preview live hai:")
+        
         dummy_data = pd.DataFrame({
             "Stock Symbol": ["ZOMATO", "TATASTEEL", "HAL", "RAILTEL", "BHEL"],
             "Result Date": ["15-Jul-2026", "18-Jul-2026", "22-Jul-2026", "25-Jul-2026", "28-Jul-2026"]
         })
         dummy_data['TV Chart'] = "https://in.tradingview.com/chart/?symbol=NSE:" + dummy_data['Stock Symbol']
+        
+        res_col_text, res_col_dl = st.columns([4, 1])
+        with res_col_text:
+            st.markdown("<p style='color: #94a3b8; margin-top:10px;'>In stocks ke results aane wale hain, inpar khaas nazar rakhein momentum ke liye!</p>", unsafe_allow_html=True)
+        with res_col_dl:
+            tv_dummy_txt = "".join([f"NSE:{sym},\n" for sym in dummy_data['Stock Symbol']])
+            st.download_button("📥 Watchlist (.txt)", data=tv_dummy_txt, file_name=f"Earnings_Watchlist_Demo.txt", mime="text/plain", use_container_width=True)
+            
         st.markdown(render_html_table(dummy_data, max_height="350px"), unsafe_allow_html=True)
 
 elif st.session_state.current_page == "Scanner":
@@ -393,7 +470,6 @@ elif st.session_state.current_page == "Scanner":
                 display_proxy_df['TV Chart'] = "https://in.tradingview.com/chart/?symbol=NSE:" + display_proxy_df['Stock Name']
                 st.markdown(render_html_table(display_proxy_df, max_height="350px"), unsafe_allow_html=True)
 
-# 🟢 REVERTED: 100% INTACT OLD PROMPT GENERATOR FOR CATALYST
 elif st.session_state.current_page == "Catalyst":
     st.markdown("<div class='page-heading'>🔥 Catalyst Master Prompt Generator</div>", unsafe_allow_html=True)
     
@@ -482,91 +558,4 @@ elif st.session_state.current_page == "IPOs":
             today = pd.to_datetime('today').date()
             
             this_year_count = len(df_ipo[df_ipo['calc_date'].dt.year == today.year])
-            m1, m2, m3, m4 = st.columns([1, 1, 1, 3])
-            with m1: st.metric("Today Listed", len(df_ipo[df_ipo['calc_date'].dt.date == today]))
-            with m2: st.metric("This Month", len(df_ipo[(df_ipo['calc_date'].dt.month == today.month) & (df_ipo['calc_date'].dt.year == today.year)]))
-            with m3: st.metric("This Year", this_year_count)
-            st.markdown("<br>", unsafe_allow_html=True)
-
-        col_y1, col_m1, col_search, col_dl = st.columns([1.2, 1.2, 1.5, 1.2])
-        with col_y1: selected_year = st.selectbox("📅 IPO Year:", sorted(df_ipo['listing_year'].dropna().unique(), reverse=True))
-        with col_m1: selected_month = st.selectbox("🗓️ Month:", ["All Months", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"])
-        
-        fil = df_ipo[df_ipo['listing_year'] == selected_year]
-        if selected_month != "All Months": fil = fil[fil['Month'] == selected_month]
-        
-        with col_search: selected_ipo_stock = st.selectbox("🔤 Search IPO:", sorted(list(fil['stock_symbol'].dropna().unique())), index=None, placeholder="Type symbol...")
-        if selected_ipo_stock: fil = fil[fil['stock_symbol'] == selected_ipo_stock]
-        
-        display_ipo = fil[['stock_symbol', 'company_name', 'listing_date']].sort_values(by='listing_date', ascending=False)
-        display_ipo.columns = ['Symbol', 'Company Name', 'Listing Date']
-        display_ipo['TV Chart'] = "https://in.tradingview.com/chart/?symbol=NSE:" + display_ipo['Symbol']
-        st.markdown(render_html_table(display_ipo, max_height="500px"), unsafe_allow_html=True)
-
-elif st.session_state.current_page == "Journal":
-    st.markdown("<div class='page-heading'>📓 Trading Journal</div>", unsafe_allow_html=True)
-    try: all_trades = supabase.table('trading_journal').select("*").order('buying_date', desc=True).execute().data
-    except Exception: all_trades = []
-    if all_trades is None: all_trades = []
-        
-    m1, m2, m3 = st.columns(3)
-    with m1: st.metric("🎯 Total Trades Logged", len(all_trades))
-    with m2: st.metric("⏳ Active Positions", len([t for t in all_trades if not t.get('sold_30_date')]))
-    with m3: st.metric("✅ Closed Positions", len([t for t in all_trades if t.get('sold_30_date')]))
-    st.markdown("<hr style='border-color: rgba(255,255,255,0.05); margin-bottom:20px;'>", unsafe_allow_html=True)
-    
-    if is_admin:
-        j_tabs = st.tabs(["➕ New Trade", "🔄 Update Exits", "📚 Journal Gallery"])
-        with j_tabs[0]:
-            with st.form("new_trade_form", clear_on_submit=True):
-                c1, c2, c3 = st.columns(3)
-                with c1: symbol = st.text_input("Stock Symbol").upper(); quantity = st.number_input("Quantity", min_value=1)
-                with c2: buying_date = st.date_input("Date"); buying_price = st.number_input("Buy Price", min_value=0.0)
-                with c3: initial_sl = st.number_input("Initial SL", min_value=0.0)
-                trade_logic = st.text_area("Trade Logic"); image_file = st.file_uploader("Upload Chart", type=['png', 'jpg', 'jpeg'])
-                if st.form_submit_button("💾 Save Trade") and symbol:
-                    img_url = cloudinary.uploader.upload(image_file, folder="trading_journal").get("secure_url") if image_file else None
-                    supabase.table('trading_journal').insert({"symbol": symbol, "total_quantity": quantity, "buying_date": str(buying_date), "buying_price": float(buying_price), "initial_sl": float(initial_sl), "trade_logic": trade_logic, "image_url": img_url}).execute()
-                    st.success("Saved!"); time.sleep(1); st.rerun()
-        
-        with j_tabs[1]:
-            active_trades_data = [t for t in all_trades if not t.get('sold_30_date')] if all_trades else []
-            if active_trades_data:
-                trade_options = {f"{t['symbol']} (Bought @ ₹{t['buying_price']})": t for t in active_trades_data}
-                t = trade_options[st.selectbox("🎯 Select Active Trade", list(trade_options.keys()))]
-                with st.form("update_trade_form"):
-                    st.markdown("### 1️⃣ 20% Booking")
-                    c1, c2, c3 = st.columns(3)
-                    with c1: s20_date = st.date_input("Date", value=None)
-                    with c2: s20_price = st.number_input("Price", value=float(t['sold_20_price'] or 0.0))
-                    with c3: sl_20 = st.number_input("New SL", value=float(t['sl_after_20'] or 0.0))
-                    if st.form_submit_button("🔄 Update Exits", type="primary"):
-                        supabase.table('trading_journal').update({"sold_20_price": s20_price if s20_price>0 else None, "sl_after_20": sl_20}).eq('id', t['id']).execute()
-                        st.success("Updated!"); time.sleep(1); st.rerun()
-            else: st.info("No active trades found.")
-    else: j_tabs = st.tabs(["📚 Journal Gallery"])
-
-    with j_tabs[-1]: 
-        if all_trades:
-            for tr in all_trades:
-                st.markdown("<div class='journal-card'>", unsafe_allow_html=True)
-                g1, g2 = st.columns([1, 2])
-                with g1:
-                    if tr.get('image_url'): st.image(tr['image_url'], use_container_width=True)
-                with g2:
-                    st.subheader(f"🚀 {tr['symbol']}")
-                    st.write(f"**Date:** {tr['buying_date']} | **Buy Price:** ₹{tr['buying_price']} | **Qty:** {tr['total_quantity']}")
-                    st.write(f"**Logic:** {tr['trade_logic']}")
-                    if tr.get('sold_20_price'): st.success(f"**20% Booked @ ₹{tr['sold_20_price']}**")
-                st.markdown("</div>", unsafe_allow_html=True)
-        else: st.info("Journal is empty.")
-
-# Sticky Notes
-if st.session_state.current_page != "Home":
-    st.markdown("<br><br>### 📝 Sticky Notes", unsafe_allow_html=True)
-    try: saved_text = supabase.table('global_notes').select('note_text').eq('id', 1).execute().data[0]['note_text']
-    except: saved_text = ""
-    with st.form("global_scratchpad_form"):
-        user_notes = st.text_area(" ", value=saved_text, height=150, label_visibility="collapsed", disabled=not is_admin)
-        if is_admin and st.form_submit_button("💾 Save Notes"):
-            supabase.table('global_notes').upsert({"id": 1, "note_text": user_notes}).execute(); st.rerun()
+            m1, m2, m3, m4 = st.columns([1, 1,
