@@ -62,22 +62,64 @@ def render_html_table(df, max_height="350px"):
     return html
 
 # ==========================================
-# 3. 🎨 UI ENGINE & CUSTOM CSS
+# 3. 🎨 UI ENGINE & CUSTOM CSS (Original Classic Design)
 # ==========================================
-# ---------- LOAD CSS FROM FILE ----------
-with open("style.css") as f:
-    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
-
-# active nav highlight (alag se, taaki CSS file me variable ki zaroorat na pade)
-st.markdown(
-    f"""<style>
-    div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stColumn"]:nth-child({active_index}) .stButton > button p {{
-        color:#00e5ff !important; font-weight:900 !important; text-shadow:0 0 14px rgba(0,229,255,0.5);
+custom_css = f"""
+<style>
+    html, body, [class*="css"] {{ font-size: 1.05rem !important; }}
+    .stApp {{
+        background: linear-gradient(-45deg, #09090b, #18181b, #0f172a, #171717);
+        background-size: 400% 400%;
+        animation: gradientBG 15s ease infinite;
+        color: #f8fafc;
     }}
-    </style>""",
-    unsafe_allow_html=True,
-)
+    @keyframes gradientBG {{ 0% {{ background-position: 0% 50%; }} 50% {{ background-position: 100% 50%; }} 100% {{ background-position: 0% 50%; }} }}
+    .block-container {{ padding-top: 1rem !important; }}
+    header {{ visibility: hidden; }}
 
+    .stButton > button[kind="secondary"], .stDownloadButton > button {{
+        background: rgba(255, 255, 255, 0.05) !important; border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        border-radius: 8px !important; padding: 6px 12px !important; transition: all 0.2s ease !important;
+        color: #e2e8f0 !important; font-weight: 500 !important; 
+    }}
+    .stButton > button[kind="secondary"]:hover, .stDownloadButton > button:hover {{
+        border-color: #00e5ff !important; background: rgba(255, 255, 255, 0.1) !important; color: #ffffff !important;
+    }}
+    
+    div[data-testid="stHorizontalBlock"]:first-of-type .stButton > button {{
+        background: transparent !important; border: none !important; box-shadow: none !important;
+    }}
+    div[data-testid="stHorizontalBlock"]:first-of-type .stButton > button p {{
+        color: #7b8fa3 !important; font-weight: 500 !important; font-size: 16px !important; letter-spacing: 0.5px;
+        white-space: nowrap !important;
+    }}
+    div[data-testid="stHorizontalBlock"]:first-of-type .stButton > button:hover p {{ color: #cdd6e0 !important; }}
+    div[data-testid="stHorizontalBlock"]:first-of-type div[data-testid="stColumn"]:nth-child({active_index}) .stButton > button p {{
+        color: #ffffff !important; font-weight: 900 !important;    
+    }}
+    div[data-testid="stHorizontalBlock"]:first-of-type button[kind="primary"] {{
+        background-color: #00e5ff !important; border-radius: 6px !important; border: none !important; white-space: nowrap !important;
+    }}
+    div[data-testid="stHorizontalBlock"]:first-of-type button[kind="primary"] p {{ color: #000000 !important; font-weight: 900 !important;}}
+
+    @media (max-width: 768px) {{
+        div[data-testid="stHorizontalBlock"]:first-of-type {{
+            display: flex !important; flex-wrap: nowrap !important; overflow-x: auto !important; padding-bottom: 5px !important; 
+        }}
+        div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="stColumn"] {{
+            min-width: max-content !important; flex: 0 0 auto !important; width: auto !important;
+        }}
+        div[data-testid="stHorizontalBlock"]:first-of-type::-webkit-scrollbar {{ display: none; }}
+    }}
+
+    div.stForm button[kind="primaryFormSubmit"] {{ background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%) !important; border: none !important; border-radius: 8px !important; }}
+    div.stForm button[kind="primaryFormSubmit"] p {{ font-weight: 700 !important; color: white !important; }}
+
+    .page-heading {{ font-size: 28px; font-weight: 600; color: #ffffff; margin-top: -10px; margin-bottom: 20px; border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 10px; }}
+    .journal-card {{ background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; margin-bottom: 20px; backdrop-filter: blur(5px); }}
+    .login-container {{ background: rgba(0,0,0,0.4); padding: 40px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); max-width: 400px; margin: auto; margin-top: 5vh; text-align: center; }}
+</style>
+"""
 st.markdown(custom_css, unsafe_allow_html=True)
 
 # ==========================================
