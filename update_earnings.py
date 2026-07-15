@@ -10,67 +10,75 @@ url = os.environ.get("SUPABASE_URL")
 key = os.environ.get("SUPABASE_KEY")
 supabase = create_client(url, key)
 
-def get_nse_earnings():
-    # Chrome Browser jaisi identity
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "*/*",
-        "Accept-Language": "en-US,en;q=0.9",
+def get_tradingview_earnings(symbol_list):
+    print(f"Fetching earnings for {len(symbol_list)} stocks from TradingView API...")
+    
+    # TradingView ka hidden scanner API
+    tv_url = "https://scanner.tradingview.com/india/scan"
+    
+    # Symbols ko TradingView format (NSE:SYMBOL) mein convert karna
+    tv_tickers = [f"NSE:{sym}" for sym in symbol_list]
+    
+    payload = {
+        "symbols": {"tickers": tv_tickers},
+        "columns": ["name", "earnings_release_next_date"]
     }
     
-    session = requests.Session()
-    session.headers.update(headers)
-
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Content-Type": "application/json"
+    }
+    
+    upcoming_earnings = []
+    today = datetime.now().date()
+    
     try:
-        print("Bypassing NSE Security (Fetching cookies)...")
-        session.get("https://www.nseindia.com", timeout=15)
-        time.sleep(2) 
+        response = requests.post(tv_url, json=payload, headers=headers)
+        data = response.json()
         
-        print("Extracting live Board Meetings data from NSE...")
-        api_url = "https://www.nseindia.com/api/corporate-board-meetings"
-        response = session.get(api_url, timeout=15)
-        raw_data = response.json()
-
-        # 🔥 THE FIX: NSE data ko ek 'data' naam ki dictionary key mein pack karke bhejta hai
-        meeting_list = raw_data.get("data", []) if isinstance(raw_data, dict) else raw_data
-
-        upcoming_earnings = []
-        today = datetime.now().date()
-        
-        print(f"Filtering {len(meeting_list)} Financial Results...")
-        for item in meeting_list:
-            # Extra safety check
-            if isinstance(item, dict):
-                purpose = str(item.get('purpose', '')).lower()
-                # 'result' ya 'financial' keyword ko dhundhna
-                if 'result' in purpose or 'financial' in purpose:
-                    symbol = item.get('symbol')
-                    date_str = item.get('bm_date') 
-                    try:
-                        if date_str:
-                            meeting_date = datetime.strptime(date_str, "%d-%b-%Y").date()
-                            if meeting_date >= today:
-                                upcoming_earnings.append({
-                                    'stock_symbol': symbol,
-                                    'result_date': str(meeting_date)
-                                })
-                    except Exception as e:
-                        pass
-        
+        for item in data.get('data', []):
+            stock_name = item['d'][0]
+            earnings_ts = item['d'][1] # TradingView UNIX timestamp bhejta hai
+            
+            if earnings_ts:
+                # Timestamp ko proper Date mein badalna
+                result_date = datetime.fromtimestamp(earnings_ts).date()
+                
+                # Sirf future (aane wali) dates ko list mein rakhna
+                if result_date >= today:
+                    upcoming_earnings.append({
+                        'stock_symbol': stock_name,
+                        'result_date': str(result_date)
+                    })
         return upcoming_earnings
     except Exception as e:
-        print(f"Error Fetching from NSE: {e}")
+        print(f"TradingView API Error: {e}")
         return []
 
 def update_earnings():
-    upcoming_earnings = get_nse_earnings()
+    print("Fetching your unique stocks from AlphaSwing database...")
+    try:
+        # Aapke unhi stocks ko filter karega jo aapne scan kiye hain
+        res = supabase.table('swing_stocks').select('stock_symbol').execute()
+        df = pd.DataFrame(res.data)
+        if not df.empty:
+            my_stocks = df['stock_symbol'].unique().tolist()
+        else:
+            # Agar scanner khali ho toh Nifty 50 default
+            my_stocks = ["RELIANCE", "TCS", "INFY", "ZOMATO", "HDFCBANK", "ICICIBANK", "SBIN"]
+    except Exception as e:
+        print(f"Database error: {e}")
+        my_stocks = ["RELIANCE", "TCS", "INFY", "ZOMATO"]
+
+    # TradingView se dates nikalna
+    upcoming_earnings = get_tradingview_earnings(my_stocks)
     
     if upcoming_earnings:
-        # Duplicates hatana (Agar ek hi company ki meeting 2 baar list hui ho)
+        # Duplicates hatana
         unique_earnings = {v['stock_symbol']: v for v in upcoming_earnings}.values()
         final_list = list(unique_earnings)
 
-        print(f"✅ Found {len(final_list)} upcoming earnings strictly from NSE!")
+        print(f"✅ Found {len(final_list)} upcoming earnings from TradingView!")
         
         print("Clearing old calendar data in Supabase...")
         supabase.table('earnings_calendar').delete().gt('id', -1).execute()
@@ -80,9 +88,9 @@ def update_earnings():
             chunk = final_list[i:i+500]
             supabase.table('earnings_calendar').insert(chunk).execute()
             
-        print("🎉 Earnings Calendar 100% Fully Automated via NSE India!")
+        print("🎉 Earnings Calendar 100% Fully Automated via TradingView!")
     else:
-        print("⚠️ No earnings data fetched. Might be weekend or no upcoming results.")
+        print("⚠️ No upcoming earnings found for your stocks in the next few days.")
 
 if __name__ == "__main__":
     update_earnings()
