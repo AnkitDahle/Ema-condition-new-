@@ -13,6 +13,7 @@ from views.scanner_view import show_scanner_page
 from views.results_view import show_results_page
 from views.ipos_view import show_ipos_page
 from views.journal_view import show_journal_page
+from views.breadth_view import show_breadth_page
 
 # ==========================================
 # 1. PAGE CONFIGURATION & COOKIES
@@ -118,6 +119,8 @@ elif st.session_state.current_page == "IPOs":
     show_ipos_page(raw_ipo_data)
 elif st.session_state.current_page == "Journal":
     show_journal_page(supabase, is_admin)
+elif st.session_state.current_page == "Breadth":    # <--- Yeh 2 lines honi chahiye
+    show_breadth_page(supabase)
     
 # --- Smaller Inline Views ---
 elif st.session_state.current_page == "Fresh":
