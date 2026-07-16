@@ -35,7 +35,8 @@ if 'logged_in' not in st.session_state:
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "Home"
 
-active_index = constants.PAGES_LIST.index(st.session_state.current_page) + 2 
+# Active tab index for dynamic styling
+active_index = constants.PAGES_LIST.index(st.session_state.current_page) + 2 if st.session_state.current_page in constants.PAGES_LIST else 2
 
 # ==========================================
 # 2. APPLY CSS & FETCH GLOBAL DATA
@@ -53,7 +54,7 @@ is_admin = (st.session_state.role == 'admin')
 if not st.session_state.logged_in and st.session_state.current_page != "Home":
     _, col_login_box, _ = st.columns([1, 1, 1])
     with col_login_box:
-        st.markdown("<div class='login-container'><h1 style='color:#00e5ff; margin-bottom: 0px;'>AlphaSwing Pro</h1><p style='color:#94a3b8; margin-bottom: 30px;'>Secure Gateway</p>", unsafe_allow_html=True)
+        st.markdown("<div class='login-container'><h1 style='color:#00e5ff; margin-bottom: 0px;'>AlphaSwing Pro</h1><p style='color:#94a3b8; margin-bottom: 30px;'>Secure Gateway</p></div>", unsafe_allow_html=True)
         with st.form("login_form"):
             username = st.text_input("👤 Username", placeholder="Enter your username")
             password = st.text_input("🔑 Password", type="password", placeholder="Enter your password")
@@ -68,7 +69,6 @@ if not st.session_state.logged_in and st.session_state.current_page != "Home":
                     if remember_me: cookies['auth_role'] = "viewer"; cookies.save()
                     st.rerun()
                 else: st.error("❌ Invalid Credentials.")
-        st.markdown("</div>", unsafe_allow_html=True)
     st.stop() 
 
 # ==========================================
@@ -117,10 +117,10 @@ elif st.session_state.current_page == "Results":
     show_results_page(supabase)
 elif st.session_state.current_page == "IPOs":
     show_ipos_page(raw_ipo_data)
+elif st.session_state.current_page == "Breadth":
+    show_breadth_page(supabase)
 elif st.session_state.current_page == "Journal":
     show_journal_page(supabase, is_admin)
-elif st.session_state.current_page == "Breadth":    # <--- Yeh 2 lines honi chahiye
-    show_breadth_page(supabase)
     
 # --- Smaller Inline Views ---
 elif st.session_state.current_page == "Fresh":
