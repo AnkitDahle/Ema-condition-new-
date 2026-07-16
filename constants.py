@@ -2,8 +2,8 @@
 # 📋 ALPHASWING NAVIGATION & STATIC CONFIGS
 # ==========================================
 
-# Main application tabs / pages list
-PAGES_LIST = ['Home', 'Scanner', 'Fresh', 'Results', 'Catalyst', 'IPOs', 'Journal', 'Calculator']
+# Main application tabs / pages list (Updated with Breadth and Short Names)
+PAGES_LIST = ['Scanner', 'Fresh', 'Results', 'Catalyst', 'IPOs', 'Breadth', 'Journal', 'Calculator']
 
 # Default fallback tickers for catalyst or data fetch systems
 DEFAULT_TICKERS = ["RELIANCE", "TCS", "INFY", "ZOMATO", "SBIN"]
