@@ -18,7 +18,8 @@ from views.breadth_view import show_breadth_page
 # ==========================================
 # 1. PAGE CONFIGURATION & COOKIES
 # ==========================================
-st.set_page_config(page_title="AlphaSwing Pro", layout="wide", page_icon="📈", initial_sidebar_state="collapsed")
+# 'auto' ka matlab: Desktop par sidebar open rahega, Mobile par hamburger ban jayega
+st.set_page_config(page_title="AlphaSwing Pro", layout="wide", page_icon="📈", initial_sidebar_state="auto")
 
 cookies = EncryptedCookieManager(prefix="aswing", password=st.secrets.get("COOKIE_PASSWORD", "alphaswing_super_secret_key_2026"))
 if not cookies.ready():
@@ -72,18 +73,23 @@ if not st.session_state.logged_in and st.session_state.current_page != "Home":
     st.stop() 
 
 # ==========================================
-# 4. TOP NAVIGATION BAR
+# 4. SIDEBAR NAVIGATION (Hamburger Menu)
 # ==========================================
-cols = st.columns([2.5, 0.8, 0.9, 0.8, 0.9, 0.9, 0.8, 0.9, 1.0, 0.2, 1.2])
-with cols[0]:
-    st.markdown("""<div style="display: flex; align-items: center; gap: 10px; margin-top: 2px;"><div style="background-color: #00bfff; width: 30px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L22 20H2L12 2Z" fill="white"/></svg></div><a href="/" target="_self" style="font-size: 22px; font-weight: 800; color: white; text-decoration: none;">AlphaSwing</a></div>""", unsafe_allow_html=True)
+with st.sidebar:
+    st.markdown("""<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 25px;">
+    <div style="background-color: #00bfff; width: 30px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L22 20H2L12 2Z" fill="white"/></svg></div>
+    <h2 style="margin:0; font-size: 22px; font-weight: 800; color: white;">AlphaSwing</h2></div>""", unsafe_allow_html=True)
 
-for i, page_name in enumerate(constants.PAGES_LIST):
-    with cols[i+1]:
-        if st.button(page_name, use_container_width=True): 
-            st.session_state.current_page = page_name; st.rerun()
+    for page_name in constants.PAGES_LIST:
+        # Highlight active page with an arrow 👉
+        btn_label = f"👉 {page_name}" if st.session_state.current_page == page_name else page_name
+        if st.button(btn_label, use_container_width=True): 
+            st.session_state.current_page = page_name
+            st.rerun()
 
-with cols[-1]:
+    st.markdown("<hr style='border-color: rgba(255,255,255,0.1);'>", unsafe_allow_html=True)
+    
     if st.session_state.logged_in:
         if st.button("Logout 🚪", type="primary", use_container_width=True):
             st.session_state.logged_in = False; st.session_state.role = None; st.session_state.current_page = "Home"
@@ -92,8 +98,6 @@ with cols[-1]:
     else:
         if st.button("Login 🔐", type="primary", use_container_width=True): 
             st.session_state.current_page = "Scanner"; st.rerun()
-
-st.markdown("<hr style='margin-top: 5px; margin-bottom: 0px; border-color: rgba(255,255,255,0.05);'>", unsafe_allow_html=True)
 
 # 📈 LIVE MARKET TICKER
 if st.session_state.current_page in ["Home", "Scanner", "Fresh", "Results"]:
