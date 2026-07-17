@@ -1,0 +1,20 @@
+name: Update Market Breadth
+on:
+  schedule:
+    - cron: '30 11 * * *' 
+  workflow_dispatch: 
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with: {python-version: '3.9'}
+      - name: Install dependencies
+        run: pip install requests pandas supabase pytz
+      - name: Run Script
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python update_breadth.py
