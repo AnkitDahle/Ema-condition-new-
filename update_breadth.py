@@ -1,68 +1,95 @@
 import requests
+import pandas as pd
+from supabase import create_client
 import os
 from datetime import datetime
-from supabase import create_client
+import pytz
 
-# Supabase Connection 
-url = os.environ.get("SUPABASE_URL")
-key = os.environ.get("SUPABASE_KEY")
-supabase = create_client(url, key)
+# Supabase Credentials (GitHub Secrets se uthayega)
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
-def get_tv_count(filter_condition):
-    tv_url = "https://scanner.tradingview.com/india/scan"
+if not SUPABASE_URL or not SUPABASE_KEY:
+    print("❌ Error: Supabase credentials nahi mile. GitHub Secrets check karein.")
+    exit()
+
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+print("🚀 Fetching LIVE data from TradingView Screener...")
+
+# TradingView API request
+tv_url = "https://scanner.tradingview.com/india/scan"
+query = {
+    "columns": ["name", "close", "SMA20", "SMA50"],
+    "filter": [{"left": "exchange", "operation": "equal", "right": "NSE"}]
+}
+
+try:
+    response = requests.post(tv_url, json=query).json()
+    raw_tv_data = response.get('data', [])
+except Exception as e:
+    print(f"❌ TradingView API fail: {e}")
+    exit()
+
+print(f"✅ Downloaded {len(raw_tv_data)} stocks from TradingView.")
+
+# Nifty 500 stocks ki list load karna
+try:
+    nifty_df = pd.read_csv('ind_nifty500list.csv')
+    nifty_symbols = nifty_df['Symbol'].str.upper().tolist()
+except Exception as e:
+    print("⚠️ Nifty 500 file nahi mili. Kripya file GitHub par upload karein.")
+    nifty_symbols = []
+
+# Calculation Logic
+all_above_20 = all_below_20 = all_above_50 = all_below_50 = 0
+n500_above_20 = n500_below_20 = n500_above_50 = n500_below_50 = 0
+
+for item in raw_tv_data:
+    symbol = item['d'][0].upper()
+    close_price = item['d'][1]
+    sma20 = item['d'][2]
+    sma50 = item['d'][3]
     
-    # TV Backend Payload: NSE ke saare primary stocks ko scan karega
-    payload = {
-        "filter": [
-            {"left": "type", "operation": "equal", "right": "stock"},
-            {"left": "exchange", "operation": "equal", "right": "NSE"},
-            {"left": "is_primary", "operation": "equal", "right": True},
-            {"left": "active_symbol", "operation": "equal", "right": True},
-            filter_condition
-        ],
-        "options": {"lang": "en"},
-        "markets": ["india"],
-        "symbols": {"query": {"types": []}},
-        "columns": ["name"],
-        "range": [0, 1] # Humein sirf Total Count chahiye, stocks ke naam nahi
-    }
-    
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-    
+    if close_price is None or sma20 is None or sma50 is None:
+        continue
+
+    # 1. ALL STOCKS
+    if close_price > sma20: all_above_20 += 1
+    else: all_below_20 += 1
+    if close_price > sma50: all_above_50 += 1
+    else: all_below_50 += 1
+        
+    # 2. NIFTY 500
+    if symbol in nifty_symbols:
+        if close_price > sma20: n500_above_20 += 1
+        else: n500_below_20 += 1
+        if close_price > sma50: n500_above_50 += 1
+        else: n500_below_50 += 1
+
+# Aaj ki date nikalna
+ist = pytz.timezone('Asia/Kolkata')
+today_str = datetime.now(ist).strftime('%Y-%m-%d')
+
+print(f"📊 ALL STOCKS - Above 20: {all_above_20}, Above 50: {all_above_50}")
+print(f"📊 NIFTY 500  - Above 20: {n500_above_20}, Above 50: {n500_above_50}")
+
+# Nayi tables mein push karna (YAHI MAIN FIX HAI)
+def push_to_db(table, data):
     try:
-        response = requests.post(tv_url, json=payload, headers=headers, timeout=10)
-        data = response.json()
-        return data.get('totalCount', 0)
+        supabase.table(table).upsert(data).execute()
+        print(f"✅ Data successfully saved to {table}")
     except Exception as e:
-        print(f"Error fetching data: {e}")
-        return 0
+        print(f"❌ Error saving to {table}: {e}")
 
-def update_market_breadth():
-    print("Fetching Market Breadth from TradingView...")
-    
-    # 1. Calculate counts using Simple Moving Averages (SMA)
-    above_20 = get_tv_count({"left": "close", "operation": "greater", "right": "SMA20"})
-    below_20 = get_tv_count({"left": "close", "operation": "less", "right": "SMA20"})
-    
-    above_50 = get_tv_count({"left": "close", "operation": "greater", "right": "SMA50"})
-    below_50 = get_tv_count({"left": "close", "operation": "less", "right": "SMA50"})
-    
-    today_date = datetime.now().strftime('%Y-%m-%d')
-    
-    data_to_insert = {
-        "date": today_date,
-        "above_20dma": above_20,
-        "below_20dma": below_20,
-        "above_50dma": above_50,
-        "below_50dma": below_50
-    }
-    
-    if above_20 > 0: # Ensure valid data before saving
-        # Upsert function taaki agar din mein 2 baar chale toh nayi row banne ki jagah update ho
-        supabase.table('market_breadth').upsert(data_to_insert).execute()
-        print(f"✅ Market Breadth Saved for {today_date}: {data_to_insert}")
-    else:
-        print("⚠️ No data fetched. API might be down.")
+# All stocks ka data push
+push_to_db('market_breadth_all', {
+    "date": today_str, "above_20dma": all_above_20, "below_20dma": all_below_20,
+    "above_50dma": all_above_50, "below_50dma": all_below_50
+})
 
-if __name__ == "__main__":
-    update_market_breadth()
+# Nifty 500 ka data push
+push_to_db('market_breadth_nifty500', {
+    "date": today_str, "above_20dma": n500_above_20, "below_20dma": n500_below_20,
+    "above_50dma": n500_above_50, "below_50dma": n500_below_50
+})
