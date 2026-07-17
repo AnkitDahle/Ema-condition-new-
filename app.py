@@ -18,10 +18,17 @@ from views.breadth_view import show_breadth_page
 # ==========================================
 # 1. PAGE CONFIGURATION & COOKIES
 # ==========================================
-# 'auto' ka matlab: Desktop par sidebar open rahega, Mobile par hamburger ban jayega
-st.set_page_config(page_title="AlphaSwing Pro", layout="wide", page_icon="📈", initial_sidebar_state="auto")
+st.set_page_config(
+    page_title="AlphaSwing Pro", 
+    layout="wide", 
+    page_icon="📈", 
+    initial_sidebar_state="collapsed" # Sidebar by default band rakha hai taaki full width mile
+)
 
-cookies = EncryptedCookieManager(prefix="aswing", password=st.secrets.get("COOKIE_PASSWORD", "alphaswing_super_secret_key_2026"))
+cookies = EncryptedCookieManager(
+    prefix="aswing", 
+    password=st.secrets.get("COOKIE_PASSWORD", "alphaswing_super_secret_key_2026")
+)
 if not cookies.ready():
     st.stop()
 
@@ -36,8 +43,8 @@ if 'logged_in' not in st.session_state:
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "Home"
 
-# Active tab index for dynamic styling
-active_index = constants.PAGES_LIST.index(st.session_state.current_page) + 2 if st.session_state.current_page in constants.PAGES_LIST else 2
+# Active tab index for dynamic styling (CSS color highlight ke liye)
+active_index = constants.PAGES_LIST.index(st.session_state.current_page) + 1 if st.session_state.current_page in constants.PAGES_LIST else 1
 
 # ==========================================
 # 2. APPLY CSS & FETCH GLOBAL DATA
@@ -61,6 +68,7 @@ if not st.session_state.logged_in and st.session_state.current_page != "Home":
             password = st.text_input("🔑 Password", type="password", placeholder="Enter your password")
             remember_me = st.checkbox("Keep me logged in")
             if st.form_submit_button("Access Dashboard", type="primary", use_container_width=True):
+                # Using your secrets (or defaults)
                 if username == st.secrets.get("ADMIN_USERNAME", "ankitdahle") and password == st.secrets.get("ADMIN_PASSWORD", "dahleankit"):
                     st.session_state.logged_in = True; st.session_state.role = "admin"
                     if remember_me: cookies['auth_role'] = "admin"; cookies.save()
@@ -73,31 +81,27 @@ if not st.session_state.logged_in and st.session_state.current_page != "Home":
     st.stop() 
 
 # ==========================================
-# 4. SIDEBAR NAVIGATION (Hamburger Menu)
+# 4. TOP NAVIGATION BAR (Horizontal for Laptop & Swipe for Mobile)
 # ==========================================
-with st.sidebar:
-    st.markdown("""<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 25px;">
-    <div style="background-color: #00bfff; width: 30px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center;">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L22 20H2L12 2Z" fill="white"/></svg></div>
-    <h2 style="margin:0; font-size: 22px; font-weight: 800; color: white;">AlphaSwing</h2></div>""", unsafe_allow_html=True)
-
-    for page_name in constants.PAGES_LIST:
-        # Highlight active page with an arrow 👉
-        btn_label = f"👉 {page_name}" if st.session_state.current_page == page_name else page_name
-        if st.button(btn_label, use_container_width=True): 
+nav_cols = st.columns(len(constants.PAGES_LIST) + 1)
+for i, page_name in enumerate(constants.PAGES_LIST):
+    with nav_cols[i]:
+        if st.button(page_name, use_container_width=True):
             st.session_state.current_page = page_name
             st.rerun()
 
-    st.markdown("<hr style='border-color: rgba(255,255,255,0.1);'>", unsafe_allow_html=True)
-    
+with nav_cols[-1]:
     if st.session_state.logged_in:
         if st.button("Logout 🚪", type="primary", use_container_width=True):
-            st.session_state.logged_in = False; st.session_state.role = None; st.session_state.current_page = "Home"
+            st.session_state.logged_in = False
+            st.session_state.role = None
+            st.session_state.current_page = "Home"
             if 'auth_role' in cookies: del cookies['auth_role']; cookies.save()
             st.rerun()
     else:
-        if st.button("Login 🔐", type="primary", use_container_width=True): 
-            st.session_state.current_page = "Scanner"; st.rerun()
+        if st.button("Login 🔐", type="primary", use_container_width=True):
+            st.session_state.current_page = "Scanner"
+            st.rerun()
 
 # 📈 LIVE MARKET TICKER
 if st.session_state.current_page in ["Home", "Scanner", "Fresh", "Results"]:
