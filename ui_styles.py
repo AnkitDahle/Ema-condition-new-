@@ -77,6 +77,14 @@ def get_custom_css(active_index=0):
             padding-left: 1rem !important;
             padding-right: 1rem !important;
         }
+
+        /* 🚀 FIX: Date aur Breakout Numbers ko same size ka banana aur wrap karna */
+        [data-testid="stMetricValue"] > div {
+            white-space: normal !important; 
+            font-size: 26px !important; /* Dono ekdum same size (26px) ke dikhenge */
+            line-height: 1.2 !important;
+            overflow: visible !important;
+        }
     }
     </style>
     """
