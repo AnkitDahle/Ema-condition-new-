@@ -18,38 +18,22 @@ from views.breadth_view import show_breadth_page
 # ==========================================
 # 1. PAGE CONFIGURATION & COOKIES
 # ==========================================
-st.set_page_config(
-    page_title="AlphaSwing Pro", 
-    layout="wide", 
-    page_icon="📈", 
-    initial_sidebar_state="collapsed" # Sidebar by default band rakha hai taaki full width mile
-)
+st.set_page_config(page_title="AlphaSwing Pro", layout="wide", page_icon="📈", initial_sidebar_state="collapsed")
 
-cookies = EncryptedCookieManager(
-    prefix="aswing", 
-    password=st.secrets.get("COOKIE_PASSWORD", "alphaswing_super_secret_key_2026")
-)
-if not cookies.ready():
-    st.stop()
+cookies = EncryptedCookieManager(prefix="aswing", password=st.secrets.get("COOKIE_PASSWORD", "alphaswing_super_secret_key_2026"))
+if not cookies.ready(): st.stop()
 
 if 'logged_in' not in st.session_state:
     if 'auth_role' in cookies:
-        st.session_state.logged_in = True
-        st.session_state.role = cookies['auth_role']
+        st.session_state.logged_in = True; st.session_state.role = cookies['auth_role']
     else:
-        st.session_state.logged_in = False
-        st.session_state.role = None
+        st.session_state.logged_in = False; st.session_state.role = None
 
-if 'current_page' not in st.session_state:
+if 'current_page' not in st.session_state: 
     st.session_state.current_page = "Home"
 
-# Active tab index for dynamic styling (CSS color highlight ke liye)
-active_index = constants.PAGES_LIST.index(st.session_state.current_page) + 1 if st.session_state.current_page in constants.PAGES_LIST else 1
-
-# ==========================================
-# 2. APPLY CSS & FETCH GLOBAL DATA
-# ==========================================
-st.markdown(ui_styles.get_custom_css(active_index), unsafe_allow_html=True)
+# CSS Apply (Ab koi active_index pass karne ki zarurat nahi)
+st.markdown(ui_styles.get_custom_css(), unsafe_allow_html=True)
 supabase = backend.init_supabase()
 raw_data = backend.fetch_swing_stocks()
 raw_ipo_data = backend.fetch_ipo_data()
@@ -57,7 +41,7 @@ master_symbol_list = backend.get_master_symbol_list(raw_data)
 is_admin = (st.session_state.role == 'admin')
 
 # ==========================================
-# 3. SECURE AUTHENTICATION
+# 2. SECURE AUTHENTICATION
 # ==========================================
 if not st.session_state.logged_in and st.session_state.current_page != "Home":
     _, col_login_box, _ = st.columns([1, 1, 1])
@@ -68,7 +52,6 @@ if not st.session_state.logged_in and st.session_state.current_page != "Home":
             password = st.text_input("🔑 Password", type="password", placeholder="Enter your password")
             remember_me = st.checkbox("Keep me logged in")
             if st.form_submit_button("Access Dashboard", type="primary", use_container_width=True):
-                # Using your secrets (or defaults)
                 if username == st.secrets.get("ADMIN_USERNAME", "ankitdahle") and password == st.secrets.get("ADMIN_PASSWORD", "dahleankit"):
                     st.session_state.logged_in = True; st.session_state.role = "admin"
                     if remember_me: cookies['auth_role'] = "admin"; cookies.save()
@@ -81,25 +64,39 @@ if not st.session_state.logged_in and st.session_state.current_page != "Home":
     st.stop() 
 
 # ==========================================
-# 4. TOP NAVIGATION BAR (Horizontal for Laptop & Swipe for Mobile)
+# 3. 🌟 CLICKABLE LOGO (Routes to Home)
+# ==========================================
+st.markdown("<br>", unsafe_allow_html=True) # Upar thoda space
+logo_col, _ = st.columns([2, 5]) # Logo ke liye chota column banaya
+with logo_col:
+    # "primary" type se yeh ekdum mast highlighted cyan banner jaisa lagega
+    if st.button("🌊 AlphaSwing Pro", use_container_width=True, type="primary"):
+        st.session_state.current_page = "Home"
+        st.rerun()
+
+# ==========================================
+# 4. 🌟 SMART NAVIGATION BAR
 # ==========================================
 nav_cols = st.columns(len(constants.PAGES_LIST) + 1)
 for i, page_name in enumerate(constants.PAGES_LIST):
     with nav_cols[i]:
-        if st.button(page_name, use_container_width=True):
+        # MAGIC 🪄: Jo page open hai usko 'primary' (Color) do, baaki ko 'secondary' (Transparent) do
+        btn_type = "primary" if st.session_state.current_page == page_name else "secondary"
+        
+        if st.button(page_name, type=btn_type, use_container_width=True):
             st.session_state.current_page = page_name
             st.rerun()
 
 with nav_cols[-1]:
     if st.session_state.logged_in:
-        if st.button("Logout 🚪", type="primary", use_container_width=True):
+        if st.button("Logout 🚪", type="secondary", use_container_width=True):
             st.session_state.logged_in = False
             st.session_state.role = None
             st.session_state.current_page = "Home"
             if 'auth_role' in cookies: del cookies['auth_role']; cookies.save()
             st.rerun()
     else:
-        if st.button("Login 🔐", type="primary", use_container_width=True):
+        if st.button("Login 🔐", type="secondary", use_container_width=True):
             st.session_state.current_page = "Scanner"
             st.rerun()
 
