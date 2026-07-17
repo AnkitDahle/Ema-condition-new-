@@ -4,8 +4,9 @@ from supabase import create_client
 import os
 from datetime import datetime
 import pytz
+import io
 
-# Supabase Credentials (GitHub Secrets se uthayega)
+# Supabase Credentials
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
@@ -33,12 +34,23 @@ except Exception as e:
 
 print(f"✅ Downloaded {len(raw_tv_data)} stocks from TradingView.")
 
-# Nifty 500 stocks ki list load karna
+# ========================================================
+# 🚀 NAYA MAGIC: NSE SE DIRECT LIVE LIST DOWNLOAD KARNA
+# ========================================================
+print("🌐 NSE ki website se latest Nifty 500 list download kar rahe hain...")
+nse_url = "https://nsearchives.nseindia.com/content/indices/ind_nifty500list.csv"
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+}
+
 try:
-    nifty_df = pd.read_csv('ind_nifty500list.csv')
+    # NSE server se direct CSV uthana (Bina file save kiye memory mein padhna)
+    req = requests.get(nse_url, headers=headers, timeout=15)
+    nifty_df = pd.read_csv(io.StringIO(req.text))
     nifty_symbols = nifty_df['Symbol'].str.upper().tolist()
+    print(f"✅ Successfully auto-fetched {len(nifty_symbols)} stocks for Nifty 500.")
 except Exception as e:
-    print("⚠️ Nifty 500 file nahi mili. Kripya file GitHub par upload karein.")
+    print(f"⚠️ NSE se live list download nahi ho payi: {e}")
     nifty_symbols = []
 
 # Calculation Logic
@@ -67,14 +79,14 @@ for item in raw_tv_data:
         if close_price > sma50: n500_above_50 += 1
         else: n500_below_50 += 1
 
-# Aaj ki date nikalna
+# Aaj ki date
 ist = pytz.timezone('Asia/Kolkata')
 today_str = datetime.now(ist).strftime('%Y-%m-%d')
 
 print(f"📊 ALL STOCKS - Above 20: {all_above_20}, Above 50: {all_above_50}")
 print(f"📊 NIFTY 500  - Above 20: {n500_above_20}, Above 50: {n500_above_50}")
 
-# Nayi tables mein push karna (YAHI MAIN FIX HAI)
+# Supabase Upsert
 def push_to_db(table, data):
     try:
         supabase.table(table).upsert(data).execute()
@@ -82,13 +94,11 @@ def push_to_db(table, data):
     except Exception as e:
         print(f"❌ Error saving to {table}: {e}")
 
-# All stocks ka data push
 push_to_db('market_breadth_all', {
     "date": today_str, "above_20dma": all_above_20, "below_20dma": all_below_20,
     "above_50dma": all_above_50, "below_50dma": all_below_50
 })
 
-# Nifty 500 ka data push
 push_to_db('market_breadth_nifty500', {
     "date": today_str, "above_20dma": n500_above_20, "below_20dma": n500_below_20,
     "above_50dma": n500_above_50, "below_50dma": n500_below_50
