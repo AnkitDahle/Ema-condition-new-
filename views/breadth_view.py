@@ -29,12 +29,20 @@ def format_breadth_data(df, view_type):
         total_20 = total_20.replace(0, 1)
         total_50 = total_50.replace(0, 1)
         
-        # Sirf Above 20 aur Above 50 ka percentage nikalna
-        res['% Above 20 DMA'] = ((res['above_20dma'] / total_20) * 100).round(1).astype(str) + "%"
-        res['% Above 50 DMA'] = ((res['above_50dma'] / total_50) * 100).round(1).astype(str) + "%"
+        # Pehle numbers (float) mein percentage nikalna
+        pct_20 = (res['above_20dma'] / total_20) * 100
+        pct_50 = (res['above_50dma'] / total_50) * 100
         
-        # Percentage view mein sirf date aur 2 percentage columns return karna
-        return res[['date', '% Above 20 DMA', '% Above 50 DMA']]
+        # 🚀 NAYA LOGIC: Dono percentage ko add karna
+        total_pct = pct_20 + pct_50
+        
+        # Ab sabke aage '%' sign lagana
+        res['% Above 20 DMA'] = pct_20.round(1).astype(str) + "%"
+        res['% Above 50 DMA'] = pct_50.round(1).astype(str) + "%"
+        res['Total % (20+50 DMA)'] = total_pct.round(1).astype(str) + "%"
+        
+        # Percentage view mein teeno columns return karna
+        return res[['date', '% Above 20 DMA', '% Above 50 DMA', 'Total % (20+50 DMA)']]
 
 def show_breadth_page(supabase):
     st.markdown("<div class='page-heading'>📈 Market Breadth Analysis</div>", unsafe_allow_html=True)
