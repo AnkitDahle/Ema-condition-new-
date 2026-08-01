@@ -86,14 +86,22 @@ today_str = datetime.now(ist).strftime('%Y-%m-%d')
 print(f"📊 ALL STOCKS - Above 20: {all_above_20}, Above 50: {all_above_50}")
 print(f"📊 NIFTY 500  - Above 20: {n500_above_20}, Above 50: {n500_above_50}")
 
-# Supabase Upsert
+# ========================================================
+# 🛑 ANTI-DUPLICATE DATABASE PUSH LOGIC 
+# ========================================================
 def push_to_db(table, data):
     try:
-        supabase.table(table).upsert(data).execute()
-        print(f"✅ Data successfully saved to {table}")
+        # Step 1: Pehle check karo aur delete karo aaj ki entry (agar koi purani padi hai)
+        supabase.table(table).delete().eq('date', data['date']).execute()
+        print(f"🧹 Purana duplicate clean kiya (agar tha) for {table}")
+        
+        # Step 2: Ab fresh calculated data insert karo
+        supabase.table(table).insert(data).execute()
+        print(f"✅ Single clean entry successfully saved to {table}")
     except Exception as e:
         print(f"❌ Error saving to {table}: {e}")
 
+# Push Data
 push_to_db('market_breadth_all', {
     "date": today_str, "above_20dma": all_above_20, "below_20dma": all_below_20,
     "above_50dma": all_above_50, "below_50dma": all_below_50
