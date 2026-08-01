@@ -53,17 +53,18 @@ def show_ipos_page(raw_ipo_data):
                 st.markdown(render_html_table(display_ipo, max_height="500px"), unsafe_allow_html=True)
 
                 # ==========================================
-                # 📥 NAYA DOWNLOAD BUTTON SECTION
+                # 📥 DOWNLOAD BUTTON SECTION
                 # ==========================================
                 st.markdown("<br><hr style='border-color: rgba(255,255,255,0.1);'><br>", unsafe_allow_html=True)
                 st.markdown("### 📥 Download Filtered Data")
                 
                 btn_col1, btn_col2 = st.columns([2, 3])
                 with btn_col1:
-                    # 🚀 TRADINGVIEW FORMAT MAGIC
                     download_df = display_ipo.drop(columns=['TV Chart']).copy()
-                    # Ek naya column sabse aage (index 0) add kiya 'NSE:SYMBOL' format me
-                    download_df.insert(0, 'TradingView Copy', 'NSE:' + download_df['Symbol'])
+                    
+                    # 🚀 TRADINGVIEW FORMAT + COMMA MAGIC
+                    # Har stock ke aage ab automatically comma lag jayega (e.g., NSE:ZOMATO,)
+                    download_df.insert(0, 'TradingView Copy', 'NSE:' + download_df['Symbol'] + ',')
                     
                     st.download_button(
                         label="📊 Download IPOs (CSV)",
