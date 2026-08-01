@@ -2,6 +2,10 @@ import streamlit as st
 import pandas as pd
 from ui_styles import render_html_table
 
+@st.cache_data
+def convert_df_to_csv(df):
+    return df.to_csv(index=False).encode('utf-8')
+
 def show_ipos_page(raw_ipo_data):
     st.markdown("<div class='page-heading'>🏢 IPOs</div>", unsafe_allow_html=True)
     
@@ -47,6 +51,29 @@ def show_ipos_page(raw_ipo_data):
                 display_ipo['TV Chart'] = "https://in.tradingview.com/chart/?symbol=NSE:" + display_ipo['Symbol']
                 
                 st.markdown(render_html_table(display_ipo, max_height="500px"), unsafe_allow_html=True)
+
+                # ==========================================
+                # 📥 NAYA DOWNLOAD BUTTON SECTION
+                # ==========================================
+                st.markdown("<br><hr style='border-color: rgba(255,255,255,0.1);'><br>", unsafe_allow_html=True)
+                st.markdown("### 📥 Download Filtered Data")
+                
+                btn_col1, btn_col2 = st.columns([2, 3])
+                with btn_col1:
+                    # 🚀 TRADINGVIEW FORMAT MAGIC
+                    download_df = display_ipo.drop(columns=['TV Chart']).copy()
+                    # Ek naya column sabse aage (index 0) add kiya 'NSE:SYMBOL' format me
+                    download_df.insert(0, 'TradingView Copy', 'NSE:' + download_df['Symbol'])
+                    
+                    st.download_button(
+                        label="📊 Download IPOs (CSV)",
+                        data=convert_df_to_csv(download_df),
+                        file_name=f"ipos_{selected_year}_TV.csv",
+                        mime="text/csv",
+                        use_container_width=True,
+                        type="primary"
+                    )
+
         else:
             st.info("💡 **Database Connected:** Table `ipo_master` mil gayi hai, par uske andar abhi koi data nahi hai (Khali hai).")
     else:
