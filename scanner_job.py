@@ -1,12 +1,13 @@
 import os
 import yfinance as yf
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 from supabase import create_client, Client
 import logging
 import warnings
 import time
 import requests
+from nselib import capital_market
 
 # Faltu warnings ko mute karna
 warnings.filterwarnings('ignore')
@@ -69,7 +70,7 @@ KACHRA_STOCKS = [
     "MSCI360"
 ]
 
-# 🚫 NSE SERIES BLACKLIST (Bonds, NCDs, Illiquid, etc.) - Updated with E1, Y3, Y4, Y5
+# 🚫 NSE SERIES BLACKLIST (Bonds, NCDs, Illiquid, etc.)
 BAD_SERIES = [
     "AK", "AL", "AM", "AN", "AU", "AV", "AW", "AX", "AY", "AZ", "BA", "BC", "BR", "BS", "BU", "BV", "BW", "BX", "BZ", "D1", "GB", "IV", 
     "E1", "E2", "E3", 
@@ -79,7 +80,6 @@ BAD_SERIES = [
     "Z0", "Z1", "Z2", "Z3", "Z4", "Z5", "Z6", "Z7", "Z8", "Z9", "ZC", "ZF", "ZG", "ZH", "ZI", "ZJ", "ZK", "ZL", "ZM", "ZN", "ZO", "ZP", "ZQ", "ZR", "ZS", "ZT", "ZY", "ZZ", 
     "BE"
 ]
-# Safety ke liye sabke aage hyphen laga diya taaki asli stocks delete na ho
 BAD_SUFFIXES = tuple(f"-{s}" for s in BAD_SERIES)
 
 # 2. Zerodha API se Master List nikalna
@@ -100,7 +100,6 @@ def get_full_nse_list():
         for s in nse_symbols:
             s = str(s)
             
-            # Puraane aur Naye Filters
             if s.endswith(BAD_SUFFIXES): continue
             if s.endswith("NAV") or s.endswith("INAV"): continue
             if '-SG' in s or '-SF' in s or '-SD' in s or '-GS' in s: continue
@@ -174,7 +173,6 @@ for i in range(0, len(stocks), chunk_size):
                 close_22 = float(close_22_ago.iloc[-1]) if pd.notna(close_22_ago.iloc[-1]) else 999999.0
                 close_66 = float(close_66_ago.iloc[-1]) if pd.notna(close_66_ago.iloc[-1]) else 999999.0
                 
-                # 🚀 TURNOVER CONDITION ADDED (> 10 Crore)
                 tech_cond1 = (close / close_22 > 1.2) and (turnover > 100000000)
                 tech_cond2 = (close / close_66 >= 1.3) and (close >= 1) and (turnover > 100000000)
                 tech_cond3 = (close > max_high * 0.75) and (close > sma_50_val) and (turnover > 100000000)
@@ -205,13 +203,22 @@ for i in range(0, len(stocks), chunk_size):
                         sector_name = stock_info.get('sector', 'Unknown')
                         proxy_name = stock_info.get('industry', 'Unknown')
                         
+                        # 🚀 MARKET CAP FILTER LOGIC (50 Cr to 50,000 Cr)
+                        market_cap = stock_info.get('marketCap', 0)
+                        
+                        # 50 Cr = 500,000,000 | 50,000 Cr = 500,000,000,000
+                        if market_cap < 500000000 or market_cap > 500000000000:
+                            print(f"⏩ Skipped {ticker}: Market Cap out of range ({market_cap / 10000000:.2f} Cr)")
+                            continue
+                        
                         if not sector_name or sector_name.strip() == "": sector_name = 'Unknown'
                         if not proxy_name or proxy_name.strip() == "": proxy_name = 'Unknown'
                         
                     except Exception as info_e:
                         sector_name = 'Unknown'
                         proxy_name = 'Unknown'
-                        log_error(ticker, "INFO_FETCH_FAIL", f"Sector/Industry info fail hui. Error: {info_e}")
+                        log_error(ticker, "INFO_FETCH_FAIL", f"Sector/Industry/MarketCap info fail hui. Error: {info_e}")
+                        continue
                     
                     symbol_clean = ticker.replace(".NS", "")
                     
@@ -223,7 +230,7 @@ for i in range(0, len(stocks), chunk_size):
                         "sector": sector_name,
                         "industry_proxy": proxy_name
                     })
-                    print(f"🔥 Breakout: {symbol_clean} | {sector_name} | {proxy_name} | TO: {round(turnover / 10000000, 2)}Cr")
+                    print(f"🔥 Breakout: {symbol_clean} | MCAP OK | {sector_name} | TO: {round(turnover / 10000000, 2)}Cr")
                     saved_count += 1
 
             except Exception as inner_e:
@@ -231,6 +238,43 @@ for i in range(0, len(stocks), chunk_size):
                 
     except Exception as batch_e:
         log_error(f"BATCH_NO_{i//chunk_size + 1}", "YAHOO_BATCH_TIMEOUT", f"Batch connection drop error: {batch_e}")
+
+# =========================================================================
+# 🚀 FETCH NSE DELIVERY DATA FOR MATCHED STOCKS
+# =========================================================================
+if matched_stocks_data:
+    print("\n📥 Fetching Latest Delivery % from NSE...")
+    bhav_df = pd.DataFrame()
+    
+    for i in range(7):
+        d = datetime.now() - timedelta(days=i)
+        if d.weekday() >= 5: 
+            continue
+        d_str = d.strftime('%d-%m-%Y')
+        try:
+            temp_df = capital_market.bhav_copy_with_delivery(d_str)
+            if not temp_df.empty:
+                bhav_df = temp_df[temp_df['SERIES'] == 'EQ']
+                print(f"✅ NSE Delivery Data Loaded for {d_str}.")
+                break
+        except Exception as e:
+            continue
+
+    if bhav_df.empty:
+        print("⚠️ Warning: Could not fetch NSE Delivery Data. Setting default to 0.")
+
+    for stock in matched_stocks_data:
+        symbol = stock['stock_symbol']
+        stock['delivery_pct'] = 0.0
+        stock['traded_volume'] = 0
+
+        if not bhav_df.empty:
+            s_data = bhav_df[bhav_df['SYMBOL'] == symbol]
+            if not s_data.empty:
+                del_str = s_data['DELIV_PER'].values[0]
+                stock['delivery_pct'] = float(str(del_str).replace(' ', '').replace('-', '0'))
+                stock['traded_volume'] = int(s_data['TTL_TRD_QNTY'].values[0])
+# =========================================================================
 
 # --- BULK INSERT: MATCHED STOCKS ---
 if matched_stocks_data:
@@ -242,15 +286,10 @@ if matched_stocks_data:
         print(f"❌ DATABASE ERROR: Stocks save nahi ho paye!")
         log_error("DB_SYSTEM", "SUPABASE_INSERT_FAIL", f"Breakout stocks save error: {e}")
 
-    # --- 🚀 NEW: TELEGRAM NOTIFICATION & EXCEL EXPORT ---
     try:
         csv_filename = f"Breakout_Stocks_{today_date}.csv"
         df_export = pd.DataFrame(matched_stocks_data)
-        
-        # DataFrame ko CSV mein save karna
         df_export.to_csv(csv_filename, index=False)
-        
-        # Telegram par send karna
         send_to_telegram(csv_filename)
     except Exception as e:
         print(f"❌ Telegram CSV creation/send fail: {e}")
