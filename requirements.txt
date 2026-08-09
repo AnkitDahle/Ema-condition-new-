@@ -7,3 +7,4 @@ streamlit-cookies-manager
 streamlit>=1.36.0
 google-generativeai
 plotly==5.18.0
+nselib
