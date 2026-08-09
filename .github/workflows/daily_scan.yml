@@ -33,3 +33,11 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           python scanner_job.py
+
+      # 👇 NAYA STEP YAHAN ADD HUA HAI 👇
+      - name: Update Free Float Data
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          python update_free_float.py
