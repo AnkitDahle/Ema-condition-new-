@@ -36,12 +36,16 @@ def show_scanner_page(raw_data, is_admin):
     if not float_df.empty and 'stock_symbol' in df.columns:
         df = pd.merge(df, float_df, left_on='stock_symbol', right_on='symbol', how='left')
         
-        # Calculate % Float Traded 
+        # Calculate % Float Traded (Absolute Number)
         if 'traded_volume' in df.columns and 'float_shares_cr' in df.columns:
             df['% Float Traded'] = ((df['traded_volume'] / 10000000) / df['float_shares_cr']) * 100
-            df['% Float Traded'] = df['% Float Traded'].round(2).astype(str) + "%"
+            # Decimal ko round karke integer (absolute no.) banaya
+            df['% Float Traded'] = df['% Float Traded'].fillna(0).round(0).astype(int).astype(str) + "%"
             df['float_shares_cr'] = df['float_shares_cr'].astype(str) + " Cr"
-            df['delivery_pct'] = df['delivery_pct'].astype(str) + "%"
+            
+    # Delivery % (Absolute Number)
+    if 'delivery_pct' in df.columns:
+        df['delivery_pct'] = pd.to_numeric(df['delivery_pct'], errors='coerce').fillna(0).round(0).astype(int).astype(str) + "%"
 
     # 4. Rename Columns as per your original code
     cols_to_keep = ['scan_date', 'stock_symbol', 'close_price', 'turnover_cr', 'sector', 'industry_proxy', 'float_shares_cr', '% Float Traded', 'delivery_pct', 'traded_volume']
@@ -100,7 +104,7 @@ def show_scanner_page(raw_data, is_admin):
         display_df = df_filtered.copy()
         display_df['TV Chart'] = "https://in.tradingview.com/chart/?symbol=NSE:" + display_df['Stock Symbol']
         
-        # 🧹 HIDING COLUMNS LOGIC (Data safe for Pie Charts, hidden from UI)
+        # 🧹 HIDING COLUMNS LOGIC
         cols_to_hide = ['Sector', 'Proxy / Industry', 'traded_volume']
         display_df = display_df.drop(columns=[c for c in cols_to_hide if c in display_df.columns])
         
@@ -119,13 +123,15 @@ def show_scanner_page(raw_data, is_admin):
     st.markdown("<hr style='border-color: rgba(255,255,255,0.05); margin-top: 30px;'>", unsafe_allow_html=True)
     st.markdown("<h3 style='color: #ffffff; margin-bottom: 20px;'>🍩 Advanced Sector Explorer</h3>", unsafe_allow_html=True)
 
-    # 9. Advanced Sector Explorer (Your EXACT Logic, using the preserved Sector data)
+    # 9. Advanced Sector Explorer
     if not df_selected_date.empty and 'Sector' in df_selected_date.columns:
         sector_counts = df_selected_date['Sector'].value_counts().reset_index()
         sector_counts.columns = ['Sector', 'Stock Count']
         sector_list = sorted(list(sector_counts['Sector']))
         total_sectors = sector_counts['Stock Count'].sum()
-        sector_counts['Legend_Label'] = sector_counts.apply(lambda row: f"{row['Sector']} ({row['Stock Count']/total_sectors*100:.1f}%) ({row['Stock Count']})", axis=1)
+        
+        # 🚀 PIE CHART PERCENTAGE KO BHI ABSOLUTE KIYA (.0f)
+        sector_counts['Legend_Label'] = sector_counts.apply(lambda row: f"{row['Sector']} ({row['Stock Count']/total_sectors*100:.0f}%) ({row['Stock Count']})", axis=1)
 
         fig_sector = px.pie(sector_counts, values='Stock Count', names='Legend_Label', hole=0.45, color_discrete_sequence=px.colors.qualitative.Pastel)
         fig_sector.update_traces(textposition='inside', textinfo='percent', hovertemplate="<b>%{label}</b><br>Stocks: %{value}<extra></extra>")
@@ -148,7 +154,9 @@ def show_scanner_page(raw_data, is_admin):
                 proxy_counts = sector_df['Proxy / Industry'].value_counts().reset_index()
                 proxy_counts.columns = ['Proxy', 'Stock Count']
                 total_proxies = proxy_counts['Stock Count'].sum()
-                proxy_counts['Legend_Label'] = proxy_counts.apply(lambda row: f"{row['Proxy']} ({row['Stock Count']/total_proxies*100:.1f}%) ({row['Stock Count']})", axis=1)
+                
+                # 🚀 PIE CHART PERCENTAGE KO BHI ABSOLUTE KIYA (.0f)
+                proxy_counts['Legend_Label'] = proxy_counts.apply(lambda row: f"{row['Proxy']} ({row['Stock Count']/total_proxies*100:.0f}%) ({row['Stock Count']})", axis=1)
                 
                 fig_proxy = px.pie(proxy_counts, values='Stock Count', names='Legend_Label', hole=0.45, color_discrete_sequence=px.colors.qualitative.Set3)
                 fig_proxy.update_traces(textposition='inside', textinfo='percent', hovertemplate="<b>%{label}</b><br>Stocks: %{value}<extra></extra>")
