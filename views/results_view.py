@@ -35,7 +35,27 @@ def show_results_page(supabase):
                     tv_res_txt = "".join([f"NSE:{sym},\n" for sym in display_res['Stock Symbol']])
                     st.download_button("📥 Watchlist (.txt)", data=tv_res_txt, file_name=f"Earnings_Watchlist.txt", mime="text/plain", use_container_width=True)
                     
-                st.markdown(render_html_table(display_res, max_height="500px"), unsafe_allow_html=True)
+                # ==========================================
+                # 🌟 THE NEW DATE-WISE LOGIC (Expander Loop)
+                # ==========================================
+                unique_dates = display_res['Result Date'].unique()
+                
+                for date in unique_dates:
+                    # Format date to look better (Optional: You can change format here)
+                    display_date = pd.to_datetime(date).strftime('%d %b %Y') 
+                    
+                    # Har date ke liye ek alag dropdown/expander box
+                    with st.expander(f"📅 Results on {display_date}", expanded=True):
+                        
+                        # Sirf us specific date ka data filter karna
+                        date_df = display_res[display_res['Result Date'] == date].copy()
+                        
+                        # Ab table me date dikhane ki zaroorat nahi, toh use drop kar diya
+                        date_df = date_df[['Stock Symbol', 'TV Chart']]
+                        
+                        # Aapki custom UI style wali table ko render karna
+                        st.markdown(render_html_table(date_df, max_height="300px"), unsafe_allow_html=True)
+                        
             else:
                 st.info("✅ Database Connected: Par agle 30 dino mein kisi bhi stock ka result scheduled nahi hai.")
         else:
