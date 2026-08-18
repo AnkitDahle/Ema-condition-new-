@@ -14,6 +14,8 @@ from views.results_view import show_results_page
 from views.ipos_view import show_ipos_page
 from views.journal_view import show_journal_page
 from views.breadth_view import show_breadth_page
+# 🌟 NAYA IMPORT: Recent Results (Time Machine) Page
+from views.recent_results_view import show_recent_results_page
 
 # ==========================================
 # 1. PAGE CONFIGURATION & COOKIES
@@ -32,7 +34,7 @@ if 'logged_in' not in st.session_state:
 if 'current_page' not in st.session_state: 
     st.session_state.current_page = "Home"
 
-# CSS Apply (Ab koi active_index pass karne ki zarurat nahi)
+# CSS Apply
 st.markdown(ui_styles.get_custom_css(), unsafe_allow_html=True)
 supabase = backend.init_supabase()
 raw_data = backend.fetch_swing_stocks()
@@ -66,10 +68,9 @@ if not st.session_state.logged_in and st.session_state.current_page != "Home":
 # ==========================================
 # 3. 🌟 CLICKABLE LOGO (Routes to Home)
 # ==========================================
-st.markdown("<br>", unsafe_allow_html=True) # Upar thoda space
-logo_col, _ = st.columns([2, 5]) # Logo ke liye chota column banaya
+st.markdown("<br>", unsafe_allow_html=True) 
+logo_col, _ = st.columns([2, 5]) 
 with logo_col:
-    # "primary" type se yeh ekdum mast highlighted cyan banner jaisa lagega
     if st.button("🌊 AlphaSwing Pro", use_container_width=True, type="primary"):
         st.session_state.current_page = "Home"
         st.rerun()
@@ -80,9 +81,7 @@ with logo_col:
 nav_cols = st.columns(len(constants.PAGES_LIST) + 1)
 for i, page_name in enumerate(constants.PAGES_LIST):
     with nav_cols[i]:
-        # MAGIC 🪄: Jo page open hai usko 'primary' (Color) do, baaki ko 'secondary' (Transparent) do
         btn_type = "primary" if st.session_state.current_page == page_name else "secondary"
-        
         if st.button(page_name, type=btn_type, use_container_width=True):
             st.session_state.current_page = page_name
             st.rerun()
@@ -101,7 +100,7 @@ with nav_cols[-1]:
             st.rerun()
 
 # 📈 LIVE MARKET TICKER
-if st.session_state.current_page in ["Home", "Scanner", "Fresh", "Results"]:
+if st.session_state.current_page in ["Home", "Scanner", "Fresh", "Results", "Recent Results"]:
     ticker_html = """
     <div class="tradingview-widget-container"><div class="tradingview-widget-container__widget"></div>
       <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
@@ -120,6 +119,9 @@ elif st.session_state.current_page == "Scanner":
     show_scanner_page(raw_data, is_admin)
 elif st.session_state.current_page == "Results":
     show_results_page(supabase)
+# 🌟 NAYA ROUTING: Recent Results Track karne ke liye
+elif st.session_state.current_page == "Recent Results":
+    show_recent_results_page(supabase)
 elif st.session_state.current_page == "IPOs":
     show_ipos_page(raw_ipo_data)
 elif st.session_state.current_page == "Breadth":
