@@ -1,6 +1,6 @@
 import os
+import requests
 import pandas as pd
-import yfinance as yf
 from datetime import datetime, timedelta
 from supabase import create_client
 
@@ -16,54 +16,81 @@ if not url_sb or not key:
 
 supabase = create_client(url_sb, key)
 
-def get_results_from_yahoo():
-    print("🔍 Fetching your scanned stocks from 'swing_stocks' table...")
+def get_recent_results_from_tv():
+    today = datetime.now().date()
+    # 🌟 10 Din ka filter
+    ten_days_ago = today - timedelta(days=10)
+    today_str = str(today)
+    
+    print(f"🔍 Fetching TODAY's ({today_str}) scanned stocks from 'swing_stocks' table...")
     try:
-        res = supabase.table('swing_stocks').select('stock_symbol').execute()
+        # 🌟 Sirf aaj ke scan_date wale stocks uthana
+        res = supabase.table('swing_stocks').select('stock_symbol').eq('scan_date', today_str).execute()
         df = pd.DataFrame(res.data)
+        
         if df.empty:
-            print("⚠️ Database me koi stock save nahi hai.")
+            print(f"⚠️ Aaj ({today_str}) ke liye database me koi stock save nahi hai. (Pehle scanner script run karein).")
             return
+            
         my_stocks = df['stock_symbol'].unique().tolist()
+        print(f"✅ Aaj scan hue {len(my_stocks)} stocks database se successfully fetch ho gaye!")
     except Exception as e:
         print(f"❌ Database error: {e}")
         return
 
-    today = datetime.now().date()
-    three_days_ago = today - timedelta(days=3)
-    today_str = str(today)
+    # ==========================================
+    # 2. TradingView API Logic
+    # ==========================================
+    print(f"\n🌐 TradingView API par in {len(my_stocks)} stocks ka data (Last 10 Days) check kar rahe hain...")
+    
+    tv_url = "https://scanner.tradingview.com/india/scan"
+    
+    # Symbols ko TradingView format (NSE:SYMBOL) me convert karna
+    tv_tickers = [f"NSE:{sym}" for sym in my_stocks]
+    
+    # 'earnings_release_date' = Pichla/Current Result Date
+    payload = {
+        "symbols": {"tickers": tv_tickers},
+        "columns": ["name", "earnings_release_date"]
+    }
+    
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Content-Type": "application/json"
+    }
     
     recent_results = []
     
-    print(f"🌐 Yahoo Finance par {len(my_stocks)} stocks ka data check kar rahe hain. Please wait...")
-    
-    for sym in my_stocks:
-        try:
-            # NSE ke liye symbol ke aage .NS lagana padta hai
-            ticker = yf.Ticker(f"{sym}.NS")
-            earnings_dates = ticker.earnings_dates
+    try:
+        response = requests.post(tv_url, json=payload, headers=headers)
+        data = response.json()
+        
+        for item in data.get('data', []):
+            stock_name = item['d'][0]
+            earnings_ts = item['d'][1] # Timestamp
             
-            if earnings_dates is not None and not earnings_dates.empty:
-                for timestamp in earnings_dates.index:
-                    res_date = timestamp.date()
+            if earnings_ts:
+                # UNIX Timestamp ko readable Date me convert karna
+                res_date = datetime.fromtimestamp(earnings_ts).date()
+                
+                # Agar result pichle 10 din me (ya aaj) aaya hai
+                if ten_days_ago <= res_date <= today:
+                    recent_results.append({
+                        'scan_date': today_str,
+                        'stock_symbol': stock_name,
+                        'result_date': str(res_date)
+                    })
+                    print(f"🎯 MATCH FOUND: {stock_name} | Result Date: {res_date}")
                     
-                    # Agar result pichle 3 din (ya aaj) me aaya hai
-                    if three_days_ago <= res_date <= today:
-                        recent_results.append({
-                            'scan_date': today_str,
-                            'stock_symbol': sym,
-                            'result_date': str(res_date)
-                        })
-                        print(f"🎯 MATCH FOUND: {sym} | Result: {res_date}")
-                        break # Ek match mila toh aage badho
-        except Exception:
-            pass # Yahoo par data missing hone par error skip karega
+    except Exception as e:
+        print(f"❌ TradingView API Error: {e}")
+        return
 
     # ==========================================
-    # 2. Database Save (Time Machine Logic)
+    # 3. Database Save (Time Machine Logic)
     # ==========================================
     if recent_results:
-        print(f"\n🧹 Clearing today's old scans to prevent duplicates...")
+        print(f"\n🧹 Clearing today's old result logs to prevent duplicates...")
         supabase.table('recent_results_log').delete().eq('scan_date', today_str).execute()
         
         print(f"💾 Saving {len(recent_results)} records to Supabase...")
@@ -73,7 +100,7 @@ def get_results_from_yahoo():
             
         print("🎉 SUCCESS! Recent results saved Date-Wise in database.")
     else:
-        print("\n⚠️ Pichle 3 din me kisi bhi scanned stock ka result nahi aaya.")
+        print("\n⚠️ Pichle 10 din me inme se kisi bhi stock ka result announce nahi hua hai.")
 
 if __name__ == "__main__":
-    get_results_from_yahoo()
+    get_recent_results_from_tv()
