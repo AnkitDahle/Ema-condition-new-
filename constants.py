@@ -3,7 +3,7 @@
 # ==========================================
 
 # Main application tabs / pages list (Updated with Breadth and Short Names)
-PAGES_LIST = ['Scanner', 'Fresh', 'Results', 'Catalyst', 'IPOs', 'Breadth', 'Journal', 'Calculator']
+PAGES_LIST = ['Scanner', 'Fresh', 'Results', 'Recent Results', 'Catalyst', 'IPOs', 'Breadth', 'Journal', 'Calculator']
 
 # Default fallback tickers for catalyst or data fetch systems
 DEFAULT_TICKERS = ["RELIANCE", "TCS", "INFY", "ZOMATO", "SBIN"]
