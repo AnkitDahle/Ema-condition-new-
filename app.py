@@ -2,6 +2,16 @@ import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
 import json
+
+# ==========================================
+# 🚨 ERROR FIX: STREAMLIT CACHE MONKEY PATCH
+# Naye Streamlit se st.cache delete ho gaya hai, 
+# isliye hum purani cookies library ko trick kar rahe hain.
+# Yeh import se pehle aana zaroori hai!
+# ==========================================
+if not hasattr(st, "cache"):
+    st.cache = st.cache_data
+
 from streamlit_cookies_manager import EncryptedCookieManager 
 
 # --- Custom Modules Imports ---
