@@ -7,12 +7,13 @@ def convert_df_to_csv(df):
     return df.to_csv(index=False).encode('utf-8')
 
 def show_ipos_page(raw_ipo_data):
-    st.markdown("<div class='page-heading'>🏢 IPOs</div>", unsafe_allow_html=True)
+    st.markdown("<div class='page-heading'>🏢 Premium IPO Tracker (2020+)</div>", unsafe_allow_html=True)
     
     if raw_ipo_data is not None:
         if len(raw_ipo_data) > 0:
             df_ipo = pd.DataFrame(raw_ipo_data)
             
+            # Columns safe mapping
             sym_col = 'stock_symbol' if 'stock_symbol' in df_ipo.columns else ('symbol' if 'symbol' in df_ipo.columns else None)
             date_col = 'listing_date' if 'listing_date' in df_ipo.columns else ('date' if 'date' in df_ipo.columns else None)
             name_col = 'company_name' if 'company_name' in df_ipo.columns else ('name' if 'name' in df_ipo.columns else None)
@@ -28,6 +29,7 @@ def show_ipos_page(raw_ipo_data):
                 
                 today = pd.to_datetime('today').date()
                 
+                # 🚀 METRICS SECTION (Aapka Awesome UI)
                 this_year_count = len(df_ipo[df_ipo['calc_date'].dt.year == today.year])
                 m1, m2, m3, m4 = st.columns([1, 1, 1, 3])
                 with m1: st.metric("Today Listed", len(df_ipo[df_ipo['calc_date'].dt.date == today]))
@@ -35,45 +37,87 @@ def show_ipos_page(raw_ipo_data):
                 with m3: st.metric("This Year", this_year_count)
                 st.markdown("<br>", unsafe_allow_html=True)
 
+                # ==========================================
+                # 🎛️ FILTERS SECTION
+                # ==========================================
                 col_y1, col_m1, col_search = st.columns([1.2, 1.2, 1.5])
+                
+                # 'All Years' option add kiya taaki poora data bhi dekh sakein
                 available_years = sorted([int(x) for x in df_ipo['Year_Filter'].dropna().unique()], reverse=True) if not df_ipo['Year_Filter'].dropna().empty else [today.year]
+                available_years.insert(0, "All Years") 
+                
                 with col_y1: selected_year = st.selectbox("📅 IPO Year:", available_years)
                 with col_m1: selected_month = st.selectbox("🗓️ Month:", ["All Months", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"])
                 
-                fil = df_ipo[df_ipo['Year_Filter'].astype(str) == str(selected_year)]
-                if selected_month != "All Months": fil = fil[fil['Month'] == selected_month]
+                # ✂️ Data Filter Logic
+                fil = df_ipo.copy()
+                if selected_year != "All Years":
+                    fil = fil[fil['Year_Filter'].astype(str) == str(selected_year)]
                 
-                with col_search: selected_ipo_stock = st.selectbox("🔤 Search IPO:", sorted(list(fil[sym_col].dropna().unique())), index=None, placeholder="Type symbol...")
-                if selected_ipo_stock: fil = fil[fil[sym_col] == selected_ipo_stock]
+                if selected_month != "All Months": 
+                    fil = fil[fil['Month'] == selected_month]
                 
-                display_ipo = fil[[sym_col, name_col if name_col else sym_col, date_col]].sort_values(by=date_col, ascending=False)
-                display_ipo.columns = ['Symbol', 'Company Name', 'Listing Date']
-                display_ipo['TV Chart'] = "https://in.tradingview.com/chart/?symbol=NSE:" + display_ipo['Symbol']
+                with col_search: 
+                    selected_ipo_stock = st.selectbox("🔤 Search IPO:", sorted(list(fil[sym_col].dropna().unique())), index=None, placeholder="Type symbol...")
                 
-                st.markdown(render_html_table(display_ipo, max_height="500px"), unsafe_allow_html=True)
+                if selected_ipo_stock: 
+                    fil = fil[fil[sym_col] == selected_ipo_stock]
+                
+                # ==========================================
+                # 📊 DISPLAY DATA
+                # ==========================================
+                if not fil.empty:
+                    # Sirf filtered data ko display ke liye nikalna
+                    display_ipo = fil[[sym_col, name_col if name_col else sym_col, date_col]].copy()
+                    display_ipo = display_ipo.sort_values(by=date_col, ascending=False)
+                    
+                    # Date ko khoobsurat format me dikhana
+                    display_ipo[date_col] = pd.to_datetime(display_ipo[date_col]).dt.strftime('%d %b %Y')
+                    
+                    display_ipo.columns = ['Symbol', 'Company Name', 'Listing Date']
+                    display_ipo['TV Chart'] = "https://in.tradingview.com/chart/?symbol=NSE:" + display_ipo['Symbol']
+                    
+                    st.markdown(f"<p style='color: #10b981; font-weight: bold;'>✅ Total {len(display_ipo)} IPOs Listed</p>", unsafe_allow_html=True)
+                    st.markdown(render_html_table(display_ipo, max_height="500px"), unsafe_allow_html=True)
 
-                # ==========================================
-                # 📥 DOWNLOAD BUTTON SECTION
-                # ==========================================
-                st.markdown("<br><hr style='border-color: rgba(255,255,255,0.1);'><br>", unsafe_allow_html=True)
-                st.markdown("### 📥 Download Filtered Data")
-                
-                btn_col1, btn_col2 = st.columns([2, 3])
-                with btn_col1:
-                    download_df = display_ipo.drop(columns=['TV Chart']).copy()
+                    # ==========================================
+                    # 📥 SMART DOWNLOAD BUTTON SECTION
+                    # ==========================================
+                    st.markdown("<br><hr style='border-color: rgba(255,255,255,0.1);'><br>", unsafe_allow_html=True)
+                    st.markdown("### 📥 Download Filtered Data")
                     
-                    # 🚀 TRADINGVIEW FORMAT + COMMA MAGIC
-                    # Har stock ke aage ab automatically comma lag jayega (e.g., NSE:ZOMATO,)
-                    download_df.insert(0, 'TradingView Copy', 'NSE:' + download_df['Symbol'] + ',')
+                    # Dynamic File Name Banane ka jugaad
+                    yr_str = str(selected_year).replace(" ", "")
+                    mo_str = str(selected_month).replace("All Months", "All")
                     
-                    st.download_button(
-                        label="📊 Download IPOs (CSV)",
-                        data=convert_df_to_csv(download_df),
-                        file_name=f"ipos_{selected_year}_TV.csv",
-                        mime="text/csv",
-                        use_container_width=True,
-                        type="primary"
-                    )
+                    btn_col1, btn_col2 = st.columns([1, 1])
+                    
+                    with btn_col1:
+                        # 1. TradingView .txt Format (Direct Import ke liye best)
+                        tv_txt = "".join([f"NSE:{sym},\n" for sym in display_ipo['Symbol']])
+                        st.download_button(
+                            label="📥 Download Watchlist (.txt)", 
+                            data=tv_txt, 
+                            file_name=f"IPOs_{yr_str}_{mo_str}.txt", 
+                            mime="text/plain", 
+                            use_container_width=True
+                        )
+                        
+                    with btn_col2:
+                        # 2. Aapka CSV Format (Comma Magic ke sath)
+                        download_df = display_ipo.drop(columns=['TV Chart']).copy()
+                        download_df.insert(0, 'TradingView Copy', 'NSE:' + download_df['Symbol'] + ',')
+                        
+                        st.download_button(
+                            label="📊 Download IPOs (CSV)",
+                            data=convert_df_to_csv(download_df),
+                            file_name=f"IPOs_{yr_str}_{mo_str}.csv",
+                            mime="text/csv",
+                            use_container_width=True,
+                            type="primary"
+                        )
+                else:
+                    st.warning("⚠️ Aapke chune hue criteria me koi IPO match nahi hua.")
 
         else:
             st.info("💡 **Database Connected:** Table `ipo_master` mil gayi hai, par uske andar abhi koi data nahi hai (Khali hai).")
