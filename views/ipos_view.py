@@ -1,125 +1,136 @@
-import streamlit as st
+import os
 import pandas as pd
-from ui_styles import render_html_table
+from supabase import create_client, Client
+import requests
+import io
+from datetime import datetime
+import yfinance as yf
+import warnings
 
-@st.cache_data
-def convert_df_to_csv(df):
-    return df.to_csv(index=False).encode('utf-8')
+# Faltu yfinance warnings ko chup karana
+warnings.filterwarnings('ignore')
 
-def show_ipos_page(raw_ipo_data):
-    st.markdown("<div class='page-heading'>🏢 Premium IPO Tracker (2020+)</div>", unsafe_allow_html=True)
+# Supabase Connection
+url_sb = os.environ.get("SUPABASE_URL")
+key = os.environ.get("SUPABASE_KEY")
+
+if not url_sb or not key:
+    print("⚠️ Supabase Credentials (URL ya KEY) nahi mile!")
+    exit()
+
+supabase: Client = create_client(url_sb, key)
+
+def update_ipo_master():
+    print("🌐 NSE Official Server se Data fetch kar rahe hain...")
+    url = "https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Accept": "*/*"
+    }
     
-    if raw_ipo_data is not None:
-        if len(raw_ipo_data) > 0:
-            df_ipo = pd.DataFrame(raw_ipo_data)
+    try:
+        session = requests.Session()
+        session.get("https://www.nseindia.com", headers=headers, timeout=10)
+        response = session.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+        df = pd.read_csv(io.StringIO(response.text))
+        df.columns = df.columns.str.strip()
+        df = df[df['SERIES'] == 'EQ']
+        
+        suspect_ipos = []
+        for index, row in df.iterrows():
+            symbol = str(row['SYMBOL']).strip()
+            name = str(row['NAME OF COMPANY']).strip()
+            list_date_str = str(row['DATE OF LISTING']).strip()
             
-            # Columns safe mapping
-            sym_col = 'stock_symbol' if 'stock_symbol' in df_ipo.columns else ('symbol' if 'symbol' in df_ipo.columns else None)
-            date_col = 'listing_date' if 'listing_date' in df_ipo.columns else ('date' if 'date' in df_ipo.columns else None)
-            name_col = 'company_name' if 'company_name' in df_ipo.columns else ('name' if 'name' in df_ipo.columns else None)
-            year_col = 'listing_year' if 'listing_year' in df_ipo.columns else ('year' if 'year' in df_ipo.columns else None)
-            
-            if not sym_col or not date_col:
-                st.error("⚠️ Table toh mili par usme Symbol ya Date wale columns ke naam match nahi ho rahe hain!")
-                st.write("Aapke maujuda columns hain:", list(df_ipo.columns))
-            else:
-                df_ipo['calc_date'] = pd.to_datetime(df_ipo[date_col], errors='coerce')
-                df_ipo['Month'] = df_ipo['calc_date'].dt.strftime('%B')
-                df_ipo['Year_Filter'] = df_ipo[year_col] if year_col else df_ipo['calc_date'].dt.year
+            try:
+                date_obj = datetime.strptime(list_date_str, '%d-%b-%Y')
+                # Pehla Filter: Jo NSE ke hisaab se 2020+ hain
+                if date_obj.year >= 2020:
+                    suspect_ipos.append({
+                        "stock_symbol": symbol,
+                        "company_name": name,
+                        "nse_date": date_obj
+                    })
+            except:
+                continue 
                 
-                today = pd.to_datetime('today').date()
-                
-                # 🚀 METRICS SECTION (Aapka Awesome UI)
-                this_year_count = len(df_ipo[df_ipo['calc_date'].dt.year == today.year])
-                m1, m2, m3, m4 = st.columns([1, 1, 1, 3])
-                with m1: st.metric("Today Listed", len(df_ipo[df_ipo['calc_date'].dt.date == today]))
-                with m2: st.metric("This Month", len(df_ipo[(df_ipo['calc_date'].dt.month == today.month) & (df_ipo['calc_date'].dt.year == today.year)]))
-                with m3: st.metric("This Year", this_year_count)
-                st.markdown("<br>", unsafe_allow_html=True)
-
-                # ==========================================
-                # 🎛️ FILTERS SECTION
-                # ==========================================
-                col_y1, col_m1, col_search = st.columns([1.2, 1.2, 1.5])
-                
-                # 'All Years' option add kiya taaki poora data bhi dekh sakein
-                available_years = sorted([int(x) for x in df_ipo['Year_Filter'].dropna().unique()], reverse=True) if not df_ipo['Year_Filter'].dropna().empty else [today.year]
-                available_years.insert(0, "All Years") 
-                
-                with col_y1: selected_year = st.selectbox("📅 IPO Year:", available_years)
-                with col_m1: selected_month = st.selectbox("🗓️ Month:", ["All Months", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"])
-                
-                # ✂️ Data Filter Logic
-                fil = df_ipo.copy()
-                if selected_year != "All Years":
-                    fil = fil[fil['Year_Filter'].astype(str) == str(selected_year)]
-                
-                if selected_month != "All Months": 
-                    fil = fil[fil['Month'] == selected_month]
-                
-                with col_search: 
-                    selected_ipo_stock = st.selectbox("🔤 Search IPO:", sorted(list(fil[sym_col].dropna().unique())), index=None, placeholder="Type symbol...")
-                
-                if selected_ipo_stock: 
-                    fil = fil[fil[sym_col] == selected_ipo_stock]
-                
-                # ==========================================
-                # 📊 DISPLAY DATA
-                # ==========================================
-                if not fil.empty:
-                    # Sirf filtered data ko display ke liye nikalna
-                    display_ipo = fil[[sym_col, name_col if name_col else sym_col, date_col]].copy()
-                    display_ipo = display_ipo.sort_values(by=date_col, ascending=False)
-                    
-                    # Date ko khoobsurat format me dikhana
-                    display_ipo[date_col] = pd.to_datetime(display_ipo[date_col]).dt.strftime('%d %b %Y')
-                    
-                    display_ipo.columns = ['Symbol', 'Company Name', 'Listing Date']
-                    display_ipo['TV Chart'] = "https://in.tradingview.com/chart/?symbol=NSE:" + display_ipo['Symbol']
-                    
-                    st.markdown(f"<p style='color: #10b981; font-weight: bold;'>✅ Total {len(display_ipo)} IPOs Listed</p>", unsafe_allow_html=True)
-                    st.markdown(render_html_table(display_ipo, max_height="500px"), unsafe_allow_html=True)
-
-                    # ==========================================
-                    # 📥 SMART DOWNLOAD BUTTON SECTION
-                    # ==========================================
-                    st.markdown("<br><hr style='border-color: rgba(255,255,255,0.1);'><br>", unsafe_allow_html=True)
-                    st.markdown("### 📥 Download Filtered Data")
-                    
-                    # Dynamic File Name Banane ka jugaad
-                    yr_str = str(selected_year).replace(" ", "")
-                    mo_str = str(selected_month).replace("All Months", "All")
-                    
-                    btn_col1, btn_col2 = st.columns([1, 1])
-                    
-                    with btn_col1:
-                        # 1. TradingView .txt Format (Direct Import ke liye best)
-                        tv_txt = "".join([f"NSE:{sym},\n" for sym in display_ipo['Symbol']])
-                        st.download_button(
-                            label="📥 Download Watchlist (.txt)", 
-                            data=tv_txt, 
-                            file_name=f"IPOs_{yr_str}_{mo_str}.txt", 
-                            mime="text/plain", 
-                            use_container_width=True
-                        )
-                        
-                    with btn_col2:
-                        # 2. Aapka CSV Format (Comma Magic ke sath)
-                        download_df = display_ipo.drop(columns=['TV Chart']).copy()
-                        download_df.insert(0, 'TradingView Copy', 'NSE:' + download_df['Symbol'] + ',')
-                        
-                        st.download_button(
-                            label="📊 Download IPOs (CSV)",
-                            data=convert_df_to_csv(download_df),
-                            file_name=f"IPOs_{yr_str}_{mo_str}.csv",
-                            mime="text/csv",
-                            use_container_width=True,
-                            type="primary"
-                        )
-                else:
-                    st.warning("⚠️ Aapke chune hue criteria me koi IPO match nahi hua.")
-
+        print(f"📊 NSE ne bataye {len(suspect_ipos)} stocks (2020+). Ab YFinance se verify karenge...\n")
+        
+        ns_tickers = [f"{item['stock_symbol']}.NS" for item in suspect_ipos]
+        bo_tickers = [f"{item['stock_symbol']}.BO" for item in suspect_ipos]
+        all_tickers = ns_tickers + bo_tickers
+        
+        print(f"⚡ Yahoo Finance se history check kar rahe hain (It takes ~15 seconds)...")
+        data = yf.download(all_tickers, period="max", threads=True, progress=False)
+        
+        if isinstance(data.columns, pd.MultiIndex):
+            close_df = data['Close']
         else:
-            st.info("💡 **Database Connected:** Table `ipo_master` mil gayi hai, par uske andar abhi koi data nahi hai (Khali hai).")
-    else:
-        st.error("❌ Table Connect Error: Supabase se data fetch nahi ho pa raha hai. Ek baar check karein ki table ka naam 'ipo_master' hi hai na?")
+            close_df = data
+            
+        genuine_ipos = []
+        rejected_count = 0
+        
+        for item in suspect_ipos:
+            sym = item['stock_symbol']
+            # ✅ TRUE DATE: NSE ki official date
+            nse_official_date = item['nse_date'].date()
+            
+            ns_sym = f"{sym}.NS"
+            bo_sym = f"{sym}.BO"
+            
+            first_ns = close_df[ns_sym].first_valid_index() if ns_sym in close_df.columns else None
+            first_bo = close_df[bo_sym].first_valid_index() if bo_sym in close_df.columns else None
+            
+            yf_dates = []
+            if first_ns: yf_dates.append(pd.to_datetime(first_ns).date())
+            if first_bo: yf_dates.append(pd.to_datetime(first_bo).date())
+            
+            is_migrated = False
+            if yf_dates:
+                oldest_yf_date = min(yf_dates)
+                
+                # 🚀 MAIN LOGIC FIX: 
+                # Agar Yahoo Finance ki trading date NSE list date se 30 din se zyada PEECHE hai,
+                # iska matlab stock pehle se kisi aur exchange (BSE/SME) par chal raha tha!
+                if (nse_official_date - oldest_yf_date).days > 30:
+                    is_migrated = True
+                
+                # Double check
+                if oldest_yf_date.year < 2020:
+                    is_migrated = True
+            
+            if is_migrated:
+                print(f"🚫 REJECTED: {sym} (Migrated Stock. Real start was: {oldest_yf_date})")
+                rejected_count += 1
+                continue
+                
+            # ✅ ACCEPTED: Agar ye genuine IPO hai, toh hamesha OFFICIAL NSE DATE save karenge!
+            genuine_ipos.append({
+                "stock_symbol": sym,
+                "company_name": item['company_name'],
+                "listing_date": nse_official_date.strftime('%Y-%m-%d'),
+                "listing_year": nse_official_date.year
+            })
+            
+        print(f"\n✅ Truth Detector Result: {rejected_count} Migrated/Fake IPOs bahar nikal diye gaye!")
+        print(f"💾 Total {len(genuine_ipos)} GENUINE IPOs Database me save kar rahe hain...")
+        
+        if genuine_ipos:
+            chunk_size = 500
+            for i in range(0, len(genuine_ipos), chunk_size):
+                batch = genuine_ipos[i : i+chunk_size]
+                # Upsert khud-ba-khud PATELRMART ki 2026 wali entry ko 2025 se replace/update kar dega
+                supabase.table('ipo_master').upsert(batch).execute()
+                
+            print("🎉 IPO Master Table (100% Genuine 2020+) successfully updated!")
+        else:
+            print("⚠️ Koi data save nahi hua.")
+            
+    except Exception as e:
+        print(f"❌ Error: {e}")
+
+if __name__ == "__main__":
+    update_ipo_master()
