@@ -18,8 +18,9 @@ supabase = create_client(url_sb, key)
 
 def get_recent_results_from_tv():
     today = datetime.now().date()
-    # 🌟 10 Din ka filter
-    ten_days_ago = today - timedelta(days=10)
+    
+    # 🌟 50 Din ka naya filter (Updated from 10)
+    fifty_days_ago = today - timedelta(days=50)
     today_str = str(today)
     
     print(f"🔍 Fetching TODAY's ({today_str}) scanned stocks from 'swing_stocks' table...")
@@ -41,7 +42,7 @@ def get_recent_results_from_tv():
     # ==========================================
     # 2. TradingView API Logic
     # ==========================================
-    print(f"\n🌐 TradingView API par in {len(my_stocks)} stocks ka data (Last 10 Days) check kar rahe hain...")
+    print(f"\n🌐 TradingView API par in {len(my_stocks)} stocks ka data (Last 50 Days) check kar rahe hain...")
     
     tv_url = "https://scanner.tradingview.com/india/scan"
     
@@ -73,8 +74,8 @@ def get_recent_results_from_tv():
                 # UNIX Timestamp ko readable Date me convert karna
                 res_date = datetime.fromtimestamp(earnings_ts).date()
                 
-                # Agar result pichle 10 din me (ya aaj) aaya hai
-                if ten_days_ago <= res_date <= today:
+                # 🔥 Asli Jadoo Yahan Hai: Agar result pichle 50 din me (ya aaj) aaya hai
+                if fifty_days_ago <= res_date <= today:
                     recent_results.append({
                         'scan_date': today_str,
                         'stock_symbol': stock_name,
@@ -100,7 +101,7 @@ def get_recent_results_from_tv():
             
         print("🎉 SUCCESS! Recent results saved Date-Wise in database.")
     else:
-        print("\n⚠️ Pichle 10 din me inme se kisi bhi stock ka result announce nahi hua hai.")
+        print("\n⚠️ Pichle 50 din me inme se kisi bhi stock ka result announce nahi hua hai.")
 
 if __name__ == "__main__":
     get_recent_results_from_tv()
