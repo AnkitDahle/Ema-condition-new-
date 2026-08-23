@@ -56,7 +56,7 @@ def log_error(symbol, category, detailed_reason):
     })
     print(f"🚨 ERROR: {symbol} - {category}")
 
-# 🚫 HARDCODED BLACKLIST (Added MSCI360 here)
+# 🚫 HARDCODED BLACKLIST 
 KACHRA_STOCKS = [
     "SNXT50BE", "ITADD", "MOLOWV", "ARTEMISM", "SILVERADD", "NEXT50", "PVTBANKA", 
     "MOMENTUM", "GOLDADD", "SILVERAG", "NIFTYADD", "MONQ50", "MIDQ50ADD", "SILVERBET", 
@@ -70,7 +70,7 @@ KACHRA_STOCKS = [
     "MSCI360"
 ]
 
-# 🚫 NSE SERIES BLACKLIST (Bonds, NCDs, Illiquid, etc.)
+# 🚫 NSE SERIES BLACKLIST
 BAD_SERIES = [
     "AK", "AL", "AM", "AN", "AU", "AV", "AW", "AX", "AY", "AZ", "BA", "BC", "BR", "BS", "BU", "BV", "BW", "BX", "BZ", "D1", "GB", "IV", 
     "E1", "E2", "E3", 
@@ -95,11 +95,10 @@ def get_full_nse_list():
         ]
         
         nse_symbols = df_nse['tradingsymbol'].tolist()
-        
         clean_symbols = []
+        
         for s in nse_symbols:
             s = str(s)
-            
             if s.endswith(BAD_SUFFIXES): continue
             if s.endswith("NAV") or s.endswith("INAV"): continue
             if '-SG' in s or '-SF' in s or '-SD' in s or '-GS' in s: continue
@@ -156,7 +155,7 @@ for i in range(0, len(stocks), chunk_size):
                     log_error(ticker, "INSUFFICIENT_HISTORY", f"Sirf {len(close_data)} din ka data hai. Min 22 days zaroori hain.")
                     continue
                 
-                # Math & Moving Averages
+                # Math & Moving Averages (Daily)
                 sma_50 = close_data.rolling(window=50, min_periods=1).mean()
                 vol_sma_20 = vol_data.rolling(window=20, min_periods=1).mean()  
                 turnover_data = close_data * vol_sma_20  
@@ -173,25 +172,35 @@ for i in range(0, len(stocks), chunk_size):
                 close_22 = float(close_22_ago.iloc[-1]) if pd.notna(close_22_ago.iloc[-1]) else 999999.0
                 close_66 = float(close_66_ago.iloc[-1]) if pd.notna(close_66_ago.iloc[-1]) else 999999.0
                 
+                # Tech Conditions (ANY 1 pass hona zaroori hai)
                 tech_cond1 = (close / close_22 > 1.2) and (turnover > 100000000)
                 tech_cond2 = (close / close_66 >= 1.3) and (close >= 1) and (turnover > 100000000)
                 tech_cond3 = (close > max_high * 0.75) and (close > sma_50_val) and (turnover > 100000000)
                 
-                weekly_cond_pass = False
-                weekly_close = close_data.resample('W-FRI').last()
+                # ==========================================
+                # 🔥 NEW STRICT MONTHLY EMA CONDITION
+                # ==========================================
+                monthly_cond_pass = False
                 
-                if len(weekly_close) >= 4:
-                    weekly_ema10 = weekly_close.ewm(span=10, adjust=False).mean()
-                    weekly_ema30 = weekly_close.ewm(span=30, adjust=False).mean()
+                # Convert Daily data to Monthly (Month End 'ME')
+                monthly_close = close_data.resample('ME').last()
+                
+                if len(monthly_close) >= 2:
+                    # Calculate 9 EMA & 20 EMA on Monthly Chart
+                    monthly_ema9 = monthly_close.ewm(span=9, adjust=False).mean()
+                    monthly_ema20 = monthly_close.ewm(span=20, adjust=False).mean()
                     
-                    w1 = (weekly_close.iloc[-2] > weekly_ema10.iloc[-2]) and (weekly_close.iloc[-2] > weekly_ema30.iloc[-2])
-                    w2 = (weekly_close.iloc[-3] > weekly_ema10.iloc[-3]) and (weekly_close.iloc[-3] > weekly_ema30.iloc[-3])
-                    w3 = (weekly_close.iloc[-4] > weekly_ema10.iloc[-4]) and (weekly_close.iloc[-4] > weekly_ema30.iloc[-4])
+                    # Current Month (iloc[-1]) aur Last Month (iloc[-2]) me 9 > 20 hona chahiye
+                    m1 = monthly_ema9.iloc[-1] > monthly_ema20.iloc[-1]
+                    m2 = monthly_ema9.iloc[-2] > monthly_ema20.iloc[-2]
                     
-                    if w1 and w2 and w3:
-                        weekly_cond_pass = True
+                    if m1 and m2:
+                        monthly_cond_pass = True
 
-                if (tech_cond1 or tech_cond2 or tech_cond3) and weekly_cond_pass:
+                # ==========================================
+                
+                # Final Check: (Cond1 OR Cond2 OR Cond3) AND (Monthly 9>20 EMA)
+                if (tech_cond1 or tech_cond2 or tech_cond3) and monthly_cond_pass:
                     try:
                         time.sleep(0.5) 
                         stock_info = yf.Ticker(ticker).info
@@ -203,11 +212,10 @@ for i in range(0, len(stocks), chunk_size):
                         sector_name = stock_info.get('sector', 'Unknown')
                         proxy_name = stock_info.get('industry', 'Unknown')
                         
-                        # 🚀 MARKET CAP FILTER LOGIC (50 Cr to 50,000 Cr)
+                        # 🚀 FIXED MARKET CAP FILTER (500 Cr to 80,000 Cr)
                         market_cap = stock_info.get('marketCap', 0)
                         
-                        # 50 Cr = 500,000,000 | 50,000 Cr = 500,000,000,000
-                        if market_cap < 500000000 or market_cap > 500000000000:
+                        if market_cap < 5000000000 or market_cap > 800000000000:
                             print(f"⏩ Skipped {ticker}: Market Cap out of range ({market_cap / 10000000:.2f} Cr)")
                             continue
                         
