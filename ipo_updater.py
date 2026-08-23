@@ -3,28 +3,28 @@ import pandas as pd
 from supabase import create_client, Client
 import requests
 import io
-from datetime import datetime
+from datetime import datetime, timedelta
 import yfinance as yf
 import warnings
 
 warnings.filterwarnings('ignore')
 
+# ==========================================
+# 1. Supabase Connection
+# ==========================================
 url_sb = os.environ.get("SUPABASE_URL")
 key = os.environ.get("SUPABASE_KEY")
 
 if not url_sb or not key:
-    print("⚠️ Supabase Credentials (URL ya KEY) nahi mile!")
+    print("⚠️ Supabase Credentials missing!")
     exit()
 
 supabase: Client = create_client(url_sb, key)
 
-def update_ipo_master_bulk():
-    print("🌐 NSE Official Server se Data fetch kar rahe hain...")
+def daily_ipo_tracker():
+    print("🌐 Checking NSE for recently listed stocks (Last 7 Days)...")
     url = "https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Accept": "*/*"
-    }
+    headers = {"User-Agent": "Mozilla/5.0"}
     
     try:
         session = requests.Session()
@@ -36,87 +36,80 @@ def update_ipo_master_bulk():
         df.columns = df.columns.str.strip()
         df = df[df['SERIES'] == 'EQ']
         
-        suspect_ipos = []
+        # 🌟 LOGIC: Aaj se pichle 7 din ka window
+        today = datetime.now().date()
+        seven_days_ago = today - timedelta(days=7)
+        
+        recent_listings = []
         for index, row in df.iterrows():
-            symbol = str(row['SYMBOL']).strip()
-            name = str(row['NAME OF COMPANY']).strip()
-            list_date_str = str(row['DATE OF LISTING']).strip()
-            
             try:
-                date_obj = datetime.strptime(list_date_str, '%d-%b-%Y')
-                # 🌟 BULK FILTER: 2020 se aaj tak ke saare stocks
-                if date_obj.year >= 2020:
-                    suspect_ipos.append({
-                        "stock_symbol": symbol,
-                        "company_name": name,
+                list_date_str = str(row['DATE OF LISTING']).strip()
+                date_obj = datetime.strptime(list_date_str, '%d-%b-%Y').date()
+                
+                # Agar listing date pichle 7 din me hai, toh isko check list me dalo
+                if seven_days_ago <= date_obj <= today:
+                    recent_listings.append({
+                        "stock_symbol": str(row['SYMBOL']).strip(),
+                        "company_name": str(row['NAME OF COMPANY']).strip(),
                         "nse_date": date_obj
                     })
             except:
-                continue 
-                
-        print(f"📊 NSE ne bataye {len(suspect_ipos)} stocks (2020+). Ab verify kar rahe hain...\n")
-        
-        ns_tickers = [f"{item['stock_symbol']}.NS" for item in suspect_ipos]
-        bo_tickers = [f"{item['stock_symbol']}.BO" for item in suspect_ipos]
-        all_tickers = ns_tickers + bo_tickers
-        
-        print(f"⚡ History check kar rahe hain (It takes ~15-20 seconds)...")
-        data = yf.download(all_tickers, period="max", threads=True, progress=False)
-        
-        close_df = data['Close'] if isinstance(data.columns, pd.MultiIndex) else data
-            
-        genuine_ipos = []
-        rejected_count = 0
-        
-        for item in suspect_ipos:
-            sym = item['stock_symbol']
-            nse_official_date = item['nse_date'].date()
-            
-            ns_sym = f"{sym}.NS"
-            bo_sym = f"{sym}.BO"
-            
-            first_ns = close_df[ns_sym].first_valid_index() if ns_sym in close_df.columns else None
-            first_bo = close_df[bo_sym].first_valid_index() if bo_sym in close_df.columns else None
-            
-            yf_dates = []
-            if first_ns: yf_dates.append(pd.to_datetime(first_ns).date())
-            if first_bo: yf_dates.append(pd.to_datetime(first_bo).date())
-            
-            is_migrated = False
-            if yf_dates:
-                oldest_yf_date = min(yf_dates)
-                
-                # 30-Day Rule (BSE/SME se migrate hue stocks ko nikalne ke liye)
-                if (nse_official_date - oldest_yf_date).days > 30:
-                    is_migrated = True
-                if oldest_yf_date.year < 2020:
-                    is_migrated = True
-            
-            if is_migrated:
-                rejected_count += 1
                 continue
                 
-            genuine_ipos.append({
-                "stock_symbol": sym,
-                "company_name": item['company_name'],
-                "listing_date": nse_official_date.strftime('%Y-%m-%d'),
-                "listing_year": nse_official_date.year
-            })
+        if not recent_listings:
+            print("💤 Pichle 7 din me NSE par koi naya stock list nahi hua. All good!")
+            return
             
-        print(f"\n✅ Filter Result: {rejected_count} Migrated/Fake IPOs reject kar diye!")
-        print(f"💾 Total {len(genuine_ipos)} GENUINE IPOs Database me save kar rahe hain...")
+        print(f"🔍 NSE ne {len(recent_listings)} naye stocks bataye. Ab YFinance se migration check kar rahe hain...\n")
         
-        if genuine_ipos:
-            chunk_size = 500
-            for i in range(0, len(genuine_ipos), chunk_size):
-                batch = genuine_ipos[i : i+chunk_size]
-                supabase.table('ipo_master').upsert(batch).execute()
-            print("🎉 BULK UPDATE SUCCESSFUL! Aapka Supabase 2020 se aaj tak ready hai.")
-        else:
-            print("⚠️ Koi naya data nahi mila.")
+        genuine_ipos = []
+        
+        for item in recent_listings:
+            sym = item['stock_symbol']
+            nse_official_date = item['nse_date']
             
+            print(f"⚡ Verifying: {sym}...")
+            
+            # Ek-ek karke BSE (.BO) aur NSE (.NS) ka historical data check karo
+            ns_data = yf.download(f"{sym}.NS", period="max", progress=False)
+            bo_data = yf.download(f"{sym}.BO", period="max", progress=False)
+            
+            yf_dates = []
+            if not ns_data.empty and ns_data.first_valid_index() is not None:
+                yf_dates.append(ns_data.first_valid_index().date())
+            if not bo_data.empty and bo_data.first_valid_index() is not None:
+                yf_dates.append(bo_data.first_valid_index().date())
+                
+            is_migrated = False
+            if yf_dates:
+                oldest_date = min(yf_dates)
+                
+                # Agar 30 din se purani history nikli, matlab ye BSE ya SME se migrate hua hai
+                if (nse_official_date - oldest_date).days > 30:
+                    is_migrated = True
+                    print(f"   🚫 REJECTED: {sym} (Migrated Stock! Original start: {oldest_date})")
+            
+            if not is_migrated:
+                print(f"   ✅ ACCEPTED: {sym} is a 100% Genuine New IPO!")
+                genuine_ipos.append({
+                    "stock_symbol": sym,
+                    "company_name": item['company_name'],
+                    "listing_date": nse_official_date.strftime('%Y-%m-%d'),
+                    "listing_year": nse_official_date.year
+                })
+                
+        # ==========================================
+        # 3. Database Save
+        # ==========================================
+        if genuine_ipos:
+            print(f"\n💾 Saving {len(genuine_ipos)} GENUINE IPO(s) to Supabase Database...")
+            supabase.table('ipo_master').upsert(genuine_ipos).execute()
+            print("🎉 Daily Tracker Run Successful! System Updated.")
+        else:
+            print("\n⚠️ Jo bhi stocks recent the, wo sab kachra (migrated) nikle. Database remains unchanged.")
+
     except Exception as e:
         print(f"❌ Error: {e}")
 
 if __name__ == "__main__":
-    update_ipo_master_bulk()
+    daily_ipo_tracker()
