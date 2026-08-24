@@ -21,7 +21,7 @@ import backend
 from views.home_view import show_home_page
 from views.scanner_view import show_scanner_page
 from views.results_view import show_results_page
-#from views.ipos_view import show_ipos_page
+from views.ipos_view import show_ipos_page
 from views.journal_view import show_journal_page
 from views.breadth_view import show_breadth_page
 # 🌟 NAYA IMPORT: Recent Results (Time Machine) Page
