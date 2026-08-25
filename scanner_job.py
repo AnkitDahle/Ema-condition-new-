@@ -9,18 +9,26 @@ import time
 import requests
 from nselib import capital_market
 
-# Faltu warnings ko mute karna
+# ==========================================
+# 🛑 SYSTEM SETTINGS & WARNING MUTE
+# ==========================================
 warnings.filterwarnings('ignore')
 logging.getLogger('yfinance').setLevel(logging.CRITICAL)
 
 # 1. Supabase Connection
 url_sb = os.environ.get("SUPABASE_URL")
 key = os.environ.get("SUPABASE_KEY")
-supabase: Client = create_client(url_sb, key)
 
+if not url_sb or not key:
+    print("⚠️ Supabase Credentials (URL ya KEY) nahi mile! Script exit ho rahi hai.")
+    exit()
+
+supabase: Client = create_client(url_sb, key)
 today_date = datetime.now().strftime("%Y-%m-%d")
 
-# --- 🚀 TELEGRAM SYSTEM SETUP ---
+# ==========================================
+# 🚀 TELEGRAM SYSTEM SETUP
+# ==========================================
 def send_to_telegram(file_path):
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID")
@@ -34,7 +42,7 @@ def send_to_telegram(file_path):
     print("📤 Telegram par file bhej rahe hain...")
     try:
         with open(file_path, "rb") as file:
-            payload = {"chat_id": chat_id, "caption": f"📊 Bhai, {today_date} ki Scanner List ready hai! Check karo."}
+            payload = {"chat_id": chat_id, "caption": f"📊 Bhai, {today_date} ki Strict Scanner List ready hai! Check karo."}
             response = requests.post(url, data=payload, files={"document": file})
             
         if response.status_code == 200:
@@ -44,7 +52,9 @@ def send_to_telegram(file_path):
     except Exception as e:
         print(f"❌ File bhejne me error aayi: {e}")
 
-# --- 🚀 Supabase Error Logging System ---
+# ==========================================
+# 🚨 SUPABASE ERROR LOGGING SYSTEM
+# ==========================================
 error_logs_data = []
 
 def log_error(symbol, category, detailed_reason):
@@ -56,7 +66,9 @@ def log_error(symbol, category, detailed_reason):
     })
     print(f"🚨 ERROR: {symbol} - {category}")
 
-# 🚫 HARDCODED BLACKLIST 
+# ==========================================
+# 🚫 HARDCODED BLACKLISTS
+# ==========================================
 KACHRA_STOCKS = [
     "SNXT50BE", "ITADD", "MOLOWV", "ARTEMISM", "SILVERADD", "NEXT50", "PVTBANKA", 
     "MOMENTUM", "GOLDADD", "SILVERAG", "NIFTYADD", "MONQ50", "MIDQ50ADD", "SILVERBET", 
@@ -70,7 +82,6 @@ KACHRA_STOCKS = [
     "MSCI360"
 ]
 
-# 🚫 NSE SERIES BLACKLIST
 BAD_SERIES = [
     "AK", "AL", "AM", "AN", "AU", "AV", "AW", "AX", "AY", "AZ", "BA", "BC", "BR", "BS", "BU", "BV", "BW", "BX", "BZ", "D1", "GB", "IV", 
     "E1", "E2", "E3", 
@@ -82,7 +93,9 @@ BAD_SERIES = [
 ]
 BAD_SUFFIXES = tuple(f"-{s}" for s in BAD_SERIES)
 
-# 2. Zerodha API se Master List nikalna
+# ==========================================
+# 2. ZERODHA API - MASTER LIST FETCH
+# ==========================================
 def get_full_nse_list():
     try:
         print("Zerodha API se list download kar rahe hain...")
@@ -123,7 +136,9 @@ matched_stocks_data = []
 saved_count = 0
 chunk_size = 50  
 
-# 3. Batch Calculation
+# ==========================================
+# 3. BATCH CALCULATION ENGINE
+# ==========================================
 for i in range(0, len(stocks), chunk_size):
     batch = stocks[i : i + chunk_size]
     print(f"📦 Downloading Batch {i//chunk_size + 1} ({len(batch)} stocks)...")
@@ -131,7 +146,8 @@ for i in range(0, len(stocks), chunk_size):
     time.sleep(2)  
     
     try:
-        batch_data = yf.download(batch, period="2y", interval="1d", threads=True, progress=False)
+        # 🔥 TRADINGVIEW ACCURACY FIX: period="max"
+        batch_data = yf.download(batch, period="max", interval="1d", threads=True, progress=False)
 
         if isinstance(batch_data.columns, pd.MultiIndex):
             close_df = batch_data['Close']
@@ -151,8 +167,8 @@ for i in range(0, len(stocks), chunk_size):
                 high_data = high_df[ticker].dropna()
                 vol_data = vol_df[ticker].dropna()  
 
-                if len(close_data) < 22:
-                    log_error(ticker, "INSUFFICIENT_HISTORY", f"Sirf {len(close_data)} din ka data hai. Min 22 days zaroori hain.")
+                if len(close_data) < 252: # Requires at least 1 year data for 252-day high condition
+                    log_error(ticker, "INSUFFICIENT_HISTORY", f"Sirf {len(close_data)} din ka data hai. Min 252 days zaroori hain.")
                     continue
                 
                 # Math & Moving Averages (Daily)
@@ -172,13 +188,13 @@ for i in range(0, len(stocks), chunk_size):
                 close_22 = float(close_22_ago.iloc[-1]) if pd.notna(close_22_ago.iloc[-1]) else 999999.0
                 close_66 = float(close_66_ago.iloc[-1]) if pd.notna(close_66_ago.iloc[-1]) else 999999.0
                 
-                # Tech Conditions (ANY 1 pass hona zaroori hai)
+                # Tech Conditions (Daily Breakouts)
                 tech_cond1 = (close / close_22 > 1.2) and (turnover > 100000000)
                 tech_cond2 = (close / close_66 >= 1.3) and (close >= 1) and (turnover > 100000000)
                 tech_cond3 = (close > max_high * 0.75) and (close > sma_50_val) and (turnover > 100000000)
                 
                 # ==========================================
-                # 🔥 NEW STRICT MONTHLY EMA CONDITION
+                # 🔥 STRICT MONTHLY EMA CONDITION
                 # ==========================================
                 monthly_cond_pass = False
                 
@@ -198,8 +214,8 @@ for i in range(0, len(stocks), chunk_size):
                         monthly_cond_pass = True
 
                 # ==========================================
-                
-                # Final Check: (Cond1 OR Cond2 OR Cond3) AND (Monthly 9>20 EMA)
+                # 🔥 FINAL DECISION GATE (AND Logic)
+                # ==========================================
                 if (tech_cond1 or tech_cond2 or tech_cond3) and monthly_cond_pass:
                     try:
                         time.sleep(0.5) 
@@ -212,7 +228,7 @@ for i in range(0, len(stocks), chunk_size):
                         sector_name = stock_info.get('sector', 'Unknown')
                         proxy_name = stock_info.get('industry', 'Unknown')
                         
-                        # 🚀 FIXED MARKET CAP FILTER (500 Cr to 80,000 Cr)
+                        # 🔥 STRICT MARKET CAP FILTER
                         market_cap = stock_info.get('marketCap', 0)
                         
                         if market_cap < 5000000000 or market_cap > 800000000000:
@@ -238,7 +254,7 @@ for i in range(0, len(stocks), chunk_size):
                         "sector": sector_name,
                         "industry_proxy": proxy_name
                     })
-                    print(f"🔥 Breakout: {symbol_clean} | MCAP OK | {sector_name} | TO: {round(turnover / 10000000, 2)}Cr")
+                    print(f"✅ Breakout Selected: {symbol_clean} | MCAP OK | {sector_name} | TO: {round(turnover / 10000000, 2)}Cr")
                     saved_count += 1
 
             except Exception as inner_e:
@@ -282,9 +298,10 @@ if matched_stocks_data:
                 del_str = s_data['DELIV_PER'].values[0]
                 stock['delivery_pct'] = float(str(del_str).replace(' ', '').replace('-', '0'))
                 stock['traded_volume'] = int(s_data['TTL_TRD_QNTY'].values[0])
-# =========================================================================
 
-# --- BULK INSERT: MATCHED STOCKS ---
+# =========================================================================
+# 💾 DATABASE SAVE & TELEGRAM EXPORT
+# =========================================================================
 if matched_stocks_data:
     print(f"\n💾 Saving {len(matched_stocks_data)} stocks to Database in one go...")
     try:
@@ -302,7 +319,6 @@ if matched_stocks_data:
     except Exception as e:
         print(f"❌ Telegram CSV creation/send fail: {e}")
 
-# --- BULK INSERT: ERROR LOGS ---
 if error_logs_data:
     print(f"\n⚠️ Sending {len(error_logs_data)} error logs to Database...")
     try:
